@@ -8,6 +8,8 @@ const r1 = v => Math.round(v*10)/10;
 const clone = o => JSON.parse(JSON.stringify(o));
 const uid = p => p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const today = () => new Date().toLocaleDateString("ru-RU");
+// 1 полка, 2 полки, 5 полок
+const plur = (n,one,few,many) => { n=Math.abs(Math.round(n))%100; const d=n%10; return (n>10&&n<20)?many : d===1?one : (d>=2&&d<=4)?few : many; };
 const LS = {
   get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } },
   set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ return false; } }

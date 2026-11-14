@@ -298,7 +298,9 @@
       const sz = p.size || {};
       const line = lines.find(l => l.kind === "product" && l.ref === p.id) || lines.filter(l => l.kind === "product")[i];
       const im = p.image || {};
-      return { title: name, size: sz.w ? [sz.w, sz.h, sz.d].filter(Boolean).join("×") + " мм" : (line && line.note ? String(line.note).replace(/x/g, "×") : ""), desc: d.join("\n"), price: line ? +line.sum || 0 : 0, image: typeof im === "string" ? im : (im.png || im.svg || ""), imageW: 0, imageH: 0 };
+      // угловая или П-образная кухня: "ширина×высота×глубина" вводит в заблуждение - пишем длины по стенам
+      const corner = p.type === "kitchen" && sz.w && +sz.d > 1000;
+      return { title: name, size: corner ? "по стенам " + sz.w + " и " + sz.d + " мм, высота " + sz.h + " мм" : sz.w ? [sz.w, sz.h, sz.d].filter(Boolean).join("×") + " мм" : (line && line.note ? String(line.note).replace(/x/g, "×") : ""), desc: d.join("\n"), price: line ? +line.sum || 0 : 0, image: typeof im === "string" ? im : (im.png || im.svg || ""), imageW: 0, imageH: 0 };
     });
     o.services = lines.filter(l => l.kind !== "product").map(l => ({ name: l.name + (l.qty > 1 ? ", " + l.qty + " " + (l.unit || "шт") : ""), price: +l.sum || 0 }));
     if (!KP.totals(o).subtotal && +q.total) o.items[0].price = +q.subtotal || +q.total;
@@ -306,6 +308,9 @@
     const sub = KP.totals(Object.assign({}, o, { discountSum: 0 })).subtotal;
     if (+q.total && sub - o.discountSum !== +q.total) o.discountSum = Math.max(0, sub - q.total);
     o.prepayPct = +q.prepayPct || 0; o.prepaySum = +q.prepaySum || KP.calcPrepay(o);
+    // если в заказе нет доставки и монтажа - не обещаем их в условиях
+    const hasServ = (Array.isArray(ord.extras) ? ord.extras : []).some(x => x && x.kind && x.kind !== "item" && (x.qty == null ? 1 : +x.qty) * (+x.price || 0) > 0);
+    if (!hasServ) o.conditions = String(o.conditions || "").replace(KP.DEFAULT_CONDITIONS.split("\n")[0], "Доставка, подъём на этаж, сборка и установка в стоимость не входят и считаются отдельно.");
     if (t.days) o.days = +t.days;
     o.dayKind = t.daysKind === "calendar" ? "календарных" : "рабочих";
     if (t.warrantyMonths != null) o.warrantyMonths = +t.warrantyMonths;

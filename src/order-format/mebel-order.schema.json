@@ -216,6 +216,7 @@
       "properties": {
         "workPct": { "type": "number", "minimum": 0, "description": "Сборка, % от материалов" },
         "markupPct": { "type": "number", "minimum": 0, "description": "Наценка, % от себестоимости" },
+        "markupServices": { "type": "boolean", "description": "false - наценка не берётся с услуг (доставка, монтаж). По умолчанию берётся со всей себестоимости" },
         "discountPct": { "type": "number", "minimum": 0, "maximum": 90 },
         "prepayPct": { "type": "number", "minimum": 0, "maximum": 100 },
         "roundTo": { "type": "number", "minimum": 1, "description": "Итог округляется вверх до этой суммы" },

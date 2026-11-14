@@ -743,7 +743,8 @@
     var materials = lines.reduce(function (s, l) { return s + l.sum; }, 0) - servicesSum;
     var work = r0(materials * num(pr.workPct) / 100);
     var cost = materials + work + servicesSum;
-    var markup = r0(cost * num(pr.markupPct) / 100);
+    // pricing.markupServices === false - наценка не берётся с услуг (доставка, монтаж идут клиенту по своей цене)
+    var markup = r0((pr.markupServices === false ? cost - servicesSum : cost) * num(pr.markupPct) / 100);
     var d = Math.min(90, Math.max(0, num(pr.discountPct))) / 100;
     var total = ceilTo((cost + markup) * (1 - d), pr.roundTo);
     var step = total % 100 === 0 ? 100 : 1; // строки для клиента - ровными суммами

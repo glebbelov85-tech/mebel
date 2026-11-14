@@ -24,9 +24,10 @@
   <div class="card">
     <h2>Заказ</h2>
     <div class="row2">
-      <div class="field"><label>Клиент</label><input data-b="client" placeholder="Имя, телефон"></div>
-      <div class="field"><label>Декор / цвет (для клиента)</label><input data-b="decor" placeholder="Напр. белый, дуб сонома"></div>
+      <div class="field"><label>Клиент</label><input data-b="client" placeholder="Имя" autocomplete="off"></div>
+      <div class="field"><label>Телефон (WhatsApp)</label><input data-b="phone" type="tel" inputmode="tel" placeholder="+7 ..." autocomplete="off"></div>
     </div>
+    <div class="field"><label>Декор / цвет (для клиента)</label><input data-b="decor" placeholder="Напр. белый, дуб сонома"></div>
   </div>
 
   <!-- ===== ШКАФ-КУПЕ ===== -->
@@ -133,7 +134,10 @@
   <div id="univForm" class="hide">
     <div class="card">
       <h2>Шаблон изделия</h2>
-      <div class="field"><label>Что делаем</label><select id="u_tpl"></select></div>
+      <div class="row2">
+        <div class="field"><label>Что делаем</label><select id="u_tpl"></select></div>
+        <div class="field"><label>Название для клиента</label><input data-b="u.title" placeholder="Как в шаблоне"></div>
+      </div>
       <div class="row" id="u_params"></div>
       <div id="u_manual" class="info hide">Детали изменены вручную. Чтобы применить шаблон и параметры, нажмите "Перестроить" (ручные правки пропадут).</div>
       <div class="btns"><button class="b1" id="u_rebuild">Перестроить по шаблону</button><button class="b2" id="u_saveMod">Сохранить как мой модуль</button></div>
@@ -161,10 +165,16 @@
   <div class="card">
     <h2>Условия</h2>
     <div class="row">
-      <div class="field"><label>Скидка, %</label><input data-b="disc" type="number" min="0" max="50"></div>
+      <div class="field"><label>Скидка, %</label><input data-b="disc" type="number" min="0" max="90"></div>
       <div class="field"><label>Предоплата, %</label><input data-b="prepay" type="number" min="0" max="100"></div>
       <div class="field"><label>Срок, дней</label><input data-b="days" type="number" min="1"></div>
     </div>
+    <div class="row2">
+      <div class="field"><label>Какие дни</label><select data-b="daysKind"><option value="work">Рабочие</option><option value="calendar">Календарные</option></select></div>
+      <div class="field"><label>Доставка и монтаж</label><input id="q_install" type="number" min="0" step="1000" inputmode="numeric"></div>
+    </div>
+    <label class="chk"><input type="checkbox" data-b="instNoMk">Не начислять наценку на доставку и монтаж</label>
+    <p class="note" style="margin:0 0 10px">Доставка и монтаж для этого заказа: пусто - сумма из прайса, 0 - самовывоз.</p>
     <div class="row">
       <div class="field"><label>Сборка, %</label><input id="q_work" type="number" min="0"></div>
       <div class="field"><label>Наценка, %</label><input id="q_markup" type="number" min="0"></div>

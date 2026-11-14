@@ -16,20 +16,6 @@ function genKupe(k){
   const x0 = sideL?T:0, inW = W-(sideL?T:0)-(sideR?T:0);
   const yB = BASE+T, yTop = H-(roof?T:0);                 // низ и верх внутреннего проёма
   const P_=(o,...a)=>b[o](...a);
-  if(sideL) b.X("Боковина левая",0,0,bz,H,Dg,body);
-  if(sideR) b.X("Боковина правая",W-T,0,bz,H,Dg,body);
-  if(roof) b.Y("Крыша",x0,H-T,bz,inW,Dg,body);
-  b.Y("Дно",x0,BASE,bz,inW,Dg,body);
-  b.Z("Цоколь передний",x0,0,bz+Dg-T-20,inW,BASE,body,1);
-  b.Z("Цоколь задний",x0,0,bz+40,inW,BASE,body,0);
-  let secTop=yTop;
-  if(k.ant){
-    secTop=yTop-ANT-T;
-    b.Y("Полка антресоли",x0,secTop,bz,inW,Dk,body);
-    const ap=Math.max(0,Math.ceil(inW/1000)-1);
-    for(let j=1;j<=ap;j++) b.X(`Перегородка антресоли ${j}`,x0+inW*j/(ap+1)-T/2,secTop+T,bz,ANT,Dk,body);
-  }
-  const partH=secTop-yB;
   // ширины секций: заданные вручную + остальное поровну
   const secs=k.secs.slice(0,n), free=inW-T*(n-1);
   let fixed=0, autoN=0; secs.forEach(s=>{ if(+s.w>0) fixed+=+s.w; else autoN++; });
@@ -37,6 +23,37 @@ function genKupe(k){
   const sw=secs.map(s=>+s.w>0?+s.w:autoW);
   if(autoN && autoW<150) warns.push(`Секции с заданной шириной не оставляют места остальным (выходит ${fmt(autoW)} мм). Уменьшите ширины.`);
   if(!autoN && Math.abs(fixed-free)>2) warns.push(`Ширины секций в сумме ${fmt(fixed)} мм, а внутри шкафа ${fmt(free)} мм. Оставьте одну секцию без ширины - она займёт остаток.`);
+  // Шкаф шире листа: крыша, дно, цоколь и полка антресоли не выходят одной деталью - делим их по перегородкам
+  const bm=MAT(body), maxL=Math.max(bm.sw||2800,bm.sh||2070)-20, segs=[];
+  if(inW>maxL){
+    const mids=[]; let px=x0; sw.forEach((w,i)=>{ px+=Math.max(50,w); if(i<n-1){ mids.push(px+T/2); px+=T; } });
+    let a=x0, bad=false; const end=x0+inW;
+    while(end-a>maxL){
+      const ok=mids.filter(m=>m>a+100 && m-a<=maxL);
+      let c=ok.length?ok[ok.length-1]:0;
+      // последний кусок не должен остаться длиннее листа, если следующей перегородки уже не будет
+      if(!c){ c=a+Math.min(maxL,Math.ceil((end-a)/2)); bad=true; }
+      segs.push([a,c]); a=c;
+    }
+    segs.push([a,end]);
+    warns.push(`Шкаф шире листа (${fmt(maxL)} мм): крыша, дно, цоколь и полка антресоли разделены на ${segs.length} части${bad?"":" по перегородке"}. На стыке обычно ставят сдвоенную стойку - проверьте конструкцию.`);
+    if(bad) warns.push(`Стык длинных деталей не попадает на перегородку - добавьте секцию, чтобы стык опирался на стойку.`);
+  } else segs.push([x0,x0+inW]);
+  const long=(o,name,y,z,d,edge)=>segs.forEach(([a,e],q)=>b[o](segs.length>1?`${name} ${q+1}`:name,a,y,z,e-a,d,body,edge));
+  if(sideL) b.X("Боковина левая",0,0,bz,H,Dg,body);
+  if(sideR) b.X("Боковина правая",W-T,0,bz,H,Dg,body);
+  if(roof) long("Y","Крыша",H-T,bz,Dg,1);
+  long("Y","Дно",BASE,bz,Dg,1);
+  long("Z","Цоколь передний",0,bz+Dg-T-20,BASE,1);
+  long("Z","Цоколь задний",0,bz+40,BASE,0);
+  let secTop=yTop;
+  if(k.ant){
+    secTop=yTop-ANT-T;
+    long("Y","Полка антресоли",secTop,bz,Dk,1);
+    const ap=Math.max(0,Math.ceil(inW/1000)-1);
+    for(let j=1;j<=ap;j++) b.X(`Перегородка антресоли ${j}`,x0+inW*j/(ap+1)-T/2,secTop+T,bz,ANT,Dk,body);
+  }
+  const partH=secTop-yB;
   let x=x0, drawersTotal=0, rodM=0;
   secs.forEach((s,i)=>{
     const w=Math.max(50,sw[i]), key="s"+i;
@@ -100,7 +117,7 @@ function genKupe(k){
   if(m>n+1) warns.push(`Дверей больше, чем секций: стыки дверей будут перекрывать середину секций.`);
 
   const fill=secs.map((s,i)=>{
-    const a=[]; if(s.rod)a.push("штанга"); if(+s.shelves)a.push(s.shelves+" полок"); if(+s.drawers)a.push(s.drawers+" ящ.");
+    const a=[]; if(s.rod)a.push("штанга"); if(+s.shelves)a.push(s.shelves+" "+plur(+s.shelves,"полка","полки","полок")); if(+s.drawers)a.push(s.drawers+" ящ.");
     return `- секция ${i+1} (${fmt(sw[i])} мм): ${a.join(", ")||"пустая"}`;
   }).join("\n");
   const doorTxt=k.doors.slice(0,m).map(d=>d.segs.slice(0,3).map(s=>matName(s)).join("+")).join(" / ");
@@ -110,5 +127,5 @@ function genKupe(k){
 Наполнение:
 ${k.ant?"- антресоль на всю ширину\n":""}${fill}${k.led?"\n- LED-подсветка":""}`;
   return {parts:roundParts(b.ps), hw:Object.values(b.hw), warns, desc, title:`Шкаф-купе ${W}×${H}×${D}`,
-    info:{W,H,D,sw,doorW:Math.round(doorW),doorH:Math.round(doorH),m,n}};
+    info:{W,H,D,sw,x0,doorW:Math.round(doorW),doorH:Math.round(doorH),m,n}};
 }
