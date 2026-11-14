@@ -45,3 +45,19 @@ html:root{
 html[data-tool="raskroy"] button{border-radius:10px}
 html[data-tool="raskroy"] input,html[data-tool="raskroy"] select,html[data-tool="raskroy"] textarea,
 html[data-tool="kp"] input,html[data-tool="kp"] select,html[data-tool="kp"] textarea{border-radius:9px}
+/* голосовой помощник сайта */
+#msVoice{position:fixed;right:16px;bottom:16px;z-index:990;font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#2b2622;max-width:calc(100vw - 24px)}
+#msVoice .msv-pill{border:0;border-radius:999px;padding:12px 18px;background:#2f6f5e;color:#fff;font:600 14px system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer;display:flex;gap:6px;align-items:center}
+#msVoice .msv-panel{width:400px;max-width:100%;background:#fffdf9;border:1px solid #e4dbd0;border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:10px 12px}
+#msVoice .msv-top{display:flex;gap:8px;align-items:center}#msVoice .msv-top b{flex:1}
+#msVoice #msvSt{color:#c0392b;font-size:12px}
+#msVoice .msv-x{background:none;border:0;font-size:24px;line-height:1;cursor:pointer;color:#7a7068;width:auto;padding:0 4px}
+#msVoice .msv-log{max-height:170px;overflow:auto;margin:6px 0;font-size:13px}
+#msVoice .msv-log div{padding:4px 8px;border-radius:8px;margin:3px 0}
+#msVoice .msv-q{color:#7a7068;font-style:italic}#msVoice .msv-ok{background:#e3f0ec;color:#2f6f5e}#msVoice .msv-err{background:#fdf0e2;color:#b5651d}#msVoice .msv-info{color:#7a7068}
+#msVoice .msv-live{border:1px dashed #e4dbd0;border-radius:8px;padding:4px 8px;color:#7a7068;font-style:italic;margin-bottom:6px}
+#msVoice .msv-row{display:flex;gap:6px}
+#msVoice input{flex:1;min-width:0;padding:8px 10px;border:1px solid #e4dbd0;border-radius:10px;font:inherit}
+#msVoice .msv-mic,#msVoice .msv-go{border:0;border-radius:10px;padding:8px 12px;background:#2f6f5e;color:#fff;cursor:pointer;font:600 14px system-ui,sans-serif;width:auto}
+#msVoice .msv-mic.on{background:#25d366}
+@media(max-width:600px){#msVoice{left:8px;right:8px;display:flex;justify-content:flex-end}#msVoice .msv-panel{width:100%}}

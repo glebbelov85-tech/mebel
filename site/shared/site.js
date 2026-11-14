@@ -181,18 +181,130 @@
   function escClose(e) { if (e.key === "Escape") closeMenu(); }
   function closeMenu() { var m = document.getElementById("msMenu"); if (m) m.remove(); document.removeEventListener("keydown", escClose); }
 
+
+  // --- голос по всему сайту: переходы между инструментами, кнопки по названию ---
+  // Работает в браузере (Web Speech API). Сам разбор фраз - здесь, на странице, без серверов.
+  var NAV = [
+    [/калькулятор|расчет|посчитать|смет/, "kalkulyator"], [/конфигуратор/, "konfigurator"],
+    [/(^|\s)кп(\s|$)|коммерческ|договор|pdf|пдф/, "kp"], [/раскро|распил|раскладк/, "raskroy"],
+    [/учет|заказы|список заказов|журнал/, "zakazy"], [/главн|домой|все инструменты|меню сайта|начальн/, "home"]
+  ];
+  var VSTOP = { "нажми": 1, "нажать": 1, "кликни": 1, "кнопку": 1, "кнопка": 1, "на": 1, "открой": 1, "вкладку": 1, "вкладка": 1, "перейди": 1, "в": 1, "во": 1, "выбери": 1, "включи": 1, "пожалуйста": 1, "давай": 1, "покажи": 1, "раздел": 1, "пункт": 1 };
+  function vn(t) { return String(t || "").toLowerCase().replace(/ё/g, "е").replace(/[.,!?;:"«»]/g, " ").replace(/\s+/g, " ").trim(); }
+  function vstem(w) { return w.length > 5 ? w.slice(0, w.length > 7 ? 5 : 4) : w.length > 3 ? w.slice(0, 4) : w; }
+  function visible(el) { if (!el || el.closest("#msVoice,#msMenu,#edBar,.hide")) return false; var r = el.getBoundingClientRect(); return (r.width > 0 || r.height > 0) && getComputedStyle(el).visibility !== "hidden"; }
+  function labelOf(el) { return vn(el.getAttribute("aria-label") || el.innerText || el.value || el.title || ""); }
+  function clickables() {
+    var els = document.querySelectorAll("button,a[href],[role=tab],[role=button],summary,label,input[type=button],input[type=submit]");
+    var out = [];
+    for (var i = 0; i < els.length; i++) { var l = labelOf(els[i]); if (l && l.length < 60 && visible(els[i])) out.push({ el: els[i], l: l }); }
+    return out;
+  }
+  function findButton(q) {
+    var ws = vn(q).split(" ").filter(function (w) { return w.length > 1 && !VSTOP[w]; }).map(vstem);
+    if (!ws.length) return null;
+    var best = null;
+    clickables().forEach(function (c) {
+      var sc = 0; ws.forEach(function (w) { if ((" " + c.l).indexOf(" " + w) >= 0) sc += 1; else if (c.l.indexOf(w) >= 0) sc += 0.5; });
+      if (c.l === ws.join(" ")) sc += 1;
+      if (sc > 0 && (!best || sc > best.sc || (sc === best.sc && c.l.length < best.l.length))) best = { el: c.el, l: c.l, sc: sc };
+    });
+    return best && best.sc >= Math.max(1, Math.ceil(ws.length * 0.6)) ? best : null;
+  }
+  function voiceNav(text) {
+    var t = vn(text), m, i;
+    if (!t) return null;
+    if (/^(назад|вернись назад|предыдущая страница)$/.test(t)) { history.back(); return "Назад"; }
+    if (/^(прокрути|листай|промотай)[а-я]* (вниз|ниже)/.test(t) || t === "вниз") { window.scrollBy({ top: innerHeight * 0.7, behavior: "smooth" }); return "Прокручиваю вниз"; }
+    if (/^(прокрути|листай|промотай)[а-я]* (вверх|выше|наверх)/.test(t) || t === "вверх" || t === "наверх") { window.scrollBy({ top: -innerHeight * 0.7, behavior: "smooth" }); return "Прокручиваю вверх"; }
+    if (/^(скачай|сохрани)[а-я]* файл[а-я]* заказ/.test(t) && adapter) { download(); return "Скачиваю файл заказа"; }
+    if (/^(какие|что) (здесь|тут) (есть )?(кнопки|можно (нажать|сделать))|^что на экране/.test(t)) {
+      var ls = clickables().map(function (c) { return c.l; }).filter(function (l, k, a) { return a.indexOf(l) === k && l.length > 2; }).slice(0, 14);
+      return "Можно нажать: " + ls.join(", ");
+    }
+    // передать заказ: "передай заказ в раскрой", "отправь в КП"
+    if ((m = t.match(/^(передай|отправь|перекинь|перенеси)[а-я]*( заказ| расчет| проект)?( в| во)?(?=\s) (.+)$/))) {
+      for (i = 0; i < NAV.length; i++) if (NAV[i][0].test(m[4]) && NAV[i][1] !== "home") {
+        if (NAV[i][1] === me) return "Заказ уже здесь";
+        setTimeout(function (id) { return function () { send(id); }; }(NAV[i][1]), 400); return "Передаю заказ в \"" + toolName(NAV[i][1]) + "\"";
+      }
+    }
+    // переход: "открой раскрой", "перейди в учёт заказов", "на главную", или просто "раскрой"
+    m = t.match(/^(открой|перейди|иди|пошли|давай|зайди|покажи|переключись)?[а-я]*( на| в| во| к)?(?=\s|$)\s*(.+)$/);
+    var what = m ? m[3] : t, bare = !m || !m[1];
+    if (!bare || what.split(" ").length <= 3) for (i = 0; i < NAV.length; i++) if (NAV[i][0].test(what) && !(bare && what.split(" ").length > 2)) {
+      var id = NAV[i][1];
+      if (id === me) return "Вы уже здесь: " + toolName(id);
+      setTimeout(function () { location.href = id === "home" ? root() : urlOf(id); }, 400);
+      return "Открываю: " + toolName(id);
+    }
+    if (/^отзыв|оставить отзыв|написать отзыв/.test(t)) { setTimeout(function () { location.href = root() + "otzyv/"; }, 400); return "Открываю отзыв"; }
+    // кнопка по названию на текущей странице
+    if ((m = t.match(/^(нажми|нажать|кликни|открой|выбери|включи|покажи|перейди)[а-я]*( на)?\s+(.+)$/)) || t.split(" ").length <= 3) {
+      var b = findButton(m ? m[3] : t);
+      if (b) { setTimeout(function () { try { b.el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {} b.el.click(); if (b.el.focus) try { b.el.focus(); } catch (e) {} }, 150); return "Нажимаю: " + b.l; }
+    }
+    if (adapter && adapter.voice) { try { var r = adapter.voice(t); if (r) return r; } catch (e) { return e.message; } }
+    return null;
+  }
+  // панель голоса (на страницах без своего голосового помощника)
+  var VS = { rec: null, want: false, on: false, gen: 0 };
+  function speak(text) { try { if (!window.speechSynthesis || localStorage.getItem("mk2_ed_mute") === "1") return; speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(text.slice(0, 250)); u.lang = "ru-RU"; speechSynthesis.speak(u); } catch (e) {} }
+  function voicePanel() {
+    if (document.getElementById("msVoice")) return;
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var mic = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+    var w = document.createElement("div"); w.id = "msVoice";
+    w.innerHTML = '<button type="button" class="msv-pill" id="msvPill">' + mic + ' Голосом</button>' +
+      '<div class="msv-panel" id="msvPanel" hidden><div class="msv-top"><b>Голосовой помощник</b><span id="msvSt"></span><button type="button" class="msv-x" id="msvX" aria-label="Свернуть">&times;</button></div>' +
+      '<div class="msv-log" id="msvLog"><div class="msv-info">Скажите, куда перейти или что нажать: "открой калькулятор", "передай заказ в раскрой", "нажми сохранить", "что здесь можно нажать".</div></div>' +
+      '<div class="msv-live" id="msvLive" hidden></div>' +
+      '<div class="msv-row">' + (SR ? '<button type="button" class="msv-mic" id="msvMic" title="Говорить">' + mic + '</button>' : '') + '<input id="msvIn" placeholder="Куда перейти или что нажать" autocomplete="off"><button type="button" class="msv-go" id="msvGo">OK</button></div></div>';
+    document.body.appendChild(w);
+    var $ = function (id) { return document.getElementById(id); }, log = $("msvLog");
+    function add(cls, html) { var d = document.createElement("div"); d.className = cls; d.innerHTML = html; log.appendChild(d); while (log.children.length > 6) log.removeChild(log.firstChild); log.scrollTop = log.scrollHeight; }
+    function run(text, byVoice) {
+      text = String(text || "").trim(); if (!text) return;
+      add("msv-q", "&laquo;" + esc(text) + "&raquo;");
+      if (/^(стоп|хватит|выключи микрофон)$/.test(vn(text))) { stop(); return; }
+      var r = voiceNav(text);
+      if (r) { add("msv-ok", esc(r)); if (byVoice) speak(r); } else add("msv-err", "Не понял. Скажите, например: \"открой учёт заказов\" или \"нажми сохранить\".");
+    }
+    function show(o) { $("msvPanel").hidden = !o; $("msvPill").hidden = o; try { localStorage.setItem("ms-voice-open", o ? "1" : "0"); } catch (e) {} if (!o) stop(); }
+    function setOn(o) { VS.on = o; var b = $("msvMic"); if (b) b.className = "msv-mic" + (o ? " on" : ""); $("msvSt").textContent = o ? "Слушаю..." : ""; }
+    function spawn() {
+      var my = ++VS.gen, r = new SR(); VS.rec = r; r.lang = "ru-RU"; r.interimResults = true; r.continuous = !/android/i.test(navigator.userAgent);
+      var done = -1;
+      r.onresult = function (ev) { if (my !== VS.gen) return; var im = "";
+        for (var i = ev.resultIndex; i < ev.results.length; i++) { var x = ev.results[i]; if (x.isFinal) { if (i > done) { done = i; $("msvLive").hidden = true; run(x[0].transcript, true); } } else im += x[0].transcript; }
+        $("msvLive").textContent = im; $("msvLive").hidden = !im; };
+      r.onerror = function (e) { if (my !== VS.gen) return; if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture" || e.error === "network") { VS.want = false; add("msv-err", e.error === "network" ? "Для распознавания речи нужен интернет." : "Нет доступа к микрофону - разрешите его для сайта или пишите текстом."); } };
+      r.onend = function () { if (my !== VS.gen) return; $("msvLive").hidden = true; if (VS.want) setTimeout(function () { if (VS.want && my === VS.gen) spawn(); }, 150); else setOn(false); };
+      try { r.start(); } catch (e) { VS.want = false; setOn(false); }
+    }
+    function start() { if (!SR) return; VS.want = true; setOn(true); spawn(); }
+    function stop() { VS.want = false; try { VS.rec && VS.rec.stop(); } catch (e) {} setOn(false); }
+    $("msvPill").onclick = function () { show(true); };
+    $("msvX").onclick = function () { show(false); };
+    $("msvGo").onclick = function () { run($("msvIn").value); $("msvIn").value = ""; };
+    $("msvIn").addEventListener("keydown", function (e) { if (e.key === "Enter") { run($("msvIn").value); $("msvIn").value = ""; } });
+    if ($("msvMic")) $("msvMic").onclick = function () { if (VS.on) stop(); else start(); };
+    try { if (localStorage.getItem("ms-voice-open") === "1") show(true); } catch (e) {}
+  }
+
   // --- запуск ---
   function start() {
-    if (me === "home") { setStaff(); return; }
+    if (me === "home") { setStaff(); voicePanel(); return; }
     var fromHub = /[?&]from=/.test(location.search);
     // конфигуратор - страница для клиента: полоску видит только мастер (кто уже заходил на сайт)
-    if (me !== "konfigurator" || isStaff() || fromHub) { setStaff(); bar(); }
+    if (me !== "konfigurator" || isStaff() || fromHub) { setStaff(); bar(); if (!(adapter && adapter.voicePanel)) voicePanel(); }
     incoming();
   }
 
   window.MebelSite = {
     TOOLS: TOOLS, tool: tool, toolName: toolName, read: read, write: write, clear: clear,
     summary: summary, ago: ago, money: money, toast: toast, saveFile: saveFile, urlOf: urlOf, isStaff: isStaff,
+    voiceNav: voiceNav,
     register: function (a) {
       adapter = a || {};
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);

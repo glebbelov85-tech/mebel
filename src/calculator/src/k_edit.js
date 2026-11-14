@@ -324,15 +324,21 @@ function editProject(text){
   if(!t) return {ok:false, msg:[]};
   if(/^(отмен|верни( как было)?$|назад$|отмени)/.test(t)) return edUndo();
   if(typeof tplCommand==="function"){ const r=tplCommand(t); if(r) return r; }
-  if(/^(нов[а-я]+ (проект|кухн|шкаф|расчет)|начн[а-я]* заново|опиши заново)/.test(t)) return {ok:false, newProject:true, msg:["Это похоже на новый проект - открываю описание словами"]};
+  if(/^(нов[а-я]+ (проект|кухн|шкаф|изделие|комод|тумб)|начн[а-я]* заново|опиши заново|опиши (новый )?(проект|заказ)|сделай (нов[а-я]+ )?(проект|кухню|шкаф))/.test(t) && !/^новый расчет/.test(t)) return {ok:false, newProject:true, msg:["Это похоже на новый проект - открываю описание словами"]};
+  if(typeof edWhole==="function"){ const w=edWhole(t); if(w){
+    if(w.pre){ ED.undo.push({s:JSON.stringify(S),p:JSON.stringify(PRICE)}); w.pre(); return w; }
+    if(w.act){ try{ w.act(); }catch(e){ return {ok:false,msg:[],errs:[e.message||String(e)]}; } }
+    return w; } }
   // делим на части по запятым и перед новым глаголом: "добавь посудомойку и убери бутылочницу"
-  const clauses=t.split(/\s*[,;]\s*|\s+и\s+|\s+а также\s+/).filter(x=>x&&x.trim().length>1);
-  const snap=JSON.stringify(S), msg=[], errs=[]; let changed=false;
+  // "зеркало и ЛДСП" на одной двери - не делим по "и"
+  const t2=t.replace(/(зеркал[а-я]*|лакобел[а-я]*|стекл[а-я]*|лдсп)\s+и\s+(?=(зеркал|лакобел|стекл|лдсп))/g,"$1 + ");
+  const clauses=t2.split(/\s*[,;]\s*|\s+и\s+|\s+а также\s+/).filter(x=>x&&x.trim().length>1);
+  const snap={s:JSON.stringify(S),p:JSON.stringify(PRICE)}, msg=[], errs=[]; let changed=false;
   // "поменяй местами мойку, духовку" - не делим
   const parts = ED_VERB.swap.test(t) ? [t.replace(/,/g," и ")] : clauses;
   const VERB=/^(добав|постав|встав|убер|удал|убрат|сними|замен|поменя|перенес|передвин|подвин|сдела)[а-я]*/;
   let prevVerb="";
-  const one=c=>{ let r=null; if(S.mode==="kitchen") r=edKitchen(c); if(!r||!r.length) r=edProps(c); return r&&r.length?r:null; };
+  const one=c=>{ let r=null; if(typeof edMore==="function") r=edMore(c); if(r&&r.length) return r; if(S.mode==="kitchen") r=edKitchen(c); if(!r||!r.length) r=edProps(c); return r&&r.length?r:null; };
   for(const c0 of parts){ const c=c0.trim(); let r=null, err=null;
     try{ r=one(c); }catch(e){ err=e.message; }
     // "добавь мойку и посудомойку": у второй части глагол берём из первой
@@ -340,46 +346,67 @@ function editProject(text){
     const vm=c.match(VERB); if(vm) prevVerb=vm[0];
     if(r){ msg.push(...r); changed=true; } else errs.push(err||`Не понял: "${c}"`); }
   if(changed){ ED.undo.push(snap); if(ED.undo.length>40) ED.undo.shift(); }
+  // ничего не понял - может, это переход по сайту или кнопка на экране ("перейди в раскрой", "нажми сохранить")
+  if(!changed && window.MebelSite && MebelSite.voiceNav){ const nv=MebelSite.voiceNav(text); if(nv) return {ok:false, msg:[nv], errs:[], info:true, say:nv}; }
   return {ok:changed, msg, errs};
 }
 function edUndo(){
   if(!ED.undo.length) return {ok:false, msg:[], errs:["Отменять нечего"]};
-  const st=migrateState(JSON.parse(ED.undo.pop())); if(st) S=st; SEL={part:-1,mod:null};
+  const e=ED.undo.pop(), snap=typeof e==="string"?{s:e}:e;
+  const st=migrateState(JSON.parse(snap.s)); if(st) S=st; SEL={part:-1,mod:null};
+  if(snap.p && snap.p!==JSON.stringify(PRICE)){ PRICE=JSON.parse(snap.p); savePrice(); }
   return {ok:true, undone:true, msg:["Отменил последнюю правку"], errs:[]};
 }
 function edRefresh(){ const keep=SEL; setMode(S.mode); SEL=keep; calc(); }
 
+// ответ вслух - только на вопросы, заданные голосом
+function edSpeak(text){
+  try{ const ss=window.speechSynthesis; if(!ss||LS.get("mk2_ed_mute",0)) return; ss.cancel();
+    const u=new SpeechSynthesisUtterance(String(text).replace(/<[^>]+>/g,"").slice(0,300)); u.lang="ru-RU"; u.rate=1.05;
+    const v=ss.getVoices().find(x=>/^ru/i.test(x.lang)); if(v) u.voice=v;
+    // пока говорит - не слушаем, чтобы не распознать собственный ответ
+    if(ED.eng&&ED.on){ ED.eng.stop(); u.onend=()=>{ if(ED.open&&ED.eng) ED.eng.start(); }; }
+    ss.speak(u); }catch(e){}
+}
 // ---------- панель "Правка голосом" ----------
 const ED_HELP={
-  kitchen:["добавь посудомойку 45 после мойки","убери верхний шкаф над мойкой","замени духовку на ящики","поменяй местами мойку и посудомойку","перенеси пенал на правую стену","мойку 600","основная стена 3,5 метра","верхние 900","фасады эмаль","столешница камень","без ручек","подсветка","сохрани как шаблон угловая белая","открой шаблон угловая"],
-  kupe:["ширина 2,6 метра","4 двери","все двери зеркало","вторая дверь лакобель","в третьей секции 4 ящика","добавь штангу в первую секцию","без антресоли","профиль премиум"],
-  univ:["ширина 1200","высота 90 см","5 ящиков","2 двери","фасады эмаль"]};
+  kitchen:["добавь посудомойку 45 после мойки","убери верхний шкаф над мойкой","замени духовку на ящики","поменяй местами мойку и посудомойку","перенеси пенал на правую стену","замени все верхние на подъёмники","мойку 600","основная стена 3,5 метра","верхние 900","фасады эмаль","столешница камень","убери ручки","ручки Gola","угол глухой","без цоколя","подсветка"],
+  kupe:["ширина 2,6 метра","добавь дверь","все двери зеркало","вторая дверь зеркало и ЛДСП","добавь ящик во вторую секцию","убери полку из первой секции","добавь штангу","ширина второй секции 900","без антресоли","профиль премиум"],
+  univ:["ширина 1200","добавь ящик","убери двери","добавь полку","добавь фасад 400 на 700","без задней стенки","фасады эмаль"],
+  common:["сколько стоит проект","сколько стоит ЛДСП","цена петли 1500","прайс загружен?","добавь в расчёт смеситель 15000","без монтажа","скидка 5 процентов","телефон 8 701 123 45 67","покажи 3D","открой прайс","покажи клиенту","сохрани расчёт","сохрани как шаблон угловая белая","перейди в раскрой","нажми скачать Excel","новый проект","отмена","помощь"]};
+function edHelpHtml(){
+  const L=a=>a.map(x=>`<button class="vo-link" data-h="${esc(x)}">${esc(x)}</button>`).join(" · ");
+  return (PAGE==="calc"&&ED_HELP[S.mode]?`<div class="ed-hg"><b>${({kitchen:"Кухня",kupe:"Шкаф-купе",univ:"Изделие"})[S.mode]}:</b> ${L(ED_HELP[S.mode])}</div>`:"")+`<div class="ed-hg"><b>Везде:</b> ${L(ED_HELP.common)}</div><div class="note">Можно несколько правок одной фразой через "и" или запятую. На вопросы помощник отвечает вслух.</div>`;
+}
 function edInit(){
   const box=document.createElement("div"); box.id="edBar"; box.className="edbar";
-  box.innerHTML=`<button class="ed-pill" id="edPill">${MIC_SVG} Правка голосом</button>
+  box.innerHTML=`<button class="ed-pill" id="edPill">${MIC_SVG} Голосом</button>
     <div class="ed-panel hide" id="edPanel">
-      <div class="ed-top"><b>Правка проекта</b><span class="vo-st" id="edSt"></span><button class="bx" id="edX" title="Свернуть">&times;</button></div>
+      <div class="ed-top"><b>Голосовой помощник</b><button class="vo-link ed-mute" id="edMute" title="Отвечать вслух на вопросы"></button><span class="vo-st" id="edSt"></span><button class="bx" id="edX" title="Свернуть">&times;</button></div>
       <div class="ed-log" id="edLog"></div>
       <div class="vo-live hide" id="edLive"></div>
-      <div class="ed-row"><button class="b1 hide" id="edMic" title="Говорить">${MIC_SVG}</button><input id="edIn" placeholder="Например: добавь посудомойку после мойки" autocomplete="off"><button class="b1" id="edGo">OK</button></div>
+      <div class="ed-row"><button class="b1 hide" id="edMic" title="Говорить">${MIC_SVG}</button><input id="edIn" placeholder="Правка, вопрос или куда перейти" autocomplete="off"><button class="b1" id="edGo">OK</button></div>
       <div class="ed-tools"><button class="b2 vo-sm" id="edUndo">Отменить правку</button><button class="b2 vo-sm" id="edNew">Новый проект</button><button class="b2 vo-sm" id="edTpl">Сохранить как шаблон</button><button class="b2 vo-sm" id="edShow">Показать клиенту</button><details><summary>Что можно сказать</summary><div class="ed-help" id="edHelp"></div></details></div>
     </div>`;
   document.body.appendChild(box);
   const log=$("edLog"), inp=$("edIn"), live=$("edLive"), mic=$("edMic");
   const show=open=>{ ED.open=open; $("edPanel").classList.toggle("hide",!open); $("edPill").classList.toggle("hide",open); LS.set("mk2_ed_open",open?1:0); if(open) renderHelp(); else if(ED.eng&&ED.on) ED.eng.stop(); };
-  const renderHelp=()=>{ $("edHelp").innerHTML=(ED_HELP[S.mode]||[]).map(x=>`<button class="vo-link" data-h="${esc(x)}">${esc(x)}</button>`).join(" · ")+`<div class="note">Можно несколько правок одной фразой через "и" или запятую. "Отмена" - вернуть как было.</div>`; };
-  const addLog=(cls,html)=>{ ED.log.push({cls,html}); if(ED.log.length>4) ED.log.shift(); log.innerHTML=ED.log.map(x=>`<div class="${x.cls}">${x.html}</div>`).join(""); log.scrollTop=log.scrollHeight; };
-  const run=text=>{
+  const renderHelp=()=>{ $("edHelp").innerHTML=edHelpHtml(); };
+  const addLog=(cls,html)=>{ ED.log.push({cls,html}); if(ED.log.length>10) ED.log.shift(); log.innerHTML=ED.log.map(x=>`<div class="${x.cls}">${x.html}</div>`).join(""); log.scrollTop=log.scrollHeight; };
+  const run=(text,byVoice)=>{
     text=String(text||"").trim(); if(!text) return;
     const c=voiceCmd(text); if(c==="stop"){ ED.eng&&ED.eng.stop(); return; }
     const r=editProject(text);
     if(r.applied){ addLog("ed-q","&laquo;"+esc(text)+"&raquo;"); addLog("ed-ok",r.msg.map(esc).join("<br>")); return; }
     if(r.newProject){ if(ED.eng) ED.eng.stop(); openVoice(); const ta=$("voTxt"); if(ta){ ta.value=text.replace(/^(новый проект|новая|новый)\s*/i,""); ta.dispatchEvent(new Event("input")); } return; }
     addLog("ed-q","&laquo;"+esc(text)+"&raquo;");
-    if(r.msg.length) addLog("ed-ok",r.msg.map(esc).join("<br>"));
+    if(r.msg.length) addLog(r.info?"ed-info":"ed-ok",r.html?r.msg.join("<br>"):r.msg.map(esc).join("<br>"));
+    if(byVoice && r.say) edSpeak(r.say);
     if(r.errs&&r.errs.length) addLog("ed-err",r.errs.map(esc).join("<br>")+(r.ok?"":`<br><span class="note">Примеры - в "Что можно сказать".</span>`));
     if(r.ok){ edRefresh(); if(window.innerWidth<940){ const sk=$("sketch"); if(sk) sk.scrollIntoView({behavior:"smooth",block:"start"}); } }
   };
+  const muteTxt=()=>{ $("edMute").textContent=LS.get("mk2_ed_mute",0)?"звук выкл.":"звук вкл."; };
+  muteTxt(); $("edMute").onclick=()=>{ LS.set("mk2_ed_mute",LS.get("mk2_ed_mute",0)?0:1); muteTxt(); };
   $("edPill").onclick=()=>show(true);
   $("edX").onclick=()=>show(false);
   $("edGo").onclick=()=>{ run(inp.value); inp.value=""; inp.focus(); };
@@ -394,7 +421,7 @@ function edInit(){
       $("tplOk").onclick=ok; i.addEventListener("keydown",e=>{ if(e.key==="Enter") ok(); }); });
   $("edHelp").addEventListener("click",e=>{ const b=e.target.closest("[data-h]"); if(b){ inp.value=b.dataset.h; inp.focus(); } });
   // микрофон: каждая договорённая фраза сразу выполняется
-  const H={ final(f){ live.classList.add("hide"); run(f); },
+  const H={ final(f){ live.classList.add("hide"); run(f,true); },
     interim(s){ live.textContent=s; live.classList.toggle("hide",!s); },
     state(on,m){ ED.on=on; mic.classList.toggle("wa",on); $("edSt").textContent=on?"Слушаю...":""; $("edSt").classList.toggle("rec",on); if(m) addLog("ed-err",esc(m)); } };
   const SR=!window.claude && (window.SpeechRecognition||window.webkitSpeechRecognition);
@@ -406,7 +433,7 @@ function edInit(){
 // панель видна только на странице расчёта; модальное окно голоса не должно конфликтовать с панелью за микрофон
 if(typeof setMode==="function"){
 const _edSetMode=setMode;
-setMode=function(m){ _edSetMode(m); const b=$("edBar"); if(b){ b.classList.toggle("hide",PAGE!=="calc"); if(ED.open) $("edHelp").innerHTML=(ED_HELP[S.mode]||[]).map(x=>`<button class="vo-link" data-h="${esc(x)}">${esc(x)}</button>`).join(" · "); } };
+setMode=function(m){ _edSetMode(m); if($("edHelp")) $("edHelp").innerHTML=edHelpHtml(); };
 const _edOpenVoice=openVoice;
 openVoice=function(){ if(ED.eng&&ED.on) ED.eng.stop(); return _edOpenVoice.apply(this,arguments); };
 edInit();

@@ -244,3 +244,6 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
 .ph-t input{padding:5px 6px;font-size:13px}
 .ph-t input[type=number]{width:110px}
 .ph-t select{padding:5px;font-size:13px}
+.ed-info{background:#eef3fb;color:#2c4a7a}
+.ed-mute{font-size:12px;font-weight:400}
+.ed-hg{margin:4px 0}
