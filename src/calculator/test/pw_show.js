@@ -2,7 +2,7 @@ const {open,OUT,chromium}=require('./pw.js');
 (async()=>{
   const browser=await chromium.launch({args:['--use-gl=swiftshader','--enable-unsafe-swiftshader']});
   const {page,errs}=await open(browser,{vp:{width:1280,height:900}});
-  await page.click('#voiceBtn'); await page.waitForSelector('[data-tb]');
+  await page.evaluate(()=>openVoice()); await page.waitForSelector('[data-tb]');
   await page.click('[data-tb="3"]'); await page.waitForTimeout(100);
   console.log('tpl text:',await page.inputValue('#voTxt'));
   await page.screenshot({path:OUT+'/tpl-modal.png'});
@@ -12,7 +12,7 @@ const {open,OUT,chromium}=require('./pw.js');
   await page.fill('#edIn','открой шаблон угловая белая'); await page.press('#edIn','Enter'); await page.waitForTimeout(150);
   console.log('log:',await page.textContent('#edLog'));
   console.log('has bottle after template:',await page.evaluate(()=>JSON.stringify(S.kit.walls).includes('l_bottle')));
-  await page.click('#voiceBtn'); console.log('own tpl chips:',await page.$$eval('[data-to]',a=>a.map(x=>x.textContent))); await page.click('#modalX');
+  await page.evaluate(()=>openVoice()); console.log('own tpl chips:',await page.$$eval('[data-to]',a=>a.map(x=>x.textContent))); await page.click('#modalX');
   await page.click('#showBtn'); await page.waitForTimeout(1200);
   await page.screenshot({path:OUT+'/show-client.png',fullPage:true});
   console.log('cost hidden:',await page.evaluate(()=>getComputedStyle($('costCard')).display),'lines',await page.$$eval('.cl-lines div',a=>a.length));

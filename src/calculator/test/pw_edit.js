@@ -3,7 +3,7 @@ const {open,OUT,chromium}=require('./pw.js');
 (async()=>{
   const browser=await chromium.launch();
   const {page,errs}=await open(browser,{vp:{width:1280,height:900}});
-  await page.click('#voiceBtn'); await page.fill('#voTxt','угловая кухня основная стена 3 метра 60 вторая 1 метр 80 встроенный холодильник посудомойка 60'); await page.click('#voGo'); await page.waitForTimeout(200);
+  await page.evaluate(()=>openVoice()); await page.fill('#voTxt','угловая кухня основная стена 3 метра 60 вторая 1 метр 80 встроенный холодильник посудомойка 60'); await page.click('#voGo'); await page.waitForTimeout(200);
   await page.click('#viewTabs [data-v=elev]');
   await page.click('#edPill');
   for(const c of ['убери посудомойку','добавь посудомойку 45 после мойки','добавь сушку над мойкой','фасады эмаль и без ручек','что-то непонятное']){ await page.fill('#edIn',c); await page.press('#edIn','Enter'); await page.waitForTimeout(150); }
