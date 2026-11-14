@@ -9,7 +9,7 @@ const money = n => MO.money(n, curCode());
 const cm = mm => (Math.round(mm / 10)) + " см";
 const LSKEY = "mebel-configurator-1";
 
-let S = defaultState(), cur = null, tab = 0, selDoor = 0, openDoors = false, sheetKind = null;
+let S = defaultState(), cur = null, tab = 0, selDoor = 0, openDoors = false, sheetKind = null, selSlot = null;
 
 function merge(base, add) {
   if (!add || typeof add !== "object") return base;
@@ -45,7 +45,7 @@ function viewCtx() {
     const k = S.kitchen, o = k.opts;
     return Object.assign(base, {
       type: "kitchen", showInside: false, style: /film|enamel/.test(k.fin.facade.base) && STYLES[o.style] ? o.style : "flat", handles: o.handles, handle: handleItem(S),
-      topT: k._topT || 38, upTop: cur.info.upTop, upY: cur.info.upY, led: o.led && o.upper,
+      topT: k._topT || 38, upTop: cur.info.upTop, upY: cur.info.upY, led: o.led && o.upper, ghosts: S.lock ? [] : cur.info.ghosts,
       wallL: k.shape === "Ll" || k.shape === "U", wallR: k.shape === "Lr" || k.shape === "U",
       view: { I: { az: 0.42, el: 0.17 }, Lr: { az: -0.5, el: 0.24 }, Ll: { az: 0.5, el: 0.24 }, U: { az: 0, el: 0.42 } }[k.shape],
       fitKey: ["k", k.shape, k.len.left, k.len.back, k.len.right, o.upper, o.Hu].join()
@@ -119,7 +119,9 @@ function render() {
   const names = TABS[S.type]; if (tab >= names.length) tab = 0;
   $("tabs").innerHTML = names.map((n, i) => '<button role="tab" class="' + (i === tab ? "on" : "") + '" data-tab="' + i + '">' + n + "</button>").join("");
   const body = $("body"), st = body.scrollTop;
-  body.innerHTML = S.type === "kitchen" ? kitchenTab() : S.type === "kupe" ? kupeTab() : extTab();
+  if (selSlot && !(S.type === "kitchen" && !S.lock && slotInfo(selSlot))) selSlot = null;
+  body.innerHTML = selSlot ? modPanel() : S.type === "kitchen" ? kitchenTab() : S.type === "kupe" ? kupeTab() : extTab();
+  View.select(selSlot);
   body.scrollTop = st;
   const wantOpen = S.type === "kupe" && (tab === 2 || openDoors);
   $("tOpen").classList.toggle("hide", S.type !== "kupe");
@@ -134,13 +136,14 @@ function kitchenTab() {
     let h = typeSec();
     h += sec("Форма кухни", "", chips("shape", Object.keys(SHAPES).map(s => [s, SHAPES[s], SHAPE_SVG[s]]), k.shape, "shape"));
     h += sec("Длина стен", "", W.map(w => slider("k." + w.key, WALL_NAME[w.key], w.len, W.length === 1 ? 1600 : 1400, 5000, 50)).join(""));
+    h += sec("Расстановка шкафов", undoStack.length ? '<button class="linkbtn" data-a="undo">Отменить</button>' : "", planHtml() +
+      '<p class="note">Нажмите на шкаф - здесь или на 3D-модели, - чтобы поменять его, убрать или сдвинуть. Перетащите шкаф на другое место, чтобы поменять их местами. Пустое место с "+" - туда можно поставить шкаф.</p>' +
+      (k.manual ? '<button class="linkbtn" data-a="modAuto">Расставить все шкафы заново автоматически</button>' : (Object.keys(k.over || {}).length ? '<button class="linkbtn" data-a="overReset">Вернуть шкафы как было</button>' : "")));
     h += sec("Верхние шкафы", "", chips("upper", [["0", "Без верхних"], ["720", "Обычные, 72 см"], ["920", "Высокие, 92 см"]], o.upper ? o.Hu : 0));
-    if (k.manual) h += '<div class="info">Модули расставил дизайнер. Если изменить длину стены, расстановку нужно будет поправить.</div>';
-    else {
+    if (!k.manual) {
       h += sec("Плита", "", chips("stove", [["builtin", "Духовка и варочная панель"], ["free", "Отдельная плита"]], o.stove));
       h += sec("Холодильник", "", chips("fridge", [["tall", "Встроенный"], ["gap", "Отдельный"], ["none", "Не на кухне"]], o.fridge));
       h += sec("Посудомойка", "", '<div class="chips">' + toggle("dish", "Посудомоечная машина", o.dish) + "</div>");
-      h += '<div class="info">Нажмите на любой шкаф на модели, чтобы поменять дверцы на ящики или сделать открытую полку.</div>' + (Object.keys(k.over || {}).length ? '<button class="linkbtn" data-a="overReset">Вернуть шкафы как было</button>' : "");
     }
     return h;
   }
@@ -205,7 +208,7 @@ function extTab() {
 // ---------- действия ----------
 function setVal(key, v) {
   const [a, b] = key.split(".");
-  if (a === "k") { S.kitchen.len[b] = v; }
+  if (a === "k") { S.kitchen.len[b] = v; if (S.kitchen.manual) fitManual(S.kitchen); }
   else { S.kupe[b] = v; if (b === "W") fitKupe(); }
 }
 function fitKupe() {
@@ -219,15 +222,15 @@ function setSecs(n) { const s = S.kupe.sections, pat = ["shDr", "rod", "shelves"
 function finTarget() { return S.type === "kitchen" ? S.kitchen.fin : S.type === "kupe" ? S.kupe.fin : S.extFin; }
 
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-tab]"); if (t) { tab = +t.dataset.tab; render(); rebuild(); return; }
+  const t = e.target.closest("[data-tab]"); if (t) { tab = +t.dataset.tab; selSlot = null; render(); rebuild(); return; }
   const b = e.target.closest("[data-a]"); if (!b) return;
   const a = b.dataset.a, v = b.dataset.v, k = S.kitchen, o = k.opts, q = S.kupe;
   let refit = false;
   switch (a) {
     case "type": S.type = v; tab = 0; openDoors = false; refit = true; break;
-    case "shape": k.shape = v; k.manual = null; k.over = {}; refit = true; break;
+    case "shape": pushUndo(); k.shape = v; k.manual = null; k.over = {}; selSlot = null; refit = true; break;
     case "step": { const r = $("r_" + b.dataset.k); const nv = Math.max(+r.min, Math.min(+r.max, +r.value + +b.dataset.d)); r.value = nv; setVal(b.dataset.k, nv); break; }
-    case "upper": o.upper = v !== "0"; if (o.upper) o.Hu = +v; if (k.manual) k.manual.forEach(w => { if (!o.upper) w.upper = []; }); break;
+    case "upper": setUpper(v !== "0", +v); break;
     case "stove": o.stove = v; break;
     case "fridge": o.fridge = v; break;
     case "dish": o.dish = !o.dish; break;
@@ -236,8 +239,13 @@ document.addEventListener("click", e => {
     case "led": o.led = !o.led; break;
     case "handles": o.handles = v; break;
     case "hsel": o.handle = v; break;
-    case "overReset": k.over = {}; break;
-    case "swap": if (k.manual) { const [wi, row, i] = b.dataset.slot.split(":"); k.manual[+wi][row][+i].t = v; } else { k.over = k.over || {}; k.over[b.dataset.slot] = v; } closeSheet(); break;
+    case "overReset": pushUndo(); k.over = {}; break;
+    case "modType": pushUndo(); if (selSlot) selSlot = setType(selSlot, v); break;
+    case "modDelSel": pushUndo(); setType(selSlot, EMPTY[slotInfo(selSlot).row]); break;
+    case "modW": { pushUndo(); const r = setWidth(selSlot, slotInfo(selSlot).m.w + +b.dataset.d); if (r) toast(r); break; }
+    case "modMove": { pushUndo(); const r = moveStep(selSlot, +b.dataset.d); if (r) selSlot = r; break; }
+    case "selClose": selSlot = null; break;
+    case "undo": undo(); break;
     case "fin": finTarget()[b.dataset.role] = { base: b.dataset.base, decor: v }; if (S.type === "kitchen" && b.dataset.role === "facade" && !/film|enamel/.test(b.dataset.base)) o.style = "flat"; break;
     case "wallc": S.room.wall = v; break;
     case "floor": S.room.floor = v; break;
@@ -467,9 +475,9 @@ function proField(t) {
   else if (p[0] === "showPrice") S.showPrice = v === "1";
   else if (p[0] === "price") { S.prices = S.prices || {}; if (v === "" || !(+v >= 0)) delete S.prices[p[1]]; else S.prices[p[1]] = +v; if (!Object.keys(S.prices).length) S.prices = null; S.pricesFrom = S.prices ? (S.pricesFrom || "внесены вручную") : ""; }
   else if (p[0] === "cur") { if (S.prices) { S.prices = null; S.pricesFrom = ""; toast("Валюта другая - ваши цены сброшены, загрузите прайс в новой валюте"); } S.cur = v; if (S.handleCat) toast("Цены в вашем каталоге ручек остались как были - проверьте их"); }
-  else if (p[0] === "k") S.kitchen.len[p[2]] = Math.max(1000, Math.min(8000, Math.round(+v) || 2400));
+  else if (p[0] === "k") { S.kitchen.len[p[2]] = Math.max(1000, Math.min(8000, Math.round(+v) || 2400)); if (S.kitchen.manual) fitManual(S.kitchen); }
   else if (p[0] === "q") { if (p[1] === "kind") S.kupe.kind = v; else if (p[1] === "back") S.kupe.back = v === "1"; else { S.kupe[p[1]] = +v; sanitize(); fitKupe(); } }
-  else if (p[0] === "mod") { const m = manualize()[+p[1]][p[2]][+p[3]]; if (p[4] === "t") { m.t = v; delete m.what; } else m.w = Math.max(150, Math.min(1400, Math.round(+v) || 600)); }
+  else if (p[0] === "mod") { pushUndo(); const m = manualize()[+p[1]][p[2]][+p[3]]; if (p[4] === "t") { m.t = v; delete m.what; } else m.w = Math.max(150, Math.min(1400, Math.round(+v) || 600)); }
   render(); rebuild(p[0] === "k" || p[0] === "q"); proSheet();
 }
 function sheetAction(a, b) {
@@ -488,11 +496,11 @@ function sheetAction(a, b) {
     case "priceToggle": priceOpen = !priceOpen; proSheet(); break;
     case "priceReset": S.prices = null; S.pricesFrom = ""; render(); rebuild(); proSheet(); toast("Цены снова стартовые"); break;
     case "copyOrder": copyText(MO.stringify(cur.order), "Заказ скопирован"); break;
-    case "modDel": manualize()[+b.dataset.w][b.dataset.kind].splice(+b.dataset.i, 1); render(); rebuild(); proSheet(); break;
-    case "modAdd": manualize()[+b.dataset.w][b.dataset.kind].push(b.dataset.kind === "lower" ? { t: "shelf", w: 600 } : { t: "u_shelf", w: 600 }); render(); rebuild(); proSheet(); break;
+    case "modDel": pushUndo(); manualize()[+b.dataset.w][b.dataset.kind].splice(+b.dataset.i, 1); render(); rebuild(); proSheet(); break;
+    case "modAdd": pushUndo(); manualize()[+b.dataset.w][b.dataset.kind].push(b.dataset.kind === "lower" ? { t: "shelf", w: 600 } : { t: "u_shelf", w: 600 }); render(); rebuild(); proSheet(); break;
     case "catSave": { const L = parseHandles($("catIn").value); if (!L.length) { toast("Не нашли ни одной ручки с ценой"); break; } S.handleCat = L; S.kitchen.opts.handle = L[0].id; render(); rebuild(); proSheet(); toast("В каталоге " + L.length + " ручек"); break; }
     case "catReset": S.handleCat = null; S.kitchen.opts.handle = "h1"; render(); rebuild(); proSheet(); break;
-    case "modAuto": S.kitchen.manual = null; render(); rebuild(); proSheet(); break;
+    case "modAuto": pushUndo(); S.kitchen.manual = null; S.kitchen.over = {}; selSlot = null; render(); rebuild(); if (sheetKind === "pro") proSheet(); break;
     case "resetAll": { const st = S.studio; S = defaultState(); S.studio = st; S.orderId = MO.uid("o"); tab = 0; closeSheet(); render(); rebuild(true); toast("Начали заново"); break; }
   }
 }
@@ -522,11 +530,14 @@ $("photoFile").onchange = e => {
 let hintArmed = 0;
 View.onMove = () => { if (performance.now() > hintArmed) $("hint").classList.add("off"); };
 View.onPickMod = slot => {
-  if (S.type !== "kitchen" || S.lock) return;
-  const [wi, row, i] = slot.split(":"), m = (kitchenLayout(S.kitchen)[+wi] || {})[row] && kitchenLayout(S.kitchen)[+wi][row][+i];
-  if (!m || !SWAP[row] || !SWAP[row].some(x => x[0] === m.t)) { toast("Этот модуль задаётся на вкладке \"Форма\""); return; }
-  openSheet("swap", head((row === "lower" ? "Нижний шкаф " : "Верхний шкаф ") + cm(m.w)) + '<p class="note">Что сделать на этом месте?</p><div class="chips">' + SWAP[row].map(x => '<button class="chip' + (x[0] === m.t ? " on" : "") + '" data-a="swap" data-slot="' + slot + '" data-v="' + x[0] + '">' + x[1] + "</button>").join("") + "</div>");
+  if (S.type !== "kitchen") return;
+  if (!slot) { if (selSlot) { selSlot = null; render(); } return; }
+  if (slot === "top") { selSlot = null; tab = 2; render(); rebuild(); return; }
+  if (S.lock) { toast("Шкафы расставил дизайнер - здесь меняются цвета и материалы"); return; }
+  selSlot = slot; tab = 0; render();
+  if (selSlot) { $("body").scrollTop = 0; if (window.innerWidth < 900) $("body").scrollIntoView({ block: "nearest" }); }
 };
+View.canPick = slot => S.type === "kitchen" && !S.lock && (slot === "top" || !!slotInfo(slot));
 View.onPick = j => { if (S.type !== "kupe") return; selDoor = j; tab = 1; openDoors = false; render(); rebuild(); };
 
 // ---------- запуск ----------

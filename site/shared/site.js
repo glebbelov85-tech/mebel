@@ -187,7 +187,7 @@
   var NAV = [
     [/калькулятор|расчет|посчитать|смет/, "kalkulyator"], [/конфигуратор/, "konfigurator"],
     [/(^|\s)кп(\s|$)|коммерческ|договор|pdf|пдф/, "kp"], [/раскро|распил|раскладк/, "raskroy"],
-    [/учет|заказы|список заказов|журнал/, "zakazy"], [/главн|домой|все инструменты|меню сайта|начальн/, "home"]
+    [/учет|заказы|список заказов|журнал/, "zakazy"], [/главн|(^|\s)домой|все инструменты|меню сайта|начальн/, "home"]
   ];
   var VSTOP = { "нажми": 1, "нажать": 1, "кликни": 1, "кнопку": 1, "кнопка": 1, "на": 1, "открой": 1, "вкладку": 1, "вкладка": 1, "перейди": 1, "в": 1, "во": 1, "выбери": 1, "включи": 1, "пожалуйста": 1, "давай": 1, "покажи": 1, "раздел": 1, "пункт": 1 };
   function vn(t) { return String(t || "").toLowerCase().replace(/ё/g, "е").replace(/[.,!?;:"«»]/g, " ").replace(/\s+/g, " ").trim(); }
@@ -222,6 +222,8 @@
       var ls = clickables().map(function (c) { return c.l; }).filter(function (l, k, a) { return a.indexOf(l) === k && l.length > 2; }).slice(0, 14);
       return "Можно нажать: " + ls.join(", ");
     }
+    // правки самого инструмента (раньше переходов: "посудомойку" не должна открыть главную) (конфигуратор: "добавь верхние шкафы", "сдвинь мойку влево")
+    if (adapter && adapter.voice) { try { var r = adapter.voice(t); if (r) return r; } catch (e) { return e.message; } }
     // передать заказ: "передай заказ в раскрой", "отправь в КП"
     if ((m = t.match(/^(передай|отправь|перекинь|перенеси)[а-я]*( заказ| расчет| проект)?( в| во)?(?=\s) (.+)$/))) {
       for (i = 0; i < NAV.length; i++) if (NAV[i][0].test(m[4]) && NAV[i][1] !== "home") {
@@ -244,7 +246,6 @@
       var b = findButton(m ? m[3] : t);
       if (b) { setTimeout(function () { try { b.el.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {} b.el.click(); if (b.el.focus) try { b.el.focus(); } catch (e) {} }, 150); return "Нажимаю: " + b.l; }
     }
-    if (adapter && adapter.voice) { try { var r = adapter.voice(t); if (r) return r; } catch (e) { return e.message; } }
     return null;
   }
   // панель голоса (на страницах без своего голосового помощника)
@@ -259,9 +260,9 @@
     w.innerHTML = '<button type="button" class="msv-pill" id="msvPill">' + mic + ' Голосом</button>' +
       '<div class="msv-panel" id="msvPanel" hidden><div class="msv-top"><b>Голосовой помощник</b><span id="msvSt"></span><button type="button" class="msv-set" id="msvSet" title="Отвечать вслух и каким голосом">звук</button><button type="button" class="msv-x" id="msvX" aria-label="Свернуть">&times;</button></div>' +
       '<div class="msv-tts" id="msvTts" hidden></div>' +
-      '<div class="msv-log" id="msvLog"><div class="msv-info">Скажите, куда перейти или что нажать: "открой калькулятор", "передай заказ в раскрой", "нажми сохранить", "что здесь можно нажать".</div></div>' +
+      '<div class="msv-log" id="msvLog"><div class="msv-info">' + (adapter && adapter.voiceHint ? esc(adapter.voiceHint) + " Или куда перейти: \"открой калькулятор\"." : 'Скажите, куда перейти или что нажать: "открой калькулятор", "передай заказ в раскрой", "нажми сохранить", "что здесь можно нажать".') + '</div></div>' +
       '<div class="msv-live" id="msvLive" hidden></div>' +
-      '<div class="msv-row">' + (SR ? '<button type="button" class="msv-mic" id="msvMic" title="Говорить">' + mic + '</button>' : '') + '<input id="msvIn" placeholder="Куда перейти или что нажать" autocomplete="off"><button type="button" class="msv-go" id="msvGo">OK</button></div></div>';
+      '<div class="msv-row">' + (SR ? '<button type="button" class="msv-mic" id="msvMic" title="Говорить">' + mic + '</button>' : '') + '<input id="msvIn" placeholder="' + (adapter && adapter.voiceHint ? "Что поменять или куда перейти" : "Куда перейти или что нажать") + '" autocomplete="off"><button type="button" class="msv-go" id="msvGo">OK</button></div></div>';
     document.body.appendChild(w);
     var $ = function (id) { return document.getElementById(id); }, log = $("msvLog");
     function add(cls, html) { var d = document.createElement("div"); d.className = cls; d.innerHTML = html; log.appendChild(d); while (log.children.length > 6) log.removeChild(log.firstChild); log.scrollTop = log.scrollHeight; }
@@ -270,7 +271,7 @@
       add("msv-q", "&laquo;" + esc(text) + "&raquo;");
       if (/^(стоп|хватит|выключи микрофон)$/.test(vn(text))) { stop(); return; }
       var r = voiceNav(text);
-      if (r) { add("msv-ok", esc(r)); if (byVoice) talk(r); } else { add("msv-err", "Не понял. Скажите, например: \"открой учёт заказов\" или \"нажми сохранить\"."); if (byVoice) talk("Не понял, скажите иначе"); }
+      if (r) { add("msv-ok", esc(r)); if (byVoice) talk(r); } else { add("msv-err", "Не понял. " + (adapter && adapter.voiceHint ? esc(adapter.voiceHint) : "Скажите, например: \"открой учёт заказов\" или \"нажми сохранить\".")); if (byVoice) talk("Не понял, скажите иначе"); }
     }
     function talk(t) { var was = VS.want; if (was) { VS.want = false; try { VS.rec && VS.rec.stop(); } catch (e) {} } speak(t, function () { if (was && !$("msvPanel").hidden) start(); }); }
     function show(o) { $("msvPanel").hidden = !o; $("msvPill").hidden = o; try { localStorage.setItem("ms-voice-open", o ? "1" : "0"); } catch (e) {} if (!o) stop(); }

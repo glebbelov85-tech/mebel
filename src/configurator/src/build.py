@@ -2,7 +2,7 @@ import sys,os
 d=os.path.dirname(os.path.abspath(__file__))
 page=open(d+'/src/page.html').read()
 mo=open('/mnt/project-files/order-format/mebel-order.js').read()
-app=''.join(open(d+'/src/'+f).read()+'\n' for f in ['gen.js','view.js','ui.js'])
+app=''.join(open(d+'/src/'+f).read()+'\n' for f in ['gen.js','view.js','edit.js','ui.js'])
 assert '</script' not in mo and '</script' not in app
 out=page.replace('/*MEBEL_ORDER*/',mo).replace('/*APP*/','(function(){"use strict";\n'+app+'})();')
 os.makedirs(d+'/out',exist_ok=True)

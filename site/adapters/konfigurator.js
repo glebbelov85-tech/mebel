@@ -8,6 +8,9 @@ if (window.MebelSite) MebelSite.register({
     closeSheet(); adopt(o); render(); rebuild(true);
   },
   empty: "Проект ещё собирается, попробуйте через секунду",
+  // голосовые правки кухни (edit.js): "добавь верхние шкафы", "сдвинь мойку влево", "отмени"
+  voice: function (t) { return voiceCmd(t); },
+  voiceHint: V_HINT,
   extra: [{
     label: "Скопировать ссылку для клиента (с этим проектом)",
     run: async function () {
