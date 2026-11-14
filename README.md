@@ -1,6 +1,6 @@
 # Мебельный конструктор
 
-Сайт с инструментами для мебельщика: https://glebbelov85-tech.github.io/mebel/
+Сайт с инструментами для мебельщика: https://glebbelov85-tech.github.io/mebel/ (GitHub Pages, ветка main, корень)
 
 | Адрес | Инструмент |
 |---|---|
