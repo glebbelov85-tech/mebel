@@ -39,6 +39,12 @@ const DECOR = {
   mirrorbr:   { n: "Зеркало бронза",   c: "#a58a6c", k: "mirror" }
 };
 
+// Цены в конфигураторе - в валюте проекта (S.cur). Числа ниже - тенге; для рублей свой набор (rub),
+// для остальных валют - пересчёт по примерному курсу (MO.starterPrice).
+const cp = (S, kzt, rub) => MO.starterPrice(kzt, S && S.cur || "KZT", rub);
+const RUB = { "ldsp16-fasad": 2500, "top-compact": 12000, "top-stone": 20000, "apron-panel": 2000, "mirror4-tint": 4000,
+  shaker: 1000, slim: 1000, classic: 1500, fluted: 2200, slats: 1800, plinth: 500, cutout: 800, kupeMisc: 1200, kupeInstall: 4000, kitchenInstall: 10000,
+  h1: 350, h2: 280, h3: 750, h4: 600, h5: 800, h6: 200, h7: 400, h8: 500 };
 // Материалы, которых нет в стандартном каталоге формата заказа (цены примерные, как в калькуляторе)
 const EXTRA_MATS = {
   "ldsp16-fasad":  { name: "Фасад ЛДСП 16 мм", group: "ldsp", kind: "area", t: 16, price: 9000, color: "#d9b98f" },
@@ -75,7 +81,8 @@ const GROUPS = {
     { base: "lacobel4", title: "Цветное стекло", hint: "Глянцевое стекло лакобель", tier: 3, gloss: 1, decors: ["white", "milk", "beige", "graphite", "black", "emerald", "deepblue", "rose"] }
   ]
 };
-const TIER = ["", "₸", "₸₸", "₸₸₸", "₸₸₸₸"];
+// Ценовой уровень отделки: ₸₸ / ₽₽ / $$ (если знак валюты длинный, например "сум" - точками)
+const tierStr = (n, cur) => { const s = MO.currencyInfo(cur || "KZT").sign; return n > 0 ? (s.length === 1 ? s : "●").repeat(n) : ""; };
 
 // Виды фасада (фрезеровка). add - доплата за м2, только для МДФ в плёнке и эмали
 const STYLES = {
@@ -98,7 +105,8 @@ const HANDLES_DEF = [
   { id: "h7", name: "Ракушка 96 мм", kind: "shell", color: "bronze", len: 96, price: 1800 },
   { id: "h8", name: "Торцевая 200 мм", kind: "edge", color: "black", len: 200, price: 2200 }
 ];
-function handleList(S) { return Array.isArray(S.handleCat) && S.handleCat.length ? S.handleCat : HANDLES_DEF; }
+// Свой каталог дизайнера - цены как он вписал (в валюте проекта); стартовый - пересчитан в валюту проекта.
+function handleList(S) { return Array.isArray(S.handleCat) && S.handleCat.length ? S.handleCat : HANDLES_DEF.map(h => Object.assign({}, h, { price: cp(S, h.price, RUB[h.id]) })); }
 function handleItem(S) { const L = handleList(S); return L.find(h => h.id === S.kitchen.opts.handle) || L[0]; }
 // Список из магазина: строка = "Название; цена; вид; цвет". Разделитель - точка с запятой или табуляция (вставка из Excel)
 function parseHandles(text) {
@@ -408,9 +416,9 @@ function buildKitchen(k, mk, hItem) {
   else if (o.handles === "push") mk.H("push", handles);
   else if (hItem) mk.H(null, handles, { name: "Ручка: " + hItem.name, unit: "шт", price: hItem.price });
   else mk.H("handle", handles);
-  mk.H(null, Math.ceil(plinthMM / 100) / 10, { name: "Цоколь кухни", unit: "м", price: 2500 });
+  mk.H(null, Math.ceil(plinthMM / 100) / 10, { name: "Цоколь кухни", unit: "м", price: cp(k, 2500, RUB.plinth) });
   const cuts = (hasSink ? 1 : 0) + (hasHob && o.stove === "builtin" ? 1 : 0);
-  if (cuts) mk.H(null, cuts, { name: "Вырез под мойку / варочную панель", unit: "шт", price: 5000 });
+  if (cuts) mk.H(null, cuts, { name: "Вырез под мойку / варочную панель", unit: "шт", price: cp(k, 5000, RUB.cutout) });
   if (o.led && ledMM) { mk.H("led", Math.ceil(ledMM / 100) / 10); mk.H("ledpow", 1); }
 
   const bx = walls.some(w => w.key === "right") ? k.len.back : Math.max(k.len.back || 0, 600);
@@ -494,7 +502,7 @@ function buildKupe(q, mk) {
   mk.H("prof-" + (q.prof || "std"), g.m);
   mk.H("guide", drawersN);
   mk.H("rod", Math.ceil(rodM * 10) / 10);
-  mk.H(null, 1, { name: "Крепёж и опоры", unit: "компл", price: 6000 });
+  mk.H(null, 1, { name: "Крепёж и опоры", unit: "компл", price: cp(q, 6000, RUB.kupeMisc) });
   return { parts, warns, rods, geom: g, size: { w: W, h: H, d: q.D } };
 }
 
@@ -514,7 +522,7 @@ function defaultState() {
     },
     room: { wall: "#e9e6df", floor: "oak" },
     studio: { name: "Мебель на заказ", wa: "" },
-    lock: false, showPrice: true, markup: 30,
+    lock: false, showPrice: true, markup: 30, cur: MO.region().currency,
     client: { name: "", phone: "", note: "" },
     handleCat: null,
     ext: null, extFin: {}
@@ -524,9 +532,10 @@ function defaultState() {
 const HANDLE_NAME = { std: "ручки-скобы", gola: "без ручек, профиль Gola", push: "без ручек, открывание нажатием" };
 
 function buildOrder(S) {
-  const order = MO.create({ title: S.type === "kupe" ? "Шкаф-купе" : "Кухня" });
+  const order = MO.create({ title: S.type === "kupe" ? "Шкаф-купе" : "Кухня", currency: S.cur || "KZT" });
   order.id = S.orderId || order.id;
-  Object.keys(EXTRA_MATS).forEach(id => { order.catalog.materials[id] = Object.assign({}, EXTRA_MATS[id]); });
+  S.kitchen.cur = S.kupe.cur = order.currency;   // генераторам изделий - для цен фурнитуры
+  Object.keys(EXTRA_MATS).forEach(id => { order.catalog.materials[id] = Object.assign({}, EXTRA_MATS[id], { price: cp(S, EXTRA_MATS[id].price, RUB[id]) }); });
   order.pricing.markupPct = +S.markup >= 0 ? +S.markup : 30;
   order.client = { name: S.client.name || "", phone: S.client.phone || "", address: "" };
   if (S.client.note) order.notes = S.client.note;
@@ -550,11 +559,11 @@ function buildOrder(S) {
         "Внутри: " + q.sections.map(s => KUPE_FILL[s].name.toLowerCase()).join(" / ")
       ]
     });
-    order.extras.push({ id: "x1", kind: "install", name: "Доставка и монтаж шкафа", qty: 1, unit: "усл", price: 15000 });
+    order.extras.push({ id: "x1", kind: "install", name: "Доставка и монтаж шкафа", qty: 1, unit: "усл", price: cp(S, 15000, RUB.kupeInstall) });
   } else {
     const k = S.kitchen, finish = { back: "dvp3", edge: "pvc04" };
     use("corpus", k.fin.corpus, finish); use("facade", k.fin.facade, finish); use("top", k.fin.top, finish);
-    cat.materials["apron-panel"] = Object.assign({}, EXTRA_MATS["apron-panel"], { color: cat.materials[finish.top].color, decor: cat.materials[finish.top].decor, texture: cat.materials[finish.top].texture, gloss: cat.materials[finish.top].gloss });
+    cat.materials["apron-panel"] = Object.assign({}, EXTRA_MATS["apron-panel"], { price: cp(S, EXTRA_MATS["apron-panel"].price, RUB["apron-panel"]), color: cat.materials[finish.top].color, decor: cat.materials[finish.top].decor, texture: cat.materials[finish.top].texture, gloss: cat.materials[finish.top].gloss });
     finish.apron = "apron-panel";
     k._topT = cat.materials[finish.top].t;
     const hItem = handleItem(S), stl = STYLES[k.opts.style] ? k.opts.style : "flat";
@@ -575,8 +584,8 @@ function buildOrder(S) {
         "Техника в цену не входит: " + [o.stove === "builtin" ? "духовка и варочная панель" : "плита", o.fridge === "tall" ? "встроенный холодильник" : o.fridge === "gap" ? "холодильник" : "", o.dish ? "посудомойка" : "", "мойка"].filter(Boolean).join(", ")
       ]
     });
-    if (STYLES[stl].add && /film|enamel/.test(finish.facade)) order.extras.push({ id: "x2", kind: "item", name: "Фрезеровка фасадов: " + STYLES[stl].n.toLowerCase(), qty: Math.round(facArea * 100) / 100, unit: "м2", price: STYLES[stl].add });
-    order.extras.push({ id: "x1", kind: "install", name: "Доставка и монтаж кухни", qty: 1, unit: "усл", price: 40000 });
+    if (STYLES[stl].add && /film|enamel/.test(finish.facade)) order.extras.push({ id: "x2", kind: "item", name: "Фрезеровка фасадов: " + STYLES[stl].n.toLowerCase(), qty: Math.round(facArea * 100) / 100, unit: "м2", price: cp(S, STYLES[stl].add, RUB[stl]) });
+    order.extras.push({ id: "x1", kind: "install", name: "Доставка и монтаж кухни", qty: 1, unit: "усл", price: cp(S, 40000, RUB.kitchenInstall) });
   }
   order.products.push(product);
   MO.recalc(order);

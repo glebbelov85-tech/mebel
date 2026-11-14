@@ -1,6 +1,6 @@
 <header>
   <h1>Калькулятор мебели</h1>
-  <p>Шкафы-купе, кухни и любые корпусные изделия: детали, материалы и цена в тенге</p>
+  <p id="hdrSub">Шкафы-купе, кухни и любые корпусные изделия: детали, материалы и цена</p>
   <button class="b1" id="voiceBtn" style="margin-left:auto"></button>
 </header>
 <nav class="mode" id="modeBar">
@@ -24,9 +24,10 @@
   <div class="card">
     <h2>Заказ</h2>
     <div class="row2">
-      <div class="field"><label>Клиент</label><input data-b="client" placeholder="Имя, телефон"></div>
-      <div class="field"><label>Декор / цвет (для клиента)</label><input data-b="decor" placeholder="Напр. белый, дуб сонома"></div>
+      <div class="field"><label>Клиент</label><input data-b="client" placeholder="Имя" autocomplete="off"></div>
+      <div class="field"><label>Телефон (WhatsApp)</label><input data-b="phone" type="tel" inputmode="tel" placeholder="+7 ..." autocomplete="off"></div>
     </div>
+    <div class="field"><label>Декор / цвет (для клиента)</label><input data-b="decor" placeholder="Напр. белый, дуб сонома"></div>
   </div>
 
   <!-- ===== ШКАФ-КУПЕ ===== -->
@@ -133,7 +134,10 @@
   <div id="univForm" class="hide">
     <div class="card">
       <h2>Шаблон изделия</h2>
-      <div class="field"><label>Что делаем</label><select id="u_tpl"></select></div>
+      <div class="row2">
+        <div class="field"><label>Что делаем</label><select id="u_tpl"></select></div>
+        <div class="field"><label>Название для клиента</label><input data-b="u.title" placeholder="Как в шаблоне"></div>
+      </div>
       <div class="row" id="u_params"></div>
       <div id="u_manual" class="info hide">Детали изменены вручную. Чтобы применить шаблон и параметры, нажмите "Перестроить" (ручные правки пропадут).</div>
       <div class="btns"><button class="b1" id="u_rebuild">Перестроить по шаблону</button><button class="b2" id="u_saveMod">Сохранить как мой модуль</button></div>
@@ -161,10 +165,16 @@
   <div class="card">
     <h2>Условия</h2>
     <div class="row">
-      <div class="field"><label>Скидка, %</label><input data-b="disc" type="number" min="0" max="50"></div>
+      <div class="field"><label>Скидка, %</label><input data-b="disc" type="number" min="0" max="90"></div>
       <div class="field"><label>Предоплата, %</label><input data-b="prepay" type="number" min="0" max="100"></div>
       <div class="field"><label>Срок, дней</label><input data-b="days" type="number" min="1"></div>
     </div>
+    <div class="row2">
+      <div class="field"><label>Какие дни</label><select data-b="daysKind"><option value="work">Рабочие</option><option value="calendar">Календарные</option></select></div>
+      <div class="field"><label>Доставка и монтаж</label><input id="q_install" type="number" min="0" step="1000" inputmode="numeric"></div>
+    </div>
+    <label class="chk"><input type="checkbox" data-b="instNoMk">Не начислять наценку на доставку и монтаж</label>
+    <p class="note" style="margin:0 0 10px">Доставка и монтаж для этого заказа: пусто - сумма из прайса, 0 - самовывоз.</p>
     <div class="row">
       <div class="field"><label>Сборка, %</label><input id="q_work" type="number" min="0"></div>
       <div class="field"><label>Наценка, %</label><input id="q_markup" type="number" min="0"></div>
@@ -223,12 +233,23 @@
 </main>
 
 <section id="priceView" class="page hide">
+  <div class="card" id="regionCard">
+    <h2>Страна и валюта</h2>
+    <div class="row4">
+      <div class="field"><label>Страна</label><select id="rg_country"></select></div>
+      <div class="field"><label>Валюта</label><select id="rg_cur"></select></div>
+      <div class="field"><label>Откуда цены</label><input id="rg_src" placeholder="Напр. магазин, поставщик"></div>
+      <div class="field"><label>Цены на дату</label><input id="rg_date" type="date"></div>
+    </div>
+    <p class="note" id="rg_note"></p>
+  </div>
   <div class="card">
     <h2>Мой прайс</h2>
     <div class="ptool">
       <input type="search" id="p_search" placeholder="Поиск по названию или артикулу">
-      <button class="b1" id="p_import">Загрузить цены из Excel</button>
+      <button class="b1" id="p_import">Загрузить цены</button>
       <button class="b2" id="p_export">Скачать прайс в Excel</button>
+      <button class="b2" id="p_exportFile" title="Файл .mebel-price.json - отправить коллеге или перенести на другое устройство">Сохранить прайс файлом</button>
       <button class="b2" id="p_add">+ Позиция</button>
     </div>
     <div class="chips" id="p_chips"></div>
@@ -237,7 +258,7 @@
   </div>
   <div class="card">
     <h2>Резервная копия</h2>
-    <p class="note" style="margin-top:0">Прайс, модули и сохранённые расчёты лежат в этом браузере. Скачайте копию, чтобы перенести их на другой компьютер или телефон или не потерять при очистке браузера.</p>
+    <p class="note" style="margin-top:0">Прайсы (в каждой валюте свой), модули и сохранённые расчёты лежат в этом браузере. Скачайте копию, чтобы перенести их на другой компьютер или телефон или не потерять при очистке браузера.</p>
     <div class="btns">
       <button class="b2" id="bk_save">Скачать резервную копию</button>
       <button class="b2" id="bk_load">Восстановить из копии</button>

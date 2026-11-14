@@ -183,7 +183,7 @@ textarea{min-height:220px;font-family:var(--mono);font-size:13px;resize:vertical
           <label>Длина, мм<input type="number" id="s_offL" min="0"></label>
           <label>Ширина, мм<input type="number" id="s_offW" min="0"></label>
         </div>
-        <h3>Цены, ₸ (необязательно)</h3>
+        <h3>Цены, <span class="cs">₸</span> (необязательно)</h3>
         <div class="f">
           <label>Распил, за метр реза<input type="number" id="s_cutp" min="0"></label>
           <label>Кромка 0.4 мм, за метр<input type="number" id="s_e1p" min="0"></label>
@@ -281,7 +281,10 @@ $("mapcss").textContent = MAP_CSS;
 // ---------- Данные ----------
 const GRAIN = {along:"Вдоль длины", across:"Поперёк длины", any:"Любая"};
 const ENAME = {0:"-", 1:"0.4", 2:"2"};
-const DEF_SET = {kerf:4, trim:10, strips:"auto", sub:true, stock:true, offL:400, offW:150, cutp:0, e1p:0, e2p:0};
+const DEF_SET = {kerf:4, trim:10, strips:"auto", sub:true, stock:true, offL:400, offW:150, cutp:0, e1p:0, e2p:0, cur:""};
+// Валюта цен раскроя: своя (из открытого заказа) или общая настройка сайта
+const curCode = () => S.set.cur || (window.MebelOrder ? MebelOrder.region().currency : "KZT");
+const curSign = () => window.MebelOrder ? MebelOrder.currencyInfo(curCode()).sign : "₸";
 const DEF_MATS = () => [
   {id:"m1", name:"ЛДСП 16", L:2800, W:2070, grain:true, price:0, offcuts:[]},
   {id:"m2", name:"ДВП 3", L:2750, W:1700, grain:false, price:0, offcuts:[]}
@@ -387,7 +390,7 @@ function renderSum(){
     ["", f1(t.cutLen/1000) + " м", t.cutN + " резов"],
     ["", f1((t.edge[1]+t.edge[2])*1.1) + " м", "кромки с запасом 10%"]
   ];
-  if(t.cost > 0) cells.push(["", fmt(t.cost) + " ₸", "материал, распил, кромка"]);
+  if(t.cost > 0) cells.push(["", fmt(t.cost) + " " + curSign(), "материал, распил, кромка"]);
   $("sum").innerHTML = cells.map(c => `<div class="${c[0]}"><b>${c[1]}</b><span>${c[2]}</span></div>`).join("");
   $("c_parts").textContent = S.parts.reduce((s,p) => s + (+p.qty||0), 0) || "";
   $("c_maps").textContent = R.reduce((s,r) => s + r.sheets.reduce((a,b) => a + b.count, 0), 0) || "";
@@ -470,7 +473,7 @@ function renderMats(){
       <label>Название и декор<input data-f="name" value="${esc(m.name)}"></label>
       <label>Длина листа<input data-f="L" type="number" value="${m.L}"></label>
       <label>Ширина листа<input data-f="W" type="number" value="${m.W}"></label>
-      <label>Цена листа, ₸<input data-f="price" type="number" value="${m.price||""}"></label>
+      <label>Цена листа, ${curSign()}<input data-f="price" type="number" value="${m.price||""}"></label>
     </div>
     <div class="bar"><label class="chk"><input type="checkbox" data-f="grain" ${m.grain?"checked":""}>Есть текстура (рисунок вдоль длины листа)</label><span class="sp"></span>
       ${S.mats.length > 1 ? `<button class="ghost" data-a="mdel">Удалить материал</button>` : ""}</div>
@@ -497,7 +500,7 @@ $("mats").addEventListener("click", e => {
 });
 $("m_add").onclick = () => { S.mats.push({id:"m" + Date.now().toString(36), name:"ЛДСП 16 (новый декор)", L:2800, W:2070, grain:true, price:0, offcuts:[]}); renderMats(); renderParts(); changed(); };
 const SET_F = {s_kerf:"kerf", s_trim:"trim", s_strips:"strips", s_sub:"sub", s_stock:"stock", s_offL:"offL", s_offW:"offW", s_cutp:"cutp", s_e1p:"e1p", s_e2p:"e2p"};
-function renderSet(){ for(const id in SET_F){ const el = $(id), v = S.set[SET_F[id]]; if(el.type === "checkbox") el.checked = !!v; else el.value = v || (el.tagName === "SELECT" ? v : (v === 0 ? "" : v)); } $("s_kerf").value = S.set.kerf; $("s_trim").value = S.set.trim; }
+function renderSet(){ document.querySelectorAll(".cs").forEach(el => el.textContent = curSign()); for(const id in SET_F){ const el = $(id), v = S.set[SET_F[id]]; if(el.type === "checkbox") el.checked = !!v; else el.value = v || (el.tagName === "SELECT" ? v : (v === 0 ? "" : v)); } $("s_kerf").value = S.set.kerf; $("s_trim").value = S.set.trim; }
 for(const id in SET_F) $(id).addEventListener("input", e => { const el = e.target; S.set[SET_F[id]] = el.type === "checkbox" ? el.checked : el.tagName === "SELECT" ? el.value : +el.value; changed(); });
 
 // ---------- Карта листа ----------
@@ -769,7 +772,7 @@ function parseImport(text){
       MebelOrder.cutList(o, {group:true}).forEach(c => {
         const mn = (c.material.name + (c.material.decor ? ", " + c.material.decor : "")).slice(0, 60);
         let m = mats.find(x => x.name === mn);
-        if(!m){ m = {id:"m" + (mats.length + 1), name:mn, L:c.material.sheet.w, W:c.material.sheet.h, grain:!!c.material.grain, price:0, offcuts:[]}; mats.push(m); }
+        if(!m){ m = {id:"m" + (mats.length + 1), name:mn, L:c.material.sheet.w, W:c.material.sheet.h, grain:!!c.material.grain, price:+c.material.price||0, offcuts:[]}; mats.push(m); }
         const ev = e => !e ? 0 : e.t >= 1 ? 2 : 1, ed = c.edges || {};
         parts.push({id:uid(), mark:c.mark, name:c.name + (c.module ? " (" + c.module.name + ")" : ""), L:c.length, W:c.width, qty:c.qty, mat:m.id,
           grain:c.canRotate || c.grain === "any" ? "any" : "along", e:E(ev(ed.L1), ev(ed.L2), ev(ed.W1), ev(ed.W2)), note:c.note || ""});
@@ -827,7 +830,11 @@ function applyImport(text){
       if(r.order){ const {o, mats, parts} = r.order;
         if(!parts.length){ toast("В заказе нет деталей из листовых материалов"); return false; }
         // склад остатков и цены листов сохраняем для материалов с тем же названием
-        mats.forEach(m => { const old = S.mats.find(x => x.name === m.name); if(old){ m.offcuts = old.offcuts; m.price = old.price; } });
+        // цена листа - из заказа; если в заказе её нет и валюта та же - прежняя цена мастера
+        const oc = window.MebelOrder ? MebelOrder.orderCurrency(o) : "KZT", same = oc === curCode();
+        mats.forEach(m => { const old = S.mats.find(x => x.name === m.name); if(old){ m.offcuts = old.offcuts; if(!m.price && same) m.price = old.price; } });
+        if(!same){ S.set.cutp = 0; S.set.e1p = 0; S.set.e2p = 0; }
+        S.set.cur = oc;
         S.mats = mats; S.parts = parts; S.done = {}; S.locked = null;
         S.order = {name:[o.number, o.title].filter(Boolean).join(" "), client:(o.client && o.client.name) || ""};
         const pr = o.production || {};

@@ -1,14 +1,15 @@
 // ================= СТРАНИЦА "ПРАЙС" =================
 let PX = {q:"", g:"", open:null};
 const NEW_MAT = {"Плиты":{...SHEET,t:16,css:"#d8c3a5",edge:"edge",cut:1}, "Фасады":{kind:"area",t:18,css:"#e8e2d8",facade:1}, "Стекло и зеркало":{kind:"area",t:4,css:"#b9d3df",facade:1}, "Столешницы":{kind:"length",t:38,css:"#8a6a4a"}};
-const NEW_UNIT = {"Плиты":"лист","Фасады":"м²","Стекло и зеркало":"м²","Столешницы":"п.м.","Кромка":"м","Услуги":"₸"};
+const NEW_UNIT = {"Плиты":"лист","Фасады":"м²","Стекло и зеркало":"м²","Столешницы":"п.м.","Кромка":"м","Услуги":"¤"};
 function priceChanged(it){ const d=defOf(it.id); return d && +d.v!==+it.v; }
 function renderPricePage(){
+  renderRegion();
   $("p_chips").innerHTML=[["","Все"]].concat(GROUPS.map(g=>[g,g])).map(([g,n])=>`<button data-g="${g}" class="${PX.g===g?"on":"off"}">${n}</button>`).join("");
   renderPriceTable();
 }
 function renderPriceTable(){
-  const q=normTxt(PX.q); let h=`<tr><th>Название</th><th style="width:130px">Артикул</th><th style="width:92px">Ед.</th><th class="n" style="width:120px">Цена, ₸</th><th style="width:96px"></th></tr>`;
+  const q=normTxt(PX.q); let h=`<tr><th>Название</th><th style="width:130px">Артикул</th><th style="width:92px">Ед.</th><th class="n" style="width:120px">Цена, ${esc(CS())}</th><th style="width:96px"></th></tr>`;
   GROUPS.forEach(g=>{
     if(PX.g && PX.g!==g) return;
     const items=PRICE.filter(it=>it.g===g && (!q || normTxt(it.name+" "+(it.sku||"")).includes(q)));
@@ -19,9 +20,9 @@ function renderPriceTable(){
       h+=`<tr data-id="${it.id}" class="${priceChanged(it)?"chg":""}">
         <td>${it.m?`<span class="dot" style="background:${it.m.css}"></span> `:""}<input data-f="name" value="${esc(it.name)}" ${rule?"disabled":""} style="width:${it.m?"calc(100% - 22px)":"100%"}"></td>
         <td>${rule?"":`<input data-f="sku" value="${esc(it.sku||"")}" placeholder="-">`}</td>
-        <td>${rule?esc(it.u):`<select data-f="u">${UNITS.map(u=>`<option ${u===it.u?"selected":""}>${u}</option>`).join("")}</select>`}</td>
+        <td>${rule?esc(unitLabel(it.u)):`<select data-f="u">${UNITS.map(u=>`<option value="${u}" ${u===it.u?"selected":""}>${esc(unitLabel(u))}</option>`).join("")}</select>`}</td>
         <td class="pv"><input type="number" min="0" data-f="v" value="${it.v}"></td>
-        <td style="white-space:nowrap">${it.m||NEW_MAT[g]?`<button class="bx" data-pm="${it.id}" title="Свойства материала: лист, толщина, цвет">&#9881;</button>`:""}${priceChanged(it)?`<button class="bx" data-pr="${it.id}" title="Вернуть примерную цену ${fmt(defOf(it.id).v)}">&#8634;</button>`:""}${!it.sys?`<button class="bx" data-pd="${it.id}" title="Удалить">&times;</button>`:""}</td></tr>`;
+        <td style="white-space:nowrap">${it.m||NEW_MAT[g]?`<button class="bx" data-pm="${it.id}" title="Свойства материала: лист, толщина, цвет">&#9881;</button>`:""}${priceChanged(it)?`<button class="bx" data-pr="${it.id}" title="Вернуть примерную цену ${money(defOf(it.id).v)}">&#8634;</button>`:""}${!it.sys?`<button class="bx" data-pd="${it.id}" title="Удалить">&times;</button>`:""}</td></tr>`;
       if(PX.open===it.id) h+=matPropsRow(it);
     });
   });
@@ -68,6 +69,8 @@ function initPricePage(){
   $("p_add").onclick=()=>addPriceItem(PX.g && PX.g!=="Правила расчёта" ? PX.g : "Фурнитура");
   $("p_import").onclick=openImport;
   $("p_export").onclick=exportPrice;
+  $("p_exportFile").onclick=exportPriceFile;
+  initRegion();
   $("p_reset").onclick=()=>confirmBox("Вернуть примерные цены у всех стандартных позиций? Свои позиции останутся.","Вернуть",()=>{ PRICE.forEach(it=>{ const d=defOf(it.id); if(d) it.v=d.v; }); savePrice(); renderPriceTable(); toast("Цены возвращены"); });
   $("bk_save").onclick=backupSave;
   $("bk_load").onclick=()=>$("bk_file").click();
@@ -83,17 +86,96 @@ function addPriceItem(g,init){
     const inp=$("p_table").querySelector(`tr[data-id="${it.id}"] input`); if(inp){ inp.focus(); inp.select(); inp.scrollIntoView({block:"center"}); } }
   return it;
 }
-function priceRows(){ return [["ID","Группа","Название","Артикул","Ед.","Цена"]].concat(PRICE.map(it=>[it.id,it.g,it.name,it.sku||"",it.u,+it.v||0])); }
+function priceRows(){ return [["ID","Группа","Название","Артикул","Ед.","Цена, "+CURCODE]].concat(PRICE.map(it=>[it.id,it.g,it.name,it.sku||"",unitLabel(it.u),+it.v||0])); }
 async function exportPrice(){
   const rows=priceRows();
-  await saveTable("moj-prajs.xlsx","Прайс",rows,[14,18,52,16,8,12]);
+  await saveTable(`moj-prajs-${CURCODE.toLowerCase()}.xlsx`,"Прайс",rows,[14,18,52,16,8,12]);
+}
+// Прайс файлом общего вида (*.mebel-price.json) - для обмена с коллегами и, позже, с прайсами магазинов.
+function priceFileObj(){
+  return {format:"mebel-price", version:"1.0", currency:CURCODE, country:COUNTRY, supplier:{name:PRICE_META.src||""}, date:PRICE_META.date||new Date().toISOString().slice(0,10),
+    items:PRICE.filter(it=>it.g!=="Правила расчёта").map(it=>Object.assign({id:it.id, name:it.name, group:it.g, unit:unitLabel(it.u), price:+it.v||0}, it.sku?{sku:it.sku}:{}, it.m?{mat:it.m}:{}, it.s?{short:it.s}:{}))};
+}
+function exportPriceFile(){ const txt=JSON.stringify(priceFileObj(),null,1); saveFile(`prajs-${CURCODE.toLowerCase()}.mebel-price.json`,txt,txt); }
+// Принять файл прайса: строки идут в обычную сверку цен (шаг 3), колонки уже известны.
+function impPriceFile(d,fname){
+  const items=Array.isArray(d.items)?d.items:[];
+  if(!items.length){ toast("В файле прайса нет позиций"); return; }
+  const cur=String(d.currency||"").toUpperCase();
+  if(cur && cur!==CURCODE){ toast(`Прайс в валюте ${curInfo(cur).name.toLowerCase()} (${curInfo(cur).sign}), а сейчас выбраны ${curInfo().name.toLowerCase()}. Переключите валюту выше и загрузите снова.`); return; }
+  IMP.rows=[["id","name","price","sku","unit"]].concat(items.map(x=>[x.id||"",x.name||"",+x.price||0,x.sku||"",x.unit||""]));
+  IMP.name=(d.supplier&&d.supplier.name)||fname; IMP.hdr=0; IMP.cols={id:0,name:1,price:2,sku:3,unit:4}; IMP.k=1; IMP.meta={src:IMP.name,date:d.date||""};
+  impBuild(); IMP.step=3; impRender();
+}
+
+// ================= СТРАНА И ВАЛЮТА ПРАЙСА =================
+function curIn(c){ const i=curInfo(c); return i.inWord||i.name.toLowerCase(); }
+function renderRegion(){
+  const cs=MO?Object.values(MO.COUNTRIES):[{code:"KZ",name:"Казахстан"}];
+  $("rg_country").innerHTML=cs.map(c=>`<option value="${c.code}" ${c.code===COUNTRY?"selected":""}>${esc(c.name)}</option>`).join("");
+  $("rg_cur").innerHTML=curList().map(c=>`<option value="${c.code}" ${c.code===CURCODE?"selected":""}>${esc(c.name)}, ${esc(c.sign)}</option>`).join("");
+  $("rg_src").value=PRICE_META.src||""; $("rg_date").value=PRICE_META.date||"";
+  const others=curList().filter(c=>c.code!==CURCODE && hasPrice(c.code)).map(c=>curIn(c.code));
+  const guessed=MO && !MO.region().set;
+  $("rg_note").innerHTML=(guessed?`<b>Страна выбрана по часовому поясу этого устройства - проверьте.</b> `:"")+
+    `Все цены и суммы калькулятора - в ${curIn()}. У каждой валюты свой прайс: при переключении цены не пересчитываются и не теряются${others.length?` (уже есть прайс в ${others.join(", ")})`:""}. `+
+    (PRICE_META.starter?`<b>Сейчас это стартовые примерные цены - впишите свои или загрузите прайс поставщика.</b> `:"")+
+    `Страна определяет договор и реквизиты в "КП и договор". Настройка общая для всех инструментов на этом устройстве.`;
+  $("hdrSub").textContent=`Шкафы-купе, кухни и любые корпусные изделия: детали, материалы и цена в ${curIn()}`;
+}
+function initRegion(){
+  $("rg_country").addEventListener("input",e=>{
+    COUNTRY=e.target.value; const c=MO&&MO.countryInfo(COUNTRY);
+    if(MO) MO.setRegion({country:COUNTRY,currency:CURCODE});
+    if(c && c.currency!==CURCODE) switchCurrency(c.currency); else renderRegion();
+  });
+  $("rg_cur").addEventListener("input",e=>switchCurrency(e.target.value));
+  $("rg_src").addEventListener("input",e=>{ PRICE_META.src=e.target.value.trim(); savePrice(); });
+  $("rg_date").addEventListener("input",e=>{ PRICE_META.date=e.target.value; savePrice(); });
+}
+function applyCurrency(cur,items,starter){
+  if(items){ CURCODE=cur; PRICE=items; PRICE_META=starter?{cur,starter:true}:{cur}; savePrice(starter); }
+  loadPrice(cur);
+  if(MO) MO.setRegion({country:COUNTRY,currency:CURCODE});
+  renderPricePage(); calc();
+}
+// Перейти на другую валюту. Если прайса в ней ещё нет - спросить, с чего начать.
+function switchCurrency(cur){
+  if(cur===CURCODE) return renderRegion();
+  if(!hasPrice(CURCODE)) savePrice(true);   // текущий прайс (пусть и стартовый) сохраняем, чтобы к нему можно было вернуться
+  const to=curInfo(cur), from=curInfo();
+  if(hasPrice(cur)){ applyCurrency(cur); toast(`Прайс в ${curIn(cur)}`); return; }
+  // курс показываем от "крупной" валюты: 1 ₽ = 6,5 ₸, а не 1 ₸ = 0,15 ₽
+  const big=(to.rateKZT||1)>=(from.rateKZT||1)?to:from, small=big===to?from:to;
+  const r0=Math.round((big.rateKZT||1)/(small.rateKZT||1)*1000)/1000;
+  const starter=cur==="RUB"?"примерные цены для России (2026, средний сегмент)":"примерные цены, пересчитанные из тенге по приблизительному курсу";
+  let done=false;
+  openModal(`Прайс в ${curIn(cur)}`,`<p style="margin-top:0">В ${curIn(cur)} прайса ещё нет. С чего начать?</p>
+    <div class="card" style="margin:0 0 10px"><b>Стартовые цены</b><p class="note" style="margin:4px 0 8px">${starter}. Потом впишите свои или загрузите прайс поставщика.</p><button class="b1" id="rgStarter">Взять стартовые цены</button></div>
+    <div class="card" style="margin:0"><b>Мой прайс в ${curIn()}, пересчитанный по курсу</b><p class="note" style="margin:4px 0 8px">Свои позиции и материалы сохранятся. Прайс в ${curIn()} останется как есть.</p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span>1 ${esc(big.sign)} =</span><input type="number" id="rgRate" step="0.001" min="0" value="${r0}" style="width:110px"><span>${esc(small.sign)}</span><button class="b2" id="rgConvert">Пересчитать</button></div></div>`,
+    ()=>{
+      $("rgStarter").onclick=()=>{ done=true; closeModal(); applyCurrency(cur,priceDefaults(cur),true); toast(`Стартовые цены в ${curIn(cur)}`); };
+      $("rgConvert").onclick=()=>{
+        const r=+$("rgRate").value; if(!(r>0)){ toast("Укажите курс"); return; }
+        const k=big===to?1/r:r;   // сколько новой валюты за единицу старой
+        const items=clone(PRICE).map(it=>{
+          if(it.u==="%") return it;
+          if(it.id==="round") it.v=MO?MO.roundStep(cur):it.v;
+          else { const v=(+it.v||0)*k; it.v=v>=100?Math.round(v):Math.round(v*100)/100; }
+          delete it.upd; return it;
+        });
+        done=true; closeModal(); applyCurrency(cur,items); toast(`Прайс пересчитан в ${curIn(cur)} - проверьте цены`);
+      };
+      const host=$("modalHost"), obs=new MutationObserver(()=>{ if(!host.innerHTML){ obs.disconnect(); if(!done) renderRegion(); } }); obs.observe(host,{childList:true});
+    });
 }
 
 // ================= ИМПОРТ ЦЕН ИЗ EXCEL =================
 function normTxt(s){ return String(s==null?"":s).toLowerCase().replace(/ё/g,"е").replace(/[^a-zа-я0-9]+/g," ").trim(); }
 function parseNum(v){
   if(typeof v==="number") return v;
-  const s=String(v==null?"":v).replace(/[\s  ]/g,"").replace(/[₸тгkztруб.]+$/i,"").replace(",",".");
+  const s=String(v==null?"":v).replace(/[\s  ]/g,"").replace(/[₸₽$€тгkztrubруб.р]+$/i,"").replace(",",".");
   return s!=="" && isFinite(+s) ? +s : NaN;
 }
 function parseTSV(text){
@@ -136,7 +218,7 @@ function impRender(){
   const box=$("impBody"); if(!box) return;
   const steps=`<div class="steps"><span class="${IMP.step===1?"on":""}">1. Файл</span><span class="${IMP.step===2?"on":""}">2. Колонки</span><span class="${IMP.step===3?"on":""}">3. Сверка цен</span></div>`;
   if(IMP.step===1){
-    box.innerHTML=steps+`<div class="drop" id="impDrop"><b>Перетащите сюда файл прайса</b><br>Excel (.xlsx, .xls) или CSV<div class="btns" style="justify-content:center"><button class="b1" id="impPick">Выбрать файл</button></div><input type="file" id="impFile" accept=".xlsx,.xls,.xlsm,.ods,.csv,.txt" class="hide"></div>
+    box.innerHTML=steps+`<div class="drop" id="impDrop"><b>Перетащите сюда файл прайса</b><br>Excel (.xlsx, .xls), CSV или файл прайса (.mebel-price.json)<div class="btns" style="justify-content:center"><button class="b1" id="impPick">Выбрать файл</button></div><input type="file" id="impFile" accept=".xlsx,.xls,.xlsm,.ods,.csv,.txt,.json" class="hide"></div>
       <p class="note">Или выделите нужные строки в Excel, скопируйте (Ctrl+C) и вставьте сюда (Ctrl+V):</p>
       <textarea id="impPaste" rows="5" placeholder="Название	Цена&#10;ЛДСП 16 мм белый	21500&#10;Петля с доводчиком	1100"></textarea>
       <div class="btns"><button class="b2" id="impParse">Разобрать вставленное</button></div>
@@ -172,6 +254,7 @@ async function impReadFile(f){
   IMP.name=f.name;
   try{
     if(/\.(csv|txt)$/i.test(f.name)){ impSetRows(parseTSV(await f.text()),f.name); return; }
+    if(/\.json$/i.test(f.name)){ let d=null; try{ d=JSON.parse(await f.text()); }catch(e){} if(d&&d.format==="mebel-price") impPriceFile(d,f.name); else toast("Это не файл прайса (*.mebel-price.json)"); return; }
     toast("Читаю файл...");
     const X=await needXLSX(), wb=X.read(await f.arrayBuffer(),{type:"array"});
     IMP.wb=wb; IMP.sheets=wb.SheetNames;
@@ -259,6 +342,7 @@ function impRenderMatch(box,steps){
     PRICE.forEach(it=>{ const li=IMP.links[it.id]; if(li===undefined){ if(IMP.unlinked&&IMP.unlinked[it.id]) delete it.link; return; }
       const s=IMP.src[li]; it.link=s.name; if(s.sku && !it.sku) it.sku=s.sku;
       if(IMP.on[it.id]){ it.v=s.price; it.upd=today(); n++; } });
+    if(n){ const m=IMP.meta||{src:IMP.name&&IMP.name!=="вставленные строки"?IMP.name.replace(/\.(xlsx?|xlsm|ods|csv|txt|json)$/i,""):""}; if(m.src) PRICE_META.src=m.src; PRICE_META.date=m.date||new Date().toISOString().slice(0,10); }
     savePrice(); closeModal(); renderPricePage(); toast(`Обновлено цен: ${n}`);
   };
 }

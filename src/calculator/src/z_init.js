@@ -37,7 +37,7 @@ function start(){
   const cur=LS.get("mk2_current",null) || LS.get("kupe_current",null);
   const st=migrateState(cur); if(st) S=st;
   initBinds(); initEvents(); initPricePage(); initLibPage();
-  renderSaved();
+  renderSaved(); renderRegion();
   setMode(S.mode);
 }
 start();

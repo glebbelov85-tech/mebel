@@ -266,6 +266,11 @@ td.n,th.n{text-align:right;white-space:nowrap}
         <div class="f"><label>Название (для сообщений клиенту)</label><input id="s_name"></div>
         <div class="f"><label>Телефон мастерской</label><input id="s_phone" inputmode="tel"></div>
       </div>
+      <div class="g2">
+        <div class="f"><label>Страна</label><select id="s_country"></select></div>
+        <div class="f"><label>Валюта</label><select id="s_cur"></select></div>
+      </div>
+      <p class="note" id="s_curNote"></p>
       <div class="g3">
         <div class="f"><label>Срок производства, дней</label><input id="s_days" type="number" inputmode="numeric"></div>
         <div class="f"><label>Предоплата по умолчанию, %</label><input id="s_prepay" type="number" inputmode="numeric"></div>
@@ -315,7 +320,9 @@ td.n,th.n{text-align:right;white-space:nowrap}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=n=>Math.round(+n||0).toLocaleString("ru-RU").replace(/\s/g," ");
-const tg=n=>fmt(n)+" ₸";
+// Деньги: у каждого заказа своя валюта (o.cur); сводки и графики - в основной валюте мастерской (S.cur)
+const sign=c=>window.MebelOrder?MebelOrder.currencyInfo(c||S.cur||"KZT").sign:"₸";
+const tg=(n,c)=>fmt(n)+" "+sign(c);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const pad=n=>String(n).padStart(2,"0");
 const iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
@@ -370,8 +377,13 @@ const SNAME=Object.fromEntries(STAGES.map(s=>[s.k,s.name]));
 const ACTIVE=["lead","measure","design","contract","production","install"];
 const PTYPES={kitchen:"Кухня",kupe:"Шкаф-купе",wardrobe:"Шкаф распашной",hall:"Прихожая",bath:"Ванная",kids:"Детская",other:"Другое"};
 const EXPCAT={materials:"ЛДСП, ДВП, плиты",cutting:"Распил и кромка",facades:"Фасады",countertop:"Столешница",hardware:"Фурнитура",delivery:"Доставка",install:"Монтаж / сборка",other:"Прочее"};
-const PAYM={kaspi:"Kaspi",cash:"Наличные",card:"Карта",transfer:"Перевод на счёт",other:"Другое"};
-const SOURCES=["","Instagram","WhatsApp","Сарафан (по рекомендации)","2GIS","OLX","Повторный клиент","Другое"];
+const PAYM={kaspi:"Kaspi",sbp:"СБП",cash:"Наличные",card:"Карта",transfer:"Перевод на счёт",other:"Другое"};
+// способы оплаты и площадки - по стране мастерской
+const payMethods=()=>window.MebelOrder?MebelOrder.countryInfo(S.country).payMethods:Object.keys(PAYM);
+const defPay=()=>payMethods()[1]||"cash";
+const SOURCES_BY={KZ:["","Instagram","WhatsApp","Сарафан (по рекомендации)","2GIS","OLX","Повторный клиент","Другое"],
+  RU:["","Авито","Instagram","ВКонтакте","Telegram","WhatsApp","Сарафан (по рекомендации)","Яндекс Карты","2GIS","Повторный клиент","Другое"]};
+const sources=cur=>{ const l=(SOURCES_BY[S.country]||SOURCES_BY.KZ).slice(); if(cur&&!l.includes(cur)) l.splice(l.length-1,0,cur); return l; };
 const SUPTYPES={mat:"Материалы и фурнитура",cut:"Распил и кромка",fac:"Фасады",glass:"Стекло и зеркала",top:"Столешницы",other:"Другое"};
 const DEF_CHECK={
   lead:"Узнал, что нужно клиенту\nНазвал примерную цену\nДоговорились о замере",
@@ -388,12 +400,14 @@ const DEF_TPL=[
   {name:"Монтаж",text:"{имя}, здравствуйте! Мебель готова. Монтаж назначен на {дата монтажа} в {время монтажа}. Остаток к оплате после монтажа: {остаток}."},
   {name:"Спасибо и отзыв",text:"{имя}, спасибо, что выбрали {мастерская}! Будем рады отзыву и фото мебели в интерьере. Если появятся вопросы по мебели - пишите, всегда поможем."}
 ];
-const DEF_SETTINGS={name:"",phone:"",days:14,prepay:50,stale:3,suppliers:[],tpls:DEF_TPL,check:DEF_CHECK};
+const REG=window.MebelOrder?MebelOrder.region():{country:"KZ",currency:"KZT"};
+const DEF_SETTINGS={name:"",phone:"",days:14,prepay:50,stale:3,suppliers:[],tpls:DEF_TPL,check:DEF_CHECK,country:REG.country,cur:REG.currency};
 const MEAS_FLAGS=["Стены неровные (больше 1 см)","Пол с уклоном","Углы не 90°","Батарея под окном","Газовая труба","Короб или выступ","Натяжной потолок","Ремонт ещё не закончен"];
 const BIND_WHAT=["Вода (холодная/горячая)","Канализация","Газ","Розетка","Выключатель","Вытяжка/вентиляция","Окно","Дверь","Батарея","Счётчик"];
 
 // ======================= СОСТОЯНИЕ =======================
 let S=Object.assign(clone(DEF_SETTINGS),LS.get("uz_settings",{}));
+const inCur=o=>(o.cur||S.cur)===S.cur;   // заказ в основной валюте - попадает в сводки
 let ORD={};             // id -> order
 let PHOTOS={};          // orderId -> [{id,data,t}]
 let tab="today", orderView=LS.get("uz_view","board"), openId=null, openTab="main";
@@ -405,7 +419,7 @@ function newOrder(stage){
     client:{name:"",phone:"",address:"",source:""},
     product:{type:"kitchen",title:"",desc:""},
     stage:stage||"lead",stageAt:{[stage||"lead"]:t},lostReason:"",
-    price:0,prepayPct:+S.prepay||50,
+    price:0,cur:S.cur||"KZT",prepayPct:+S.prepay||50,
     dates:{measure:"",measureTime:"",projectDue:"",prodDays:+S.days||14,ready:"",install:"",installTime:"",contract:""},
     payments:[],expenses:[],reminders:[],check:{},notes:"",log:[{t:new Date().toISOString(),text:"Заказ создан"}],
     measure:{height:"",heightR:"",walls:[],binds:[],flags:{},appliances:"",wishes:"",layout:"line"},
@@ -414,6 +428,7 @@ function newOrder(stage){
 function nextNum(){ return Object.values(ORD).reduce((m,o)=>Math.max(m,+o.num||0),0)+1; }
 function fixOrder(o){ // мягкая починка старых/импортированных заказов
   const n=newOrder(); n.num=o.num||n.num;
+  if(o.cur===undefined) o.cur="KZT";   // заказы до ноября 2026 - в тенге
   for(const k in n){ if(k==="base") continue; if(o[k]===undefined) o[k]=n[k]; else if(n[k]&&typeof n[k]==="object"&&!Array.isArray(n[k])&&o[k]&&typeof o[k]==="object"){ for(const kk in n[k]) if(o[k][kk]===undefined) o[k][kk]=n[k][kk]; } }
   return o;
 }
@@ -421,7 +436,11 @@ const paid=o=>o.payments.reduce((s,p)=>s+(+p.sum||0),0);
 const spent=o=>o.expenses.reduce((s,p)=>s+(+p.sum||0),0);
 const spentPaid=o=>o.expenses.reduce((s,p)=>s+(p.paid!==false?(+p.sum||0):0),0);
 const debt=o=>Math.max(0,(+o.price||0)-paid(o));
-const profit=o=>(+o.price||0)-spent(o);
+// Расходы для прибыли: у сданного заказа - внесённые; пока заказ в работе - не меньше себестоимости из калькулятора
+const planCost=o=>{ const e=spent(o), c=(o.calc&&+o.calc.cost)||0; return o.stage==="done"&&e>0?e:Math.max(e,c); };
+const profit=o=>(+o.price||0)-planCost(o);
+// Предоплата округляется вверх до шага валюты - так же, как в калькуляторе и КП
+const preSum=o=>{ const pr=+o.price||0, st=Math.max(1,+o.roundTo||(window.MebelOrder?MebelOrder.roundStep(o.cur||S.cur||"KZT"):1)); return Math.min(pr,Math.ceil(pr*(+o.prepayPct||0)/100/st-1e-9)*st); };
 const readyDate=o=>o.dates.ready||(o.stageAt.production?addDays(o.stageAt.production,o.dates.prodDays):"");
 const pTitle=o=>(o.product.title||PTYPES[o.product.type]||"Изделие");
 const cName=o=>o.client.name||"Без имени";
@@ -438,9 +457,9 @@ const M=window.MebelOrder;
 const PLAN_KEYS={measure:"measure",design:"projectDue",install:"install"};
 function toShared(o){
   const b=o.base?clone(o.base):M.create();
-  b.id=o.id; b.number=o.numText||String(o.num); b.title=o.product.title||b.title||""; b.createdAt=o.createdAt; b.updatedAt=o.updatedAt; b.stage=o.stage;
+  b.id=o.id; b.currency=o.cur||S.cur||"KZT"; if(b.quote) b.quote.currency=b.currency; b.number=o.numText||String(o.num); b.title=o.product.title||b.title||""; b.createdAt=o.createdAt; b.updatedAt=o.updatedAt; b.stage=o.stage;
   b.client=Object.assign({},b.client,{name:o.client.name||"",phone:o.client.phone||"",address:o.client.address||""});
-  if(o.price||b.quote){ b.quote=Object.assign({},b.quote,{total:+o.price||0,prepaySum:Math.round((+o.price||0)*(+o.prepayPct||0)/100)}); }
+  if(o.price||b.quote){ b.quote=Object.assign({},b.quote,{total:+o.price||0,prepaySum:preSum(o)}); }
   const plans={measure:o.dates.measure,design:o.dates.projectDue,production:readyDate(o),install:o.dates.install};
   b.timeline=STAGES.map(s=>{ const r={stage:s.k}; if(plans[s.k]) r.plan=plans[s.k]; if(o.stageAt[s.k]) r.done=o.stageAt[s.k]; return r; }).filter(r=>r.plan||r.done);
   b.payments=o.payments.map(p=>{ const r=Object.assign({},p,{amount:Math.abs(+p.sum||0),kind:(+p.sum<0)?"refund":((p.kind==="prepay"||/предоплат/i.test(p.note||""))?"prepay":"payment"),method:PAYM[p.method]?p.method:"other"}); delete r.sum; return r; });
@@ -465,7 +484,7 @@ function fromShared(src){
     if(t.stage==="production"&&t.plan&&!(x&&x.dates)) o.dates.ready=d10(t.plan); });
   if(!o.stageAt[o.stage]) o.stageAt[o.stage]=d10(b.updatedAt)||today();
   if(b.deadline) o.dates.contract=d10(b.deadline);
-  const q=b.quote||{}; o.price=+q.total||0;
+  const q=b.quote||{}; o.price=+q.total||0; o.cur=M.orderCurrency(b); if(+b.pricing.roundTo>0) o.roundTo=+b.pricing.roundTo;
   o.prepayPct=x&&x.prepayPct!==undefined?x.prepayPct:(o.price&&q.prepaySum?Math.round(q.prepaySum/o.price*100):(+b.pricing.prepayPct||+S.prepay||50));
   o.payments=b.payments.filter(p=>p&&typeof p==="object").map(p=>{ const r=Object.assign({},p,{id:p.id||uid(),date:d10(p.date),sum:(p.kind==="refund"?-1:1)*Math.abs(+p.amount||0),method:p.method||"other"}); delete r.amount; return r; });
   o.expenses=b.expenses.filter(p=>p&&typeof p==="object").map(p=>{ const r=Object.assign({},p,{id:p.id||uid(),date:d10(p.date),sum:+p.amount||0,cat:p.category||"other",note:p.note||p.supplier||""}); delete r.amount; delete r.category; return r; });
@@ -624,10 +643,10 @@ function problems(){
   allEvents().forEach(e=>{ if(e.date<t) out.push({pr:0,ic:"⏰",o:e.o,title:`${e.text} просрочен${e.kind==="rem"?"о":""} на ${diffDays(t,e.date)} дн.`,sub:dShort(e.date),ev:e}); else if(e.date===t) out.push({pr:1,ic:e.ic,o:e.o,title:e.text+(e.time?" в "+e.time:"")+" - сегодня",sub:"",ev:e}); });
   Object.values(ORD).forEach(o=>{
     if(o.stage==="lead"&&!o.dates.measure){ const d=diffDays(t,lastStageDate(o)); if(d>=(+S.stale||3)) out.push({pr:2,ic:"💤",o,title:`Заявка ждёт ответа ${d} дн.`,sub:"Позвоните или назначьте замер"}); }
-    if(o.stage==="production"&&paid(o)===0&&o.price>0) out.push({pr:1,ic:"💳",o,title:"В производстве без предоплаты",sub:"Предоплата "+tg(o.price*o.prepayPct/100)});
-    if(o.stage==="contract"&&paid(o)===0&&o.price>0) out.push({pr:2,ic:"💳",o,title:"Получить предоплату "+tg(o.price*o.prepayPct/100),sub:"Договор, ждём оплату"});
-    if((o.stage==="done"||o.stage==="install")&&debt(o)>0&&o.price>0) out.push({pr:o.stage==="done"?0:2,ic:"💰",o,title:"Получить остаток "+tg(debt(o)),sub:o.stage==="done"?"Заказ сдан, но не оплачен полностью":"Перед монтажом напомните про остаток"});
-    if(ACTIVE.includes(o.stage)&&o.price>0&&spent(o)>o.price) out.push({pr:1,ic:"📉",o,title:"Расходы больше цены заказа",sub:"Убыток "+tg(spent(o)-o.price)});
+    if(o.stage==="production"&&paid(o)===0&&o.price>0) out.push({pr:1,ic:"💳",o,title:"В производстве без предоплаты",sub:"Предоплата "+tg(preSum(o),o.cur)});
+    if(o.stage==="contract"&&paid(o)===0&&o.price>0) out.push({pr:2,ic:"💳",o,title:"Получить предоплату "+tg(preSum(o),o.cur),sub:"Договор, ждём оплату"});
+    if((o.stage==="done"||o.stage==="install")&&debt(o)>0&&o.price>0) out.push({pr:o.stage==="done"?0:2,ic:"💰",o,title:"Получить остаток "+tg(debt(o),o.cur),sub:o.stage==="done"?"Заказ сдан, но не оплачен полностью":"Перед монтажом напомните про остаток"});
+    if(ACTIVE.includes(o.stage)&&o.price>0&&spent(o)>o.price) out.push({pr:1,ic:"📉",o,title:"Расходы больше цены заказа",sub:"Убыток "+tg(spent(o)-o.price,o.cur)});
     if(o.stage==="production"&&!o.dates.install){ const r=readyDate(o); if(r&&diffDays(r,t)<=3) out.push({pr:2,ic:"📅",o,title:"Скоро готовность - назначьте монтаж",sub:"Готовность "+dHuman(r)}); }
   });
   return out.sort((a,b)=>a.pr-b.pr);
@@ -658,7 +677,7 @@ function orderCard(o){
   return `<div class="oc" draggable="true" data-id="${o.id}" style="border-left-color:${stageColor(o.stage)}">
     <div class="t"><b>${esc(cName(o))}</b><span>№${o.num}</span></div>
     <div class="d">${esc(pTitle(o))}${o.client.address?" · "+esc(o.client.address):""}</div>
-    <div class="m"><span class="money">${o.price?tg(o.price):"цена не указана"}</span>${pills}</div>
+    <div class="m"><span class="money">${o.price?tg(o.price,o.cur):"цена не указана"}</span>${pills}</div>
     ${pr?`<div class="bar" title="Чек-лист: ${pr[0]} из ${pr[1]}"><i style="width:${pr[0]/pr[1]*100}%"></i></div>`:""}
   </div>`;
 }
@@ -666,16 +685,16 @@ function stageColor(k){ return {lead:"#9a8f85",measure:"#c0662a",design:"#7a5fa8
 
 // ======================= СЕГОДНЯ =======================
 function renderToday(){
-  const t=today(), os=Object.values(ORD), act=os.filter(o=>ACTIVE.includes(o.stage));
+  const t=today(), all=Object.values(ORD), os=all.filter(inCur), act=all.filter(o=>ACTIVE.includes(o.stage)), actC=act.filter(inCur);
   const ym=t.slice(0,7);
   const inMonth=os.flatMap(o=>o.payments).filter(p=>(p.date||"").startsWith(ym)).reduce((s,p)=>s+(+p.sum||0),0);
   const debts=os.filter(o=>o.stage!=="cancelled"&&(paid(o)>0||o.stage==="done")).reduce((s,o)=>s+debt(o),0);
-  const inWork=act.filter(o=>SIDX[o.stage]>=SIDX.contract).reduce((s,o)=>s+(+o.price||0),0);
+  const inWork=actC.filter(o=>SIDX[o.stage]>=SIDX.contract).reduce((s,o)=>s+(+o.price||0),0);
   $("todayKpis").innerHTML=`
     <div class="kpi main"><span>Получено в ${MONTHS[new Date().getMonth()].replace(/ь$/,"е").replace(/й$/,"е").replace(/т$/,"те")}</span><b>${tg(inMonth)}</b></div>
     <div class="kpi"><span>Заказов в работе</span><b>${act.length}</b><span>${STAGES.slice(0,6).map(s=>act.filter(o=>o.stage===s.k).length+" "+s.name.toLowerCase()).filter(x=>x[0]!=="0").join(", ")||"пока нет"}</span></div>
     <div class="kpi"><span>Портфель (договор и дальше)</span><b>${tg(inWork)}</b></div>
-    <div class="kpi"><span>Клиенты должны</span><b>${tg(debts)}</b></div>`;
+    <div class="kpi"><span>Клиенты должны</span><b>${tg(debts)}</b></div>`+otherCurNote(all);
   const pr=problems();
   $("todoList").innerHTML=pr.length?pr.map(p=>`<div class="todo"><div class="ic">${p.ic}</div><div class="tx" data-open="${p.o.id}" style="cursor:pointer"><b>${esc(p.title)}</b><small>№${p.o.num} ${esc(cName(p.o))} · ${esc(pTitle(p.o))}${p.sub?" · "+esc(p.sub):""}</small></div>
     <div class="act">${p.o.client.phone?`<a class="btn bw bs" href="${waLink(p.o.client.phone)}" target="_blank" rel="noopener" title="WhatsApp">WA</a>`:""}${p.ev&&p.ev.kind==="rem"?`<button class="bs b2" data-remdone="${p.o.id}|${p.ev.rid}">Сделано</button>`:""}</div></div>`).join("")
@@ -706,8 +725,8 @@ function renderOrders(){
   if(orderView==="board"){
     const cols=STAGES.filter(s=>closed||ACTIVE.includes(s.k));
     $("boardWrap").innerHTML=`<div class="board">${cols.map(s=>{ const os=list.filter(o=>o.stage===s.k).sort((a,b)=>(lastStageDate(a)<lastStageDate(b)?1:-1));
-      const sum=os.reduce((x,o)=>x+(+o.price||0),0);
-      return `<div class="col" data-stage="${s.k}"><div class="colh"><span class="dot" style="background:${stageColor(s.k)}"></span>${s.name} · ${os.length}<small>${sum?fmt(sum)+" ₸":""}</small></div>
+      const sum=os.filter(inCur).reduce((x,o)=>x+(+o.price||0),0);
+      return `<div class="col" data-stage="${s.k}"><div class="colh"><span class="dot" style="background:${stageColor(s.k)}"></span>${s.name} · ${os.length}<small>${sum?tg(sum):""}</small></div>
         ${os.map(orderCard).join("")||`<div class="note" style="text-align:center;padding:10px">пусто</div>`}
         ${s.k==="lead"?`<button class="bs" data-newin="lead" style="margin-top:auto">+ Заявка</button>`:""}</div>`; }).join("")}</div>`;
     bindDnD();
@@ -736,7 +755,7 @@ function setStage(o,st){
   const prev=o.stage; o.stage=st; o.stageAt[st]=today();
   addLog(o,`Этап: ${SNAME[prev]} → ${SNAME[st]}`);
   if(st==="production"&&!o.dates.ready) toast(`Готовность ориентировочно ${dHuman(addDays(today(),o.dates.prodDays))}`);
-  if(st==="done"&&debt(o)>0) toast("Заказ сдан. Не забудьте получить остаток "+tg(debt(o)));
+  if(st==="done"&&debt(o)>0) toast("Заказ сдан. Не забудьте получить остаток "+tg(debt(o),o.cur));
   else toast("Этап: "+SNAME[st]);
   saveNow(o); renderTab(); if(openId===o.id) renderOrder();
 }
@@ -799,7 +818,7 @@ function tabMain(o,pb){
     <div class="g2"><div class="f"><label>Имя</label><input data-k="client.name" placeholder="Например: Айгерим"></div>
     <div class="f"><label>Телефон / WhatsApp</label><input data-k="client.phone" inputmode="tel" placeholder="+7 701 123 45 67"></div></div>
     <div class="f"><label>Адрес</label><input data-k="client.address" placeholder="Город, улица, дом, квартира"></div>
-    <div class="g2"><div class="f"><label>Откуда пришёл</label><select data-k="client.source">${SOURCES.map(s=>`<option value="${s}">${s||"-"}</option>`).join("")}</select></div>
+    <div class="g2"><div class="f"><label>Откуда пришёл</label><select data-k="client.source">${sources(o.client.source).map(s=>`<option value="${s}">${s||"-"}</option>`).join("")}</select></div>
     <div class="f"><label>&nbsp;</label>${o.client.address?`<a class="btn b2" style="width:100%" href="https://2gis.kz/search/${encodeURIComponent(o.client.address)}" target="_blank" rel="noopener">Адрес в 2GIS</a>`:""}</div></div>
   </div>
   <div class="card"><h2>Изделие</h2>
@@ -807,7 +826,7 @@ function tabMain(o,pb){
     <div class="f"><label>Коротко (видно на карточке)</label><input data-k="product.title" placeholder="Кухня угловая 3200+1800"></div></div>
     <div class="f"><label>Описание для клиента / из калькулятора</label><textarea data-k="product.desc" placeholder="Материалы, цвета, фурнитура..."></textarea></div>
     <div class="btns"><button class="b2 bs" id="pasteCalc">📋 Вставить расчёт из калькулятора</button></div>
-    ${o.calc?`<p class="note">Расчёт из калькулятора: ${tg(o.calc.total||0)}${o.calc.cost?", себестоимость "+tg(o.calc.cost):""}${o.calc.at?" · "+new Date(o.calc.at).toLocaleDateString("ru-RU"):""}</p>`:""}
+    ${o.calc?`<p class="note">Расчёт из калькулятора: ${tg(o.calc.total||0,o.cur)}${o.calc.cost?", себестоимость "+tg(o.calc.cost,o.cur):""}${o.calc.at?" · "+new Date(o.calc.at).toLocaleDateString("ru-RU"):""}</p>`:""}
   </div>
   ${pr.length?`<div class="card"><h2>Чек-лист: ${SNAME[o.stage]}</h2><div class="chkg" id="ckBox">${pr.map(i=>`<label class="chk"><input type="checkbox" data-ck="${esc(i)}" ${o.check[o.stage+":"+i]?"checked":""}> ${esc(i)}</label>`).join("")}</div></div>`:""}
   ${o.stage==="cancelled"?`<div class="warnbox">Отказ: ${esc(o.lostReason||"причина не указана")}</div>`:""}
@@ -849,8 +868,9 @@ function applyCalcText(o,txt){
     addLog(o,"Вставлен заказ из калькулятора"); return done.length?done:["изделие"]; }
   const lines=txt.split(/\r?\n/);
   const num=s=>+String(s).replace(/[^\d]/g,"");
-  const mPrice=txt.match(/Стоимость:\s*([\d\s ]+)\s*₸/); if(mPrice){ o.price=num(mPrice[1]); o.calc=Object.assign(o.calc||{},{total:o.price,at:new Date().toISOString(),source:"kalkulyator-mebel"}); done.push("цена"); }
-  const mPre=txt.match(/Предоплата:\s*([\d\s ]+)\s*₸/); if(mPre&&o.price){ o.prepayPct=Math.round(num(mPre[1])/o.price*100); }
+  const CUR_RX="(₸|₽|\\$|€|Br|сум|сом)";
+  const mPrice=txt.match(new RegExp("Стоимость:\\s*([\\d\\s\u00a0]+)\\s*"+CUR_RX)); if(mPrice){ o.price=num(mPrice[1]); const cc=window.MebelOrder&&Object.values(MebelOrder.CURRENCIES).find(c=>c.sign===mPrice[2]); if(cc) o.cur=cc.code; o.calc=Object.assign(o.calc||{},{total:o.price,at:new Date().toISOString(),source:"kalkulyator-mebel"}); done.push("цена"); }
+  const mPre=txt.match(new RegExp("Предоплата:\\s*([\\d\\s\u00a0]+)\\s*"+CUR_RX)); if(mPre&&o.price){ o.prepayPct=Math.round(num(mPre[1])/o.price*100); }
   const mDays=txt.match(/Срок изготовления:\s*(\d+)/); if(mDays){ o.dates.prodDays=+mDays[1]; done.push("срок"); }
   // описание: всё до строки "Стоимость"
   const si=lines.findIndex(l=>/^Стоимость:/.test(l));
@@ -878,20 +898,20 @@ function applyCalcText(o,txt){
 // ---------- Вкладка: Деньги ----------
 function tabMoney(o,pb){
   const draw=()=>{
-    const p=paid(o), e=spent(o), pre=Math.round((+o.price||0)*(+o.prepayPct||0)/100);
+    const p=paid(o), e=spent(o), pre=preSum(o), pc=planCost(o), cc=(o.calc&&+o.calc.cost)||0;
     pb.querySelector("#mSum").innerHTML=`
-      <div><span>Цена заказа</span><b>${tg(o.price)}</b></div>
-      <div><span>Оплачено клиентом</span><b>${tg(p)}</b></div>
-      <div><span>Остаток к оплате</span><b style="color:${debt(o)>0?"var(--warn)":"var(--accent)"}">${tg(debt(o))}</b></div>
-      <div><span>Расходы</span><b>${tg(e)}</b></div>
-      <div><span>Прибыль${o.stage==="done"?"":" (план)"}</span><b style="color:${profit(o)<0?"var(--bad)":"var(--accent)"}">${tg(profit(o))}</b></div>
-      <div><span>Маржа</span><b>${o.price?Math.round(profit(o)/o.price*100)+"%":"-"}</b></div>`;
-    pb.querySelector("#preNote").textContent=o.price?`Предоплата ${o.prepayPct}% = ${tg(pre)}${p>=pre?" - получена ✓":p>0?", получено "+tg(p):""}`:"";
-    pb.querySelector("#cashNote").textContent=`Фактически сейчас на руках по заказу: ${tg(p-spentPaid(o))} (оплачено клиентом минус оплаченные расходы)`;
+      <div><span>Цена заказа</span><b>${tg(o.price,o.cur)}</b></div>
+      <div><span>Оплачено клиентом</span><b>${tg(p,o.cur)}</b></div>
+      <div><span>Остаток к оплате</span><b style="color:${debt(o)>0?"var(--warn)":"var(--accent)"}">${tg(debt(o),o.cur)}</b></div>
+      <div><span>Расходы</span><b>${tg(e,o.cur)}</b></div>
+      <div><span>Прибыль${o.stage==="done"?"":" (план)"}</span><b style="color:${profit(o)<0?"var(--bad)":"var(--accent)"}">${pc>0?tg(profit(o),o.cur):"-"}</b></div>
+      <div><span>Маржа</span><b>${o.price&&pc>0?Math.round(profit(o)/o.price*100)+"%":"-"}</b></div>`;
+    pb.querySelector("#preNote").textContent=o.price?`Предоплата ${o.prepayPct}% = ${tg(pre,o.cur)}${p>=pre?" - получена ✓":p>0?", получено "+tg(p,o.cur):""}`:"";
+    pb.querySelector("#cashNote").textContent=`Фактически сейчас на руках по заказу: ${tg(p-spentPaid(o),o.cur)} (оплачено клиентом минус оплаченные расходы)`+(pc<=0?". Прибыль появится, когда внесёте расходы или пришлёте заказ из калькулятора.":pc>e?`. Прибыль пока плановая: по себестоимости из калькулятора ${tg(cc,o.cur)}; когда заказ сдан, считается по внесённым расходам.`:"");
   };
   pb.innerHTML=`<div class="sum3" id="mSum"></div>
   <div class="card"><h2>Цена</h2>
-    <div class="g3"><div class="f"><label>Цена по договору, ₸</label><input type="number" inputmode="numeric" data-k="price"></div>
+    <div class="g3"><div class="f"><label>Цена по договору, ${sign(o.cur)}</label><input type="number" inputmode="numeric" data-k="price"></div>
     <div class="f"><label>Предоплата, %</label><input type="number" inputmode="numeric" data-k="prepayPct"></div>
     <div class="f"><label>&nbsp;</label>${o.calc&&o.calc.total&&o.calc.total!==o.price?`<button class="b2" id="useCalc" style="width:100%">Из расчёта: ${fmt(o.calc.total)}</button>`:""}</div></div>
     <p class="note" id="preNote"></p></div>
@@ -903,23 +923,23 @@ function tabMoney(o,pb){
   const pl=$("payList"), el=$("expList");
   const drawPays=()=>{ pl.innerHTML=o.payments.length?o.payments.map((p,i)=>`<div class="rowi r-pay">
       <div><label>Дата</label><input type="date" data-pi="${i}" data-f="date" value="${esc(p.date)}"></div>
-      <div><label>Сумма, ₸</label><input type="number" inputmode="numeric" data-pi="${i}" data-f="sum" value="${esc(p.sum)}"></div>
-      <div><label>Способ</label><select data-pi="${i}" data-f="method">${Object.entries(PAYM).map(([k,m])=>`<option value="${k}" ${p.method===k?"selected":""}>${m}</option>`).join("")}</select></div>
+      <div><label>Сумма, ${sign(o.cur)}</label><input type="number" inputmode="numeric" data-pi="${i}" data-f="sum" value="${esc(p.sum)}"></div>
+      <div><label>Способ</label><select data-pi="${i}" data-f="method">${Object.entries(PAYM).filter(([k])=>payMethods().includes(k)||p.method===k).map(([k,m])=>`<option value="${k}" ${p.method===k?"selected":""}>${m}</option>`).join("")}</select></div>
       <button class="bx" data-pdel="${i}" title="Удалить">×</button>
       <div class="wide" style="grid-column:1/-1"><input data-pi="${i}" data-f="note" value="${esc(p.note||"")}" placeholder="Комментарий: предоплата, за фасады, остаток..."></div></div>`).join(""):`<div class="note">Оплат пока нет.</div>`;
     pl.querySelectorAll("[data-pi]").forEach(x=>x.addEventListener(x.tagName==="SELECT"||x.type==="date"?"change":"input",()=>{ const p=o.payments[+x.dataset.pi]; p[x.dataset.f]=x.type==="number"?+x.value:x.value; saveSoon(o); draw(); }));
-    pl.querySelectorAll("[data-pdel]").forEach(b=>b.onclick=()=>{ const p=o.payments.splice(+b.dataset.pdel,1)[0]; addLog(o,"Удалена оплата "+tg(p.sum)); saveNow(o); drawPays(); draw(); }); };
+    pl.querySelectorAll("[data-pdel]").forEach(b=>b.onclick=()=>{ const p=o.payments.splice(+b.dataset.pdel,1)[0]; addLog(o,"Удалена оплата "+tg(p.sum,o.cur)); saveNow(o); drawPays(); draw(); }); };
   const drawExps=()=>{ el.innerHTML=o.expenses.length?o.expenses.map((p,i)=>`<div class="rowi r-exp">
       <div><label>Статья</label><select data-ei="${i}" data-f="cat">${Object.entries(EXPCAT).map(([k,m])=>`<option value="${k}" ${p.cat===k?"selected":""}>${m}</option>`).join("")}</select></div>
-      <div><label>Сумма, ₸</label><input type="number" inputmode="numeric" data-ei="${i}" data-f="sum" value="${esc(p.sum)}"></div>
+      <div><label>Сумма, ${sign(o.cur)}</label><input type="number" inputmode="numeric" data-ei="${i}" data-f="sum" value="${esc(p.sum)}"></div>
       <div><label>Дата</label><input type="date" data-ei="${i}" data-f="date" value="${esc(p.date)}"></div>
       <label class="chk" style="margin:0" title="Оплачен"><input type="checkbox" data-ei="${i}" data-f="paid" ${p.paid!==false?"checked":""}>опл.</label>
       <button class="bx" data-edel="${i}" title="Удалить">×</button>
       <div class="wide" style="grid-column:1/-1"><input data-ei="${i}" data-f="note" value="${esc(p.note||"")}" placeholder="Кому / что: например, ЛДСП Egger 6 листов"></div></div>`).join(""):`<div class="note">Расходов пока нет. Добавляйте покупки материалов, распил, фасады, оплату монтажникам - так будет видна реальная прибыль.</div>`;
     el.querySelectorAll("[data-ei]").forEach(x=>x.addEventListener(x.tagName==="SELECT"||x.type==="date"||x.type==="checkbox"?"change":"input",()=>{ const p=o.expenses[+x.dataset.ei]; p[x.dataset.f]=x.type==="checkbox"?x.checked:x.type==="number"?+x.value:x.value; saveSoon(o); draw(); }));
     el.querySelectorAll("[data-edel]").forEach(b=>b.onclick=()=>{ o.expenses.splice(+b.dataset.edel,1); saveNow(o); drawExps(); draw(); }); };
-  $("addPay").onclick=()=>{ const left=debt(o), pre=Math.round(o.price*o.prepayPct/100); const sum=paid(o)===0&&pre?pre:left;
-    o.payments.push({id:uid(),date:today(),sum,method:"kaspi",kind:paid(o)===0?"prepay":"payment",note:paid(o)===0?"Предоплата":(sum===left?"Остаток":"")}); addLog(o,"Оплата "+tg(sum)); saveNow(o); drawPays(); draw();
+  $("addPay").onclick=()=>{ const left=debt(o), pre=preSum(o); const sum=paid(o)===0&&pre?pre:left;
+    o.payments.push({id:uid(),date:today(),sum,method:defPay(),kind:paid(o)===0?"prepay":"payment",note:paid(o)===0?"Предоплата":(sum===left?"Остаток":"")}); addLog(o,"Оплата "+tg(sum,o.cur)); saveNow(o); drawPays(); draw();
     const inp=pl.querySelectorAll('input[data-f="sum"]'); inp[inp.length-1]?.focus(); inp[inp.length-1]?.select(); };
   $("addExp").onclick=()=>{ o.expenses.push({id:uid(),date:today(),cat:"materials",sum:0,paid:true,note:""}); saveNow(o); drawExps(); draw(); const inp=el.querySelectorAll('input[data-f="sum"]'); inp[inp.length-1]?.focus(); };
   if($("useCalc")) $("useCalc").onclick=()=>{ o.price=o.calc.total; saveNow(o); renderOrder(); };
@@ -1143,7 +1163,7 @@ function tabHistory(o,pb){
 
 // ---------- Сообщение клиенту по шаблону ----------
 function fillTpl(text,o){
-  const v={"имя":o.client.name||"","№":o.num,"изделие":pTitle(o).toLowerCase(),"адрес":o.client.address||"","сумма":tg(o.price),"оплачено":tg(paid(o)),"остаток":tg(debt(o)),"предоплата":tg(o.price*o.prepayPct/100),
+  const v={"имя":o.client.name||"","№":o.num,"изделие":pTitle(o).toLowerCase(),"адрес":o.client.address||"","сумма":tg(o.price,o.cur),"оплачено":tg(paid(o),o.cur),"остаток":tg(debt(o),o.cur),"предоплата":tg(o.price*o.prepayPct/100,o.cur),
     "дата замера":dHuman(o.dates.measure,true)||"(дата)","время замера":o.dates.measureTime||"(время)","дата готовности":dHuman(readyDate(o),true)||"(дата)","дата монтажа":dHuman(o.dates.install,true)||"(дата)","время монтажа":o.dates.installTime||"(время)","мастерская":S.name||"мастерская","телефон":phoneHuman(S.phone)};
   return text.replace(/\{([^}]+)\}/g,(m,k)=>k in v?v[k]:m);
 }
@@ -1187,10 +1207,14 @@ function barChart(box,labels,series,opts={}){
 }
 function hbars(box,items,fmtV,color){ const mx=Math.max(1,...items.map(i=>i.v));
   box.innerHTML=items.length?items.map(i=>`<div class="hbar" title="${esc(i.title||"")}"><span>${esc(i.label)}</span><div class="tr"><i style="width:${i.v/mx*100}%;background:${i.color||color||"var(--wood)"}"></i></div><span>${fmtV(i)}</span></div>`).join(""):`<div class="empty">Нет данных за этот год.</div>`; }
+// Заказы в другой валюте в сводки не складываем (тенге с рублями не суммируются) - только говорим, сколько их.
+function otherCurNote(list){ const oth=list.filter(o=>!inCur(o)&&o.stage!=="cancelled"); if(!oth.length) return "";
+  const by={}; oth.forEach(o=>by[o.cur]=(by[o.cur]||0)+1);
+  return `<div class="kpi"><span>В другой валюте</span><b>${oth.length}</b><span>${Object.entries(by).map(([c,n])=>n+" в "+(window.MebelOrder?MebelOrder.currencyInfo(c).inWord:c)).join(", ")} - в суммы выше не входят</span></div>`; }
 function renderMoney(){
   const yrs=new Set([new Date().getFullYear()]); Object.values(ORD).forEach(o=>{ yrs.add(+o.createdAt.slice(0,4)); o.payments.forEach(p=>p.date&&yrs.add(+p.date.slice(0,4))); });
   const ys=$("mYear"), cur=+ys.value||new Date().getFullYear(); ys.innerHTML=[...yrs].sort((a,b)=>b-a).map(y=>`<option ${y===cur?"selected":""}>${y}</option>`).join("");
-  const Y=String(cur), os=Object.values(ORD);
+  const Y=String(cur), os=Object.values(ORD).filter(inCur);
   const inc=Array(12).fill(0), exp=Array(12).fill(0), prof=Array(12).fill(0), doneCnt=Array(12).fill(0);
   os.forEach(o=>{ o.payments.forEach(p=>{ if((p.date||"").startsWith(Y)) inc[+p.date.slice(5,7)-1]+=+p.sum||0; });
     o.expenses.forEach(p=>{ if(p.paid!==false&&(p.date||"").startsWith(Y)) exp[+p.date.slice(5,7)-1]+=+p.sum||0; });
@@ -1204,7 +1228,7 @@ function renderMoney(){
     <div class="kpi"><span>Получено от клиентов</span><b>${tg(sum(inc))}</b></div>
     <div class="kpi"><span>Потрачено на заказы</span><b>${tg(sum(exp))}</b></div>
     <div class="kpi"><span>Сдано заказов</span><b>${doneY.length}</b><span>средний чек ${tg(avg)}</span></div>
-    <div class="kpi"><span>Клиенты должны сейчас</span><b>${tg(debts)}</b></div>`;
+    <div class="kpi"><span>Клиенты должны сейчас</span><b>${tg(debts)}</b></div>`+otherCurNote(Object.values(ORD));
   const full=MONTHS.map(m=>m[0].toUpperCase()+m.slice(1)+" "+Y);
   barChart($("chCash"),MSHORT,[{name:"Приход",color:"var(--inc)",values:inc},{name:"Расход",color:"var(--exp)",values:exp}],{full,label:"Приход и расход по месяцам",extra:i=>`<br>Разница: ${tg(inc[i]-exp[i])}`});
   barChart($("chProfit"),MSHORT,[{name:"Прибыль",color:v=>v<0?"var(--bad)":"var(--inc)",values:prof}],{full,label:"Прибыль по сданным заказам",extra:i=>`<br>Сдано заказов: ${doneCnt[i]}`});
@@ -1217,9 +1241,9 @@ function renderMoney(){
   const lost=created.filter(o=>o.stage==="cancelled"); if(lost.length){ const r={}; lost.forEach(o=>r[o.lostReason||"не указана"]=(r[o.lostReason||"не указана"]||0)+1);
     $("chFunnel").innerHTML+=`<p class="note">Отказы (${lost.length}): ${Object.entries(r).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${esc(k)} - ${v}`).join(", ")}</p>`; }
   const act=os.filter(o=>ACTIVE.includes(o.stage));
-  hbars($("chStages"),ACTIVE.map(k=>({label:SNAME[k],v:act.filter(o=>o.stage===k).length,s:act.filter(o=>o.stage===k).reduce((s,o)=>s+(+o.price||0),0),color:stageColor(k)})),i=>`${i.v} · ${shortMoney(i.s)} ₸`);
+  hbars($("chStages"),ACTIVE.map(k=>({label:SNAME[k],v:act.filter(o=>o.stage===k).length,s:act.filter(o=>o.stage===k).reduce((s,o)=>s+(+o.price||0),0),color:stageColor(k)})),i=>`${i.v} · ${shortMoney(i.s)} ${sign()}`);
   const ec={}; os.forEach(o=>o.expenses.forEach(p=>{ if((p.date||"").startsWith(Y)) ec[p.cat]=(ec[p.cat]||0)+(+p.sum||0); }));
-  hbars($("chExp"),Object.entries(ec).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({label:EXPCAT[k]||k,v})),i=>shortMoney(i.v)+" ₸","var(--exp)");
+  hbars($("chExp"),Object.entries(ec).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({label:EXPCAT[k]||k,v})),i=>shortMoney(i.v)+" "+sign(),"var(--exp)");
   const sc={}; created.forEach(o=>{ const k=o.client.source||"не указано"; sc[k]=sc[k]||{v:0,d:0}; sc[k].v++; if(o.stage==="done") sc[k].d++; });
   hbars($("chSrc"),Object.entries(sc).sort((a,b)=>b[1].v-a[1].v).map(([k,x])=>({label:k,v:x.v,d:x.d})),i=>`${i.v} заяв. · ${i.d} сдано`,"var(--wood)");
   const yo=os.filter(o=>o.stage!=="cancelled"&&(o.createdAt.startsWith(Y)||(o.stageAt.done||"").startsWith(Y))).sort((a,b)=>b.num-a.num);
@@ -1230,7 +1254,17 @@ function renderMoney(){
 }
 
 // ======================= НАСТРОЙКИ =======================
+function renderRegionSettings(){
+  if(!window.MebelOrder) return;
+  const MO=window.MebelOrder;
+  $("s_country").innerHTML=Object.values(MO.COUNTRIES).map(c=>`<option value="${c.code}" ${c.code===S.country?"selected":""}>${esc(c.name)}</option>`).join("");
+  $("s_cur").innerHTML=Object.values(MO.CURRENCIES).map(c=>`<option value="${c.code}" ${c.code===S.cur?"selected":""}>${esc(c.name)}, ${esc(c.sign)}</option>`).join("");
+  $("s_curNote").textContent="Новые заказы создаются в этой валюте, сводки и графики считаются в ней. Заказ, открытый из файла, остаётся в своей валюте. Страна задаёт способы оплаты (Kaspi или СБП) и список площадок. Настройка общая с калькулятором и КП.";
+  $("s_country").onchange=e=>{ S.country=e.target.value; S.cur=MO.countryInfo(S.country).currency; MO.setRegion({country:S.country,currency:S.cur}); Store.saveSettings(); renderRegionSettings(); };
+  $("s_cur").onchange=e=>{ S.cur=e.target.value; MO.setRegion({country:S.country,currency:S.cur}); Store.saveSettings(); };
+}
 function renderSettings(){
+  renderRegionSettings();
   [["s_name","name"],["s_phone","phone"],["s_days","days"],["s_prepay","prepay"],["s_stale","stale"]].forEach(([id,k])=>{ const el=$(id); el.value=S[k]??""; el.oninput=()=>{ S[k]=el.type==="number"?+el.value:el.value; Store.saveSettings(); $("hSub").textContent=S.name||"Мебель на заказ"; }; });
   const sl=$("supList");
   const drawSup=()=>{ sl.innerHTML=(S.suppliers||[]).map((s,i)=>`<div class="rowi" style="grid-template-columns:1.3fr 1.2fr 1.2fr 1fr auto">
@@ -1297,6 +1331,8 @@ function demo(){
       payments:[{id:uid(),date:addDays(t,-80),sum:600000,method:"kaspi",note:"Предоплата"},{id:uid(),date:addDays(t,-60),sum:450000,method:"cash",note:""}],expenses:[{id:uid(),date:addDays(t,-79),cat:"materials",sum:210000,paid:true,note:""},{id:uid(),date:addDays(t,-78),cat:"facades",sum:260000,paid:true,note:""},{id:uid(),date:addDays(t,-76),cat:"countertop",sum:95000,paid:true,note:""},{id:uid(),date:addDays(t,-75),cat:"hardware",sum:120000,paid:true,note:""}]}),
     mk({client:{name:"Асель",phone:"+7 771 444 55 66",address:"Алматы",source:"Instagram"},product:{type:"wardrobe",title:"Шкаф распашной",desc:""},stage:"cancelled",lostReason:"Дорого",stageAt:{lead:addDays(t,-20),measure:addDays(t,-18),cancelled:addDays(t,-14)}})
   ];
+  if(S.cur!=="KZT"&&window.MebelOrder){ const k=v=>MebelOrder.niceRound(MebelOrder.convert(v,"KZT",S.cur));   // пример в валюте мастерской
+    ex.forEach(o=>{ o.cur=S.cur; o.price=k(o.price); o.payments.forEach(p=>{ p.sum=k(p.sum); if(p.method==="kaspi") p.method=defPay(); }); o.expenses.forEach(p=>p.sum=k(p.sum)); if(o.calc){ o.calc.total=k(o.calc.total||0); if(o.calc.cost) o.calc.cost=k(o.calc.cost); } }); }
   ex.forEach((o,i)=>{ o.num=nextNum(); o.createdAt=new Date((o.stageAt.lead||t)+"T10:00").toISOString(); o.demo=true; Store.save(o); });
   toast("Добавлены примеры. Их можно удалить в настройках"); renderAll();
 }

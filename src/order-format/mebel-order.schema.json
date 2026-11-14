@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "mebel-order-1.0.schema.json",
-  "title": "Заказ - общий формат Мебельного конструктора, версия 1.0",
+  "$id": "mebel-order-1.1.schema.json",
+  "title": "Заказ - общий формат Мебельного конструктора, версия 1.1",
   "description": "Формальное описание файла *.mebel.json. Незнакомые поля разрешены везде и должны сохраняться инструментами. Размеры - в миллиметрах, деньги - целые тенге.",
   "type": "object",
   "required": ["format", "version", "id", "client", "products", "catalog"],
@@ -13,7 +13,8 @@
     "title": { "type": "string" },
     "createdAt": { "$ref": "#/$defs/date" },
     "updatedAt": { "$ref": "#/$defs/date" },
-    "currency": { "const": "KZT" },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$", "description": "Код валюты ISO 4217: KZT, RUB, BYN, UZS, KGS, USD, EUR. Все суммы заказа - в этой валюте." },
+    "country": { "type": "string", "pattern": "^[A-Z]{2}$", "description": "Страна мастера: KZ или RU. Задаёт шаблон договора, реквизиты, способы оплаты. Нет поля - страна по валюте." },
     "units": { "const": "mm" },
     "audience": { "enum": ["client"], "description": "Стоит у копии для клиента (forClient): в ней нет себестоимости." },
     "stage": { "$ref": "#/$defs/stage" },
@@ -215,6 +216,7 @@
       "properties": {
         "workPct": { "type": "number", "minimum": 0, "description": "Сборка, % от материалов" },
         "markupPct": { "type": "number", "minimum": 0, "description": "Наценка, % от себестоимости" },
+        "markupServices": { "type": "boolean", "description": "false - наценка не берётся с услуг (доставка, монтаж). По умолчанию берётся со всей себестоимости" },
         "discountPct": { "type": "number", "minimum": 0, "maximum": 90 },
         "prepayPct": { "type": "number", "minimum": 0, "maximum": 100 },
         "roundTo": { "type": "number", "minimum": 1, "description": "Итог округляется вверх до этой суммы" },
@@ -249,7 +251,7 @@
       "required": ["total"],
       "properties": {
         "calcAt": { "$ref": "#/$defs/date" },
-        "currency": { "const": "KZT" },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$", "description": "Валюта, в которой сделан расчёт (совпадает с currency заказа)" },
         "lines": { "type": "array", "items": { "$ref": "#/$defs/quoteLine" }, "description": "Подробно для мастера (себестоимость)" },
         "materials": { "$ref": "#/$defs/money" }, "work": { "$ref": "#/$defs/money" }, "services": { "$ref": "#/$defs/money" },
         "cost": { "$ref": "#/$defs/money" }, "markup": { "$ref": "#/$defs/money" }, "profit": { "$ref": "#/$defs/money" },
@@ -285,7 +287,7 @@
         "date": { "$ref": "#/$defs/date" },
         "amount": { "type": "number", "exclusiveMinimum": 0 },
         "kind": { "enum": ["prepay", "payment", "refund"] },
-        "method": { "type": "string", "description": "cash, kaspi, card, transfer, other" },
+        "method": { "type": "string", "description": "cash, kaspi, sbp, card, transfer, other" },
         "note": { "type": "string" }
       }
     },

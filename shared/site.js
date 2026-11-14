@@ -22,7 +22,7 @@
   var STAFF = "mebel-site-staff";    // "1" - этим браузером пользуется мастер, а не клиент
 
   var TOOLS = [
-    { id: "kalkulyator", name: "Калькулятор", full: "Калькулятор мебели", desc: "Шкафы-купе, кухни и любые корпусные изделия: детали, материалы и цена в тенге. Можно описать заказ голосом." },
+    { id: "kalkulyator", name: "Калькулятор", full: "Калькулятор мебели", desc: "Шкафы-купе, кухни и любые корпусные изделия: детали, материалы и цена в рублях, тенге или другой валюте. Можно описать заказ голосом." },
     { id: "konfigurator", name: "Конфигуратор", full: "Конфигуратор для клиента", desc: "Клиент сам подбирает размеры, цвета фасадов и столешницу в 3D и отправляет заявку в WhatsApp." },
     { id: "kp", name: "КП и договор", full: "КП и договор в PDF", desc: "Коммерческое предложение и договор с вашими реквизитами - готовый PDF для клиента." },
     { id: "raskroy", name: "Раскрой", full: "Карта раскроя", desc: "Раскладка деталей по листам ЛДСП с учётом пропила, текстуры и остатков. Этикетки на детали." },
@@ -49,14 +49,17 @@
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function root() { return me === "home" ? "./" : "../"; }
   function urlOf(id) { return root() + id + "/"; }
-  function money(n) { n = Math.round(+n || 0); return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₸"; }
+  function money(n, cur) {
+    if (window.MebelOrder) return MebelOrder.money(n, cur || MebelOrder.region().currency);
+    n = Math.round(+n || 0); return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₸";
+  }
   function summary(order) {
     if (!order) return null;
     var p = (order.products || [])[0] || {};
     var title = order.title || p.name || "Заказ";
     if (order.number) title = "№ " + order.number + " - " + title;
     var q = order.quote || {};
-    return { title: title, client: (order.client && order.client.name) || "", total: q.total || 0, products: (order.products || []).length };
+    return { title: title, client: (order.client && order.client.name) || "", total: q.total || 0, cur: order.currency || "KZT", products: (order.products || []).length };
   }
   function ago(iso) {
     var d = (Date.now() - new Date(iso).getTime()) / 60000;
@@ -154,6 +157,7 @@
     h += '<div class="ms-more">';
     extra.forEach(function (x, i) { h += '<button type="button" data-extra="' + i + '">' + esc(x.label) + "</button>"; });
     h += '<button type="button" data-dl>Скачать файл заказа (.mebel.json)</button>';
+    h += '<a class="ms-fb" href="' + root() + 'otzyv/">Оставить отзыв о тестовой версии</a>';
     if (rec && rec.from !== me && adapter && adapter.put) {
       var s = summary(rec.order);
       h += '<button type="button" data-last>Открыть здесь последний переданный заказ: ' + esc(s.title) + (s.client ? ", " + esc(s.client) : "") + " (" + esc(toolName(rec.from)) + ", " + esc(ago(rec.at)) + ")</button>";

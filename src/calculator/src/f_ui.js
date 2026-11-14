@@ -1,6 +1,6 @@
 // ================= СОСТОЯНИЕ =================
 function defaultState(){
-  return {v:2, mode:"kupe", client:"", decor:"", disc:0, prepay:50, days:14, extras:[],
+  return {v:2, mode:"kupe", client:"", phone:"", decor:"", disc:0, prepay:50, days:14, daysKind:"work", install:null, instNoMk:false, extras:[],
     kupe:kupeDefaults(), kit:kitDefaults(),
     u:{tpl:"cab", prms:tplDefaults(), panels:[], hw:[], manual:false, built:false},
     view:{kupe:"in", kitchen:"elev", univ:"3d"}, hideFac:false};
@@ -20,7 +20,17 @@ function refreshBinds(){
   });
   document.querySelectorAll("[data-b]").forEach(fillEl);
   $("q_work").value=P.work; $("q_markup").value=P.markup;
+  const qi=$("q_install"); if(qi){ if(document.activeElement!==qi) qi.value = S.install==null ? "" : S.install; qi.placeholder = fmt(P[INSTALL_ID[S.mode]]||0)+" - из прайса"; }
 }
+// Клиент: имя и телефон. Телефон может быть вписан (или надиктован) в поле имени - тогда достаём его оттуда.
+const INSTALL_ID = {kupe:"install", kitchen:"kinstall", univ:"uinstall"};
+function clientParts(){
+  let name=String(S.client||"").trim(), phone=String(S.phone||"").trim();
+  const m=/(\+?\d[\d\s()\-]{8,}\d)/.exec(name);
+  if(m && m[1].replace(/\D/g,"").length>=10){ if(!phone) phone=m[1].trim(); name=(name.slice(0,m.index)+" "+name.slice(m.index+m[1].length)).replace(/(тел\.?|телефон|номер)\s*:?\s*$/i,"").replace(/\s{2,}/g," ").replace(/^[\s,;]+|[\s,;:]+$/g,""); }
+  return {name, phone};
+}
+function waDigits(phone){ let d=String(phone||"").replace(/\D/g,""); if(d.length===11&&d[0]==="8") d="7"+d.slice(1); if(d.length===10) d="7"+d; return d.length>=11?d:""; }
 function initBinds(){
   document.querySelectorAll("[data-b]").forEach(el=>el.addEventListener("input",()=>{
     const path=el.dataset.b; setP(path,readEl(el));
@@ -30,6 +40,7 @@ function initBinds(){
     calc();
   }));
   [["q_work","work"],["q_markup","markup"]].forEach(([id,k])=>$(id).addEventListener("input",e=>{ PI[k].v=Math.max(0,+e.target.value||0); savePrice(); calc(); }));
+  $("q_install").addEventListener("input",e=>{ const v=e.target.value.trim(); S.install = v==="" ? null : Math.max(0,+v||0); calc(); });
 }
 
 // ================= ФОРМЫ: ШКАФ-КУПЕ =================
@@ -165,7 +176,7 @@ function updateKitchenHints(info){
 // ================= ДОП. ПОЗИЦИИ =================
 function renderExtras(){
   const box=$("extras");
-  box.innerHTML=(S.extras.length?`<div class="extra"><label>Название</label><label>Кол-во</label><label>Цена, ₸</label><span></span></div>`:"")+
+  box.innerHTML=(S.extras.length?`<div class="extra"><label>Название</label><label>Кол-во</label><label>Цена, ${CS()}</label><span></span></div>`:"")+
     S.extras.map((x,i)=>`<div class="extra"><input value="${esc(x.name)}" data-i="${i}" data-f="name" placeholder="Название">
       <input type="number" min="0" value="${x.q}" data-i="${i}" data-f="q"><input type="number" min="0" value="${x.p}" data-i="${i}" data-f="p">
       <button class="bx" data-del="${i}" title="Убрать">&times;</button></div>`).join("");
@@ -192,7 +203,7 @@ function ensureTpl(){
 }
 function buildFromTpl(){
   ensureTpl();
-  const r=buildUniv(S.u); S.u.panels=r.parts; S.u.hw=r.hw; S.u.manual=false; S.u.built=true; SEL.part=-1;
+  const r=buildUniv(S.u); S.u.panels=r.parts; S.u.hw=r.hw; S.u.manual=false; S.u.built=true; SEL.part=-1; delete S.u.title;
   if(R3) R3.needFit=true;
   renderUniv(); calc();
 }
@@ -262,7 +273,7 @@ function panelsClick(e){
 }
 function renderHw(){
   const u=S.u, box=$("u_hw");
-  box.innerHTML=(u.hw.length?`<div class="extra"><label>Название</label><label>Кол-во</label><label>Цена, ₸</label><span></span></div>`:"")+
+  box.innerHTML=(u.hw.length?`<div class="extra"><label>Название</label><label>Кол-во</label><label>Цена, ${CS()}</label><span></span></div>`:"")+
     u.hw.map((h,i)=>`<div class="extra"><input value="${esc(h.name)}" data-i="${i}" data-f="name"><input type="number" value="${h.q}" data-i="${i}" data-f="q">
       <input type="number" value="${hwPrice(h)}" data-i="${i}" data-f="p" title="${h.id&&h.p===undefined?"Цена из прайса. Если изменить здесь - будет своя цена только для этого изделия":""}">
       <button class="bx" data-del="${i}">&times;</button></div>`).join("");
@@ -297,9 +308,10 @@ function currentResult(){
   if(S.mode==="kupe"){ const r=genKupe(S.kupe); r.type="kupe"; r.install="install"; return r; }
   if(S.mode==="kitchen"){ const r=genKitchen(S.kit); r.type="kitchen"; r.install="kinstall"; return r; }
   const u=S.u, bb=bounds(u.panels), used=[...new Set(u.panels.filter(p=>!MAT(p.mat).virt).map(p=>matName(p.mat)))];
+  const nm=(u.title||"").trim() || (u.tpl==="empty" ? "Изделие" : tplName(u.tpl));
   return {type:"univ", install:"uinstall", parts:u.panels, hw:u.hw, warns:checkParts(u.panels,{overlap:1}),
-    title:`${tplName(u.tpl)} ${bb.W}×${bb.H}×${bb.D}`, info:{bb},
-    desc:`${tplName(u.tpl)}, ${bb.W}×${bb.H}×${bb.D} мм (Ш×В×Г)\nМатериалы: ${used.join(", ")||"-"}\nФурнитура: ${u.hw.filter(h=>h.q>0&&h.id!=="umisc").map(h=>h.name.toLowerCase()).join(", ")||"-"}`};
+    title:`${nm} ${bb.W}×${bb.H}×${bb.D}`, info:{bb},
+    desc:`${nm}, ${bb.W}×${bb.H}×${bb.D} мм (Ш×В×Г)\nМатериалы: ${used.join(", ")||"-"}\nФурнитура: ${u.hw.filter(h=>h.q>0&&h.id!=="umisc").map(h=>String(h.name||"").toLowerCase()).filter(Boolean).join(", ")||"-"}`};
 }
 function calc(){
   const R0=currentResult(); CUR=R0;
@@ -308,32 +320,35 @@ function calc(){
   const rows=cost.rows.filter(r=>r[2]>0);
   S.extras.forEach(x=>{ if(x.q*x.p>0) rows.push([x.name||"Своя позиция", x.q+" шт.", x.q*x.p]); });
   const disc=clamp(+S.disc||0,0,90), prepay=clamp(+S.prepay||0,0,100), days=Math.max(1,+S.days||1);
-  const mat=rows.reduce((s,r)=>s+r[2],0), installName=hwName(R0.install), install=P[R0.install]||0;
+  // доставка и монтаж: своя сумма для этого заказа или из прайса; у пустого изделия - ноль
+  const mat=rows.reduce((s,r)=>s+r[2],0), installName=hwName(R0.install);
+  const install = mat>0 ? (S.install!=null && S.install!=="" ? Math.max(0,+S.install||0) : (P[R0.install]||0)) : 0;
   const work=mat*P.work/100, cst=mat+work+install;
-  const markup=cst*P.markup/100, beforeDisc=cst+markup, discSum=beforeDisc*disc/100;
+  const markup=(S.instNoMk ? cst-install : cst)*P.markup/100, beforeDisc=cst+markup, discSum=beforeDisc*disc/100;
   const R=Math.max(1,P.round||1);
   const total=Math.ceil((beforeDisc-discSum)/R-1e-9)*R;
   const pre=Math.min(total,Math.ceil(total*prepay/100/R-1e-9)*R);
-  R0.quote={rows,mat,work,install,installName,cost:cst,markup,disc,discSum,total,prepay,pre,days};
+  const daysKind=S.daysKind==="calendar"?"calendar":"work";
+  R0.quote={rows,mat,work,install,installName,cost:cst,markup,disc,discSum,total,prepay,pre,days,daysKind,instNoMk:!!S.instNoMk};
 
-  let h=`<tr><th>Позиция</th><th class="n">Кол-во</th><th class="n">₸</th></tr>`;
+  let h=`<tr><th>Позиция</th><th class="n">Кол-во</th><th class="n">${CS()}</th></tr>`;
   rows.forEach(r=>h+=`<tr><td>${esc(r[0])}</td><td class="n">${esc(r[1])}</td><td class="n">${fmt(r[2])}</td></tr>`);
   h+=`<tr class="sum"><td>Материалы и фурнитура</td><td></td><td class="n">${fmt(mat)}</td></tr>`;
   h+=`<tr><td>Сборка (${P.work}%)</td><td></td><td class="n">${fmt(work)}</td></tr>`;
-  h+=`<tr><td>${esc(installName)}</td><td></td><td class="n">${fmt(install)}</td></tr>`;
+  h+=`<tr><td>${esc(installName)}${S.install!=null&&S.install!==""?" (для этого заказа)":""}</td><td></td><td class="n">${fmt(install)}</td></tr>`;
   h+=`<tr class="sum"><td>Себестоимость</td><td></td><td class="n">${fmt(cst)}</td></tr>`;
-  h+=`<tr><td>Наценка (${P.markup}%)</td><td></td><td class="n">${fmt(markup)}</td></tr>`;
+  h+=`<tr><td>Наценка (${P.markup}%${S.instNoMk&&install?", без доставки и монтажа":""})</td><td></td><td class="n">${fmt(markup)}</td></tr>`;
   if(disc) h+=`<tr class="disc"><td>Скидка клиенту (${disc}%)</td><td></td><td class="n">-${fmt(discSum)}</td></tr>`;
   h+=`<tr class="sum"><td>Итого клиенту</td><td></td><td class="n">${fmt(total)}</td></tr>`;
   h+=`<tr><td>Предоплата (${prepay}%)</td><td></td><td class="n">${fmt(pre)}</td></tr>`;
   $("costs").innerHTML=h;
-  $("total").textContent=fmt(total)+" ₸"; $("mbarTotal").textContent=fmt(total)+" ₸";
-  $("totalSub").textContent=`себестоимость ${fmt(cst)} ₸ · прибыль ${fmt(total-cst)} ₸`;
+  $("total").textContent=money(total); $("mbarTotal").textContent=money(total);
+  $("totalSub").textContent=`себестоимость ${money(cst)} · прибыль ${money(total-cst)}`;
   const pm=$("pmInfo"); pm.classList.add("hide");
   if(R0.type==="kitchen"){
     updateKitchenHints(R0.info);
     const Lm=R0.info.lowRunMM/1000;
-    if(Lm>0){ pm.classList.remove("hide"); pm.textContent=`Длина кухни по низу ${Lm.toFixed(1)} п.м. Выходит ${fmt(total/Lm)} ₸ за погонный метр.`+(P.pm>0?` По вашей цене за метр (${fmt(P.pm)} ₸) было бы ${fmt(P.pm*Lm)} ₸.`:""); }
+    if(Lm>0){ pm.classList.remove("hide"); pm.textContent=`Длина кухни по низу ${Lm.toFixed(1)} п.м. Выходит ${money(total/Lm)} за погонный метр.`+(P.pm>0?` По вашей цене за метр (${money(P.pm)}) было бы ${money(P.pm*Lm)}.`:""); }
   }
   const wb=$("warns");
   if(R0.warns.length){ wb.style.display="block"; wb.innerHTML=`<b>Проверьте:</b><ul>${R0.warns.map(w=>`<li>${w}</li>`).join("")}</ul>`; } else wb.style.display="none";
@@ -341,12 +356,12 @@ function calc(){
   renderPartsCard(R0);
   const ex=S.extras.filter(x=>x.name&&x.q).map(x=>`\n- ${x.name}: ${x.q} шт.`).join("");
   lastClient=`${R0.desc}${S.decor.trim()?"\nЦвет: "+S.decor.trim():""}${ex?"\nДополнительно:"+ex:""}
-Доставка и монтаж включены
+${install>0?"Доставка и монтаж включены":"Доставка и монтаж в стоимость не входят"}
 
-Стоимость: ${fmt(total)} ₸${disc?` (со скидкой ${disc}%)`:""}
-Предоплата: ${fmt(pre)} ₸
-Срок изготовления: ${days} дн.`;
-  $("wa").href="https://wa.me/?text="+encodeURIComponent(lastClient);
+Стоимость: ${money(total)}${disc?` (со скидкой ${disc}%)`:""}
+Предоплата: ${money(pre)}
+Срок изготовления: ${days} ${daysKind==="calendar"?"календарных":"рабочих"} дн.`;
+  $("wa").href="https://wa.me/"+waDigits(clientParts().phone)+"?text="+encodeURIComponent(lastClient);
   if(SEL.part>=R0.parts.length){ SEL.part=-1; SEL.mod=null; }
   drawSketch();
   LS.set("mk2_current",S);
@@ -502,7 +517,7 @@ function drawSketch(){
     if(v==="top") drawOrtho("top",noFac);
     else drawOrtho("front", v==="in" ? (p=>!p.f) : null, ({e,fs})=>{
       if(v!=="in") return "";
-      let x=CUR.parts.find(p=>p.name==="Дно").x, t="";
+      let x=i.x0||0, t="";
       i.sw.forEach(w=>{ t+=`<text x="${x+w/2}" y="${-e.s0+fs*1.1}" text-anchor="middle" font-size="${fs*0.8}" fill="#7a7068">${Math.round(w)}</text>`; x+=w+MAT(S.kupe.body).t; });
       return t;
     });

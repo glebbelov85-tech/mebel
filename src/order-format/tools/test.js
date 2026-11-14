@@ -79,9 +79,31 @@ const test = (name, fn) => Promise.resolve().then(fn).then(() => { n++; console.
     M.setStage(o, "install", "2026-12-08");
     assert.strictEqual(o.stage, "install");
     assert.strictEqual(o.timeline.filter(t => t.stage === "install").length, 1);
-    assert.ok(M.clientText(o).includes("Стоимость: 354 000 ₸ (со скидкой 5%)"));
+    assert.ok(M.clientText(o).replace(/\u00a0/g, " ").includes("Стоимость: 354 000 ₸ (со скидкой 5%)"));
     assert.ok(M.whatsappLink(o, "Здравствуйте").startsWith("https://wa.me/77015551234?text="));
     assert.strictEqual(M.waPhone("8 (777) 123-45-67"), "77771234567");
+  });
+
+  await test("валюта и страна: рубли", () => {
+    const o = M.create({ currency: "RUB" });
+    assert.strictEqual(o.currency, "RUB");
+    assert.strictEqual(o.country, "RU");
+    assert.strictEqual(o.pricing.roundTo, 100);
+    assert.strictEqual(o.catalog.materials.ldsp16.price, 4200);
+    assert.strictEqual(M.validate(o).warnings.filter(w => w.path === "currency").length, 0);
+    const k = JSON.parse(ex("shkaf-kupe.mebel.json"));
+    k.currency = "RUB"; delete k.quote; M.recalc(k);
+    assert.strictEqual(k.quote.currency, "RUB");
+    assert.ok(M.clientText(k).includes("\u00a0₽"));
+    assert.strictEqual(M.money(354000, "RUB"), "354 000\u00a0₽");
+    assert.strictEqual(M.moneyWords(121000, "RUB"), "сто двадцать одна тысяча рублей");
+    assert.strictEqual(M.moneyWords(2001, "RUB"), "две тысячи один рубль");
+    assert.strictEqual(M.moneyWords(352000, "KZT"), "триста пятьдесят две тысячи тенге");
+    assert.strictEqual(M.moneyWords(3, "RUB"), "три рубля");
+    assert.strictEqual(M.validate(Object.assign(M.create(), { currency: "XYZ" })).warnings.some(w => w.path === "currency"), true);
+    assert.strictEqual(M.orderCountry({ currency: "RUB" }), "RU");
+    assert.strictEqual(M.orderCountry({ currency: "KZT" }), "KZ");
+    assert.strictEqual(M.create({ currency: "USD" }).catalog.materials.ldsp16.price, 42);
   });
 
   await test("проверка ловит ошибки", () => {
