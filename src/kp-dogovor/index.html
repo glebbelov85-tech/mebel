@@ -156,11 +156,11 @@
       <summary>Клиент</summary>
       <div class="body">
         <div class="grid">
-          <label class="f w2">ФИО<input id="f_cname" data-b="o.client.name" placeholder="Как в удостоверении - для договора"></label>
-          <label class="f">Телефон (WhatsApp)<input id="f_cphone" data-b="o.client.phone" inputmode="tel" placeholder="+7 7__ ___ __ __"></label>
-          <label class="f">ИИН<input id="f_ciin" data-b="o.client.iin" inputmode="numeric" placeholder="для договора"></label>
+          <label class="f w2">ФИО<input id="f_cname" data-b="o.client.name" data-ph="namePh"></label>
+          <label class="f">Телефон (WhatsApp)<input id="f_cphone" data-b="o.client.phone" inputmode="tel" data-ph="phonePh"></label>
+          <label class="f" data-cc="KZ">ИИН<input id="f_ciin" data-b="o.client.iin" inputmode="numeric" placeholder="для договора"></label>
           <label class="f w2">Адрес установки<input id="f_caddr" data-b="o.client.address" placeholder="Город, улица, дом, квартира"></label>
-          <label class="f w2">Удостоверение личности<input id="f_cdoc" data-b="o.client.idDoc" placeholder="№, кем и когда выдано - для договора"></label>
+          <label class="f w2"><span data-lbl="clientDoc">Удостоверение личности</span><input id="f_cdoc" data-b="o.client.idDoc" data-ph="clientDocPh"></label>
         </div>
       </div>
     </details>
@@ -180,10 +180,10 @@
       <div class="body">
         <div class="grid3">
           <label class="f">Скидка, %<input id="f_dpct" type="number" min="0" max="90" step="0.5" data-b="o.discountPct" data-num></label>
-          <label class="f">Скидка, ₸<input id="f_dsum" type="number" min="0" step="1000" data-b="o.discountSum" data-num></label>
-          <span></span>
+          <label class="f"><span>Скидка, <span class="cs">₸</span></span><input id="f_dsum" type="number" min="0" step="1000" data-b="o.discountSum" data-num data-step></label>
+          <label class="f">Валюта<select id="f_cur" data-b="o.currency"></select></label>
           <label class="f">Предоплата, %<input id="f_ppct" type="number" min="0" max="100" data-b="o.prepayPct" data-num></label>
-          <label class="f">Предоплата, ₸<input id="f_psum" type="number" min="0" step="1000" data-b="o.prepaySum" data-num></label>
+          <label class="f"><span>Предоплата, <span class="cs">₸</span></span><input id="f_psum" type="number" min="0" step="1000" data-b="o.prepaySum" data-num data-step></label>
           <span></span>
           <label class="f">Срок, дней<input id="f_days" type="number" min="1" data-b="o.days" data-num></label>
           <label class="f">Какие дни<select id="f_daykind" data-b="o.dayKind"><option>рабочих</option><option>календарных</option></select></label>
@@ -200,6 +200,10 @@
       <summary>Моя компания <small id="coState"></small></summary>
       <div class="body">
         <p class="hint">Заполняется один раз и запоминается в этом браузере. Пока поля пустые, в документах остаются места под заполнение.</p>
+        <div class="grid">
+          <label class="f">Страна<select id="c_country" data-b="c.country"><option value="KZ">Казахстан</option><option value="RU">Россия</option></select></label>
+          <p class="hint" style="align-self:end">От страны зависят текст договора, реквизиты и валюта по умолчанию. Настройка общая с калькулятором и учётом заказов.</p>
+        </div>
         <div class="thumb">
           <img id="logoImg" class="hide" alt="Логотип">
           <div class="row">
@@ -214,8 +218,8 @@
         </div>
         <div class="grid">
           <label class="f">Название для клиентов<input id="c_brand" data-b="c.brand" placeholder='Напр. "Мебель на заказ"'></label>
-          <label class="f">Город<input id="c_city" data-b="c.city" placeholder="Напр. Алматы"></label>
-          <label class="f">Телефон<input id="c_phone" data-b="c.phone" inputmode="tel"></label>
+          <label class="f">Город<input id="c_city" data-b="c.city" data-ph="cityPh"></label>
+          <label class="f">Телефон<input id="c_phone" data-b="c.phone" inputmode="tel" data-ph="phonePh"></label>
           <label class="f">Кто подписывает КП<input id="c_manager" data-b="c.manager" placeholder="Имя дизайнера"></label>
           <label class="f">E-mail<input id="c_email" data-b="c.email"></label>
           <label class="f">Сайт или Instagram<input id="c_site" data-b="c.site"></label>
@@ -223,16 +227,21 @@
         </div>
         <p class="hint"><b>Для договора</b></p>
         <div class="grid">
-          <label class="f w2">Полное название исполнителя<input id="c_legal" data-b="c.legal" placeholder='ИП "..." или ТОО "..."'></label>
+          <label class="f w2">Полное название исполнителя<input id="c_legal" data-b="c.legal" data-ph="legalPh"></label>
           <label class="f">Руководитель (ФИО)<input id="c_head" data-b="c.head" placeholder="в родительном падеже: Иванова Ивана Ивановича"></label>
-          <label class="f">Действует на основании<input id="c_basis" data-b="c.basis" placeholder="Устава / талона о регистрации ИП"></label>
+          <label class="f">Действует на основании<input id="c_basis" data-b="c.basis" data-ph="basisPh"></label>
           <label class="f w2">Подпись руководителя (фамилия и инициалы)<input id="c_headsign" data-b="c.headSign" placeholder="Иванов И.И."></label>
-          <label class="f">БИН или ИИН<input id="c_bin" data-b="c.bin" inputmode="numeric"></label>
-          <label class="f">НДС<input id="c_vat" data-b="c.vat" placeholder="без НДС"></label>
+          <label class="f" data-cc="KZ">БИН или ИИН<input id="c_bin" data-b="c.bin" inputmode="numeric"></label>
+          <label class="f" data-cc="RU">ИНН<input id="c_inn" data-b="c.inn" inputmode="numeric" placeholder="10 цифр у ООО, 12 у ИП"></label>
+          <label class="f" data-cc="RU">КПП (только у ООО)<input id="c_kpp" data-b="c.kpp" inputmode="numeric"></label>
+          <label class="f" data-cc="RU">ОГРН или ОГРНИП<input id="c_ogrn" data-b="c.ogrn" inputmode="numeric"></label>
+          <label class="f">НДС<input id="c_vat" data-b="c.vat" data-ph="vatPh"></label>
           <label class="f w2">Банк<input id="c_bank" data-b="c.bank"></label>
-          <label class="f w2">ИИК (счёт)<input id="c_iik" data-b="c.iik" placeholder="KZ__ ____ ____ ____ ____"></label>
+          <label class="f w2" data-cc="KZ">ИИК (счёт)<input id="c_iik" data-b="c.iik" placeholder="KZ__ ____ ____ ____ ____"></label>
+          <label class="f w2" data-cc="RU">Расчётный счёт<input id="c_rs" data-b="c.rs" inputmode="numeric" placeholder="20 цифр"></label>
+          <label class="f" data-cc="RU">Корр. счёт<input id="c_ks" data-b="c.ks" inputmode="numeric" placeholder="20 цифр"></label>
           <label class="f">БИК<input id="c_bik" data-b="c.bik"></label>
-          <label class="f">Кбе<input id="c_kbe" data-b="c.kbe" placeholder="19 - ИП, 17 - ТОО"></label>
+          <label class="f" data-cc="KZ">Кбе<input id="c_kbe" data-b="c.kbe" placeholder="19 - ИП, 17 - ТОО"></label>
         </div>
         <div class="row"><button class="btn small ghost" id="coDemo">Заполнить примером, чтобы посмотреть вид</button></div>
       </div>
@@ -243,18 +252,20 @@
       <div class="body">
         <div class="grid3">
           <label class="f">Монтаж после готовности, раб. дней<input id="k_inst" type="number" min="1" data-b="o.installDays" data-num></label>
-          <label class="f">Неустойка, % в день<input id="k_pen" data-b="o.contract.penaltyPct"></label>
+          <label class="f">Неустойка исполнителя, % в день<input id="k_pen" data-b="o.contract.penaltyPct"></label>
           <label class="f">Не более, %<input id="k_cap" type="number" min="0" data-b="o.contract.penaltyCap" data-num></label>
+          <label class="f">Неустойка заказчика, % в день<input id="k_cpen" data-b="o.contract.clientPenaltyPct"></label>
+          <label class="f">Не более, %<input id="k_ccap" type="number" min="0" data-b="o.contract.clientPenaltyCap" data-num></label>
           <label class="f">Устранение замечаний, раб. дней<input id="k_fix" type="number" min="1" data-b="o.contract.fixDays" data-num></label>
           <label class="f w2" style="grid-column:span 2">Когда оплачивается остаток<input id="k_rest" data-b="o.restWhen"></label>
         </div>
         <label class="f">Текст договора
-          <textarea id="k_tpl" data-b="o.contract.template" style="min-height:320px;font-size:13px"></textarea>
+          <textarea id="k_tpl" style="min-height:320px;font-size:13px"></textarea>
         </label>
         <p class="hint">Строка с "##" в начале - заголовок раздела. Каждый абзац - отдельный пункт, номера ставятся сами. Строка с "-" в начале - пункт списка. Слова в фигурных скобках подставляются из заказа - нажмите, чтобы вставить:</p>
         <div class="chips" id="chips"></div>
         <div class="row"><button class="btn small ghost" id="tplReset">Вернуть стандартный текст</button></div>
-        <p class="notice">Это типовой шаблон договора бытового подряда для Казахстана. Перед тем как подписывать с клиентами, покажите его юристу: размер неустойки и гарантийные условия лучше сверить с действующим законом о защите прав потребителей.</p>
+        <p class="notice" id="tplNote"></p>
       </div>
     </details>
   </div>
@@ -285,6 +296,7 @@ function toast(t) { const e = $("toast"); e.textContent = t; e.classList.add("on
 // ---------- состояние ----------
 let kind = "kp";
 let company = Object.assign({}, KP.DEFAULT_COMPANY, LS.get("kpdoc_company", {}));
+if (!KP.COUNTRY[company.country]) company.country = KP.countryOf(null);   // страна из общей настройки сайта (или по часовому поясу)
 let order = null;
 let lastBuf = null, renderSeq = 0, focusItem = 0;
 
@@ -294,6 +306,8 @@ function mergeOrder(saved) {
   Object.assign(o, saved);
   o.client = Object.assign(KP.newOrder().client, saved.client || {});
   o.contract = Object.assign(KP.newOrder().contract, saved.contract || {});
+  if (KP.isStdTemplate(o.contract.template)) o.contract.template = "";   // стандартный текст - берётся по стране
+  if (!saved.currency) o.currency = "KZT";                               // сохранено до ноября 2026 - всё было в тенге
   if (!Array.isArray(o.items) || !o.items.length) o.items = KP.newOrder().items;
   if (!Array.isArray(o.services)) o.services = [];
   return o;
@@ -379,8 +393,16 @@ const DEMO = {
     discountPct: 0, prepayPct: 50, days: 14, warrantyMonths: 12
   })
 };
+// Пример для России: свои имена, город и цены в рублях.
+const DEMO_RU = {
+  kitchen: { client: { name: "Смирнова Анна Сергеевна", phone: "+7 916 555-01-23", address: "г. Москва, ул. Примерная, д. 10, кв. 24" }, price: 245000 },
+  kupe: { client: { name: "Кузнецов Алексей Петрович", phone: "+7 921 555-04-56", address: "г. Санкт-Петербург, пр. Примерный, д. 5, кв. 81" }, price: 89000 }
+};
 async function loadDemo(name) {
-  const o = KP.normalize(DEMO[name]());
+  const d = DEMO[name]();
+  if (KP.countryOf(company) === "RU") { d.client = DEMO_RU[name].client; d.items[0].price = DEMO_RU[name].price; d.currency = "RUB"; }
+  else d.currency = "KZT";
+  const o = KP.normalize(d);
   o.number = order && order.number ? order.number : nextNumber();
   await fixImages(o);
   o.discountSum = KP.calcDiscount(o); o.prepaySum = KP.calcPrepay(o);
@@ -397,8 +419,27 @@ function fillForm() {
     if (el.type === "checkbox") el.checked = v !== false;
     else if (document.activeElement !== el) el.value = v == null ? "" : v;
   });
-  renderItems(); renderSvcs(); renderLogo(); renderSwatches();
+  renderItems(); renderSvcs(); renderLogo(); renderSwatches(); renderCountry();
 }
+// Подписи, поля и подсказки по стране исполнителя и валюте заказа.
+function renderCountry() {
+  const cc = KP.countryOf(company), CI = KP.COUNTRY[cc], ci = KP.curInfo(order.currency);
+  document.querySelectorAll("[data-cc]").forEach(el => el.classList.toggle("hide", el.dataset.cc !== cc));
+  document.querySelectorAll("[data-ph]").forEach(el => { el.placeholder = CI[el.dataset.ph] || ""; });
+  document.querySelectorAll("[data-lbl]").forEach(el => { el.textContent = CI[el.dataset.lbl] || ""; });
+  document.querySelectorAll(".cs").forEach(el => { el.textContent = ci.sign; });
+  document.querySelectorAll("[data-step]").forEach(el => { el.step = ci.roundTo || 1; });
+  const sel = $("f_cur");
+  const list = window.MebelOrder ? Object.values(MebelOrder.CURRENCIES) : [ci];
+  if (!list.some(c => c.code === ci.code)) list.push(ci);
+  sel.innerHTML = list.map(c => `<option value="${c.code}" ${c.code === ci.code ? "selected" : ""}>${esc(c.name)}, ${esc(c.sign)}</option>`).join("");
+  const t = $("k_tpl"); if (document.activeElement !== t) t.value = KP.templateFor(order, company);
+  const std = KP.isStdTemplate(order.contract.template);
+  $("tplNote").textContent = (std ? "" : "Текст договора изменён вами - он одинаков для любой страны. Чтобы взять стандартный текст для страны " + CI.name + ", нажмите \"Вернуть стандартный текст\". ") +
+    (cc === "RU" ? "Это типовой шаблон договора бытового подряда по законам России (ГК РФ, Закон \"О защите прав потребителей\"). Неустойка исполнителя 3% в день - по закону, меньше в договоре с покупателем-гражданином поставить нельзя. Перед тем как подписывать с клиентами, покажите текст юристу."
+      : "Это типовой шаблон договора бытового подряда для Казахстана. Перед тем как подписывать с клиентами, покажите его юристу: размер неустойки и гарантийные условия лучше сверить с действующим законом о защите прав потребителей.");
+}
+$("k_tpl").addEventListener("input", e => { const v = e.target.value; order.contract.template = v === KP.TEMPLATES[KP.countryOf(company)] ? "" : v; changed(); });
 function syncMoney(src) {
   const sub = KP.totals(Object.assign({}, order, { discountSum: 0 })).subtotal;
   if (src === "o.discountSum") order.discountPct = sub ? Math.round(order.discountSum / sub * 1000) / 10 : 0;
@@ -411,10 +452,25 @@ document.addEventListener("input", e => {
   const el = e.target, b = el.dataset && el.dataset.b; if (!b) return;
   let v = el.type === "checkbox" ? el.checked : el.value;
   if ("num" in el.dataset) v = v === "" ? 0 : +v;
+  const prevCountry = company.country;
   setPath(rootOf(b), b.slice(2), v);
   if (/^o\.(discount|prepay)/.test(b)) syncMoney(b);
+  if (b === "c.country") onCountry(prevCountry);
+  if (b === "o.currency") { renderCountry(); syncMoney("items"); }
   changed();
 });
+// Страна исполнителя сменилась: общая настройка сайта, валюта заказа (если была валютой прежней страны), условия неустойки.
+function onCountry(prev) {
+  const MO = window.MebelOrder, cc = company.country;
+  if (MO) {
+    const was = MO.countryInfo(prev).currency, now = MO.countryInfo(cc).currency;
+    MO.setRegion({ country: cc, currency: now });
+    if (order.currency === was) { order.currency = now; syncMoney("items"); }
+  }
+  const dPrev = KP.CONTRACT_DEFAULTS[prev], dNow = KP.CONTRACT_DEFAULTS[cc];
+  if (dPrev && dNow) for (const k in dNow) if (String(order.contract[k]) === String(dPrev[k])) order.contract[k] = dNow[k];
+  fillForm();
+}
 
 function renderItems() {
   const box = $("items");
@@ -424,7 +480,7 @@ function renderItems() {
       <div class="grid">
         <label class="f w2">Название<input id="it_t${i}" data-it="title" value="${esc(it.title)}" placeholder="Напр. Кухня угловая"></label>
         <label class="f">Размеры<input id="it_s${i}" data-it="size" value="${esc(it.size)}" placeholder="2400×2400×600 мм"></label>
-        <label class="f">Цена, ₸<input id="it_p${i}" data-it="price" type="number" min="0" step="1000" value="${+it.price || 0}"></label>
+        <label class="f">Цена, ${esc(KP.curInfo(order.currency).sign)}<input id="it_p${i}" data-it="price" type="number" min="0" step="${KP.curInfo(order.currency).roundTo || 1}" value="${+it.price || 0}"></label>
       </div>
       <label class="f">Описание для клиента<textarea id="it_d${i}" data-it="desc" placeholder="">${esc(it.desc)}</textarea></label>
       <p class="hint">Строка вида "Фасады: МДФ эмаль" станет строкой таблицы. Строка с "-" в начале - пунктом списка.</p>
@@ -468,7 +524,7 @@ function renderSvcs() {
   $("svcs").innerHTML = order.services.map((s, i) => `
     <div class="svc" data-i="${i}">
       <label class="f">Услуга<input id="sv_n${i}" data-sv="name" value="${esc(s.name)}" placeholder="Доставка и монтаж"></label>
-      <label class="f">Цена, ₸ (0 - включено)<input id="sv_p${i}" data-sv="price" type="number" min="0" step="1000" value="${+s.price || 0}"></label>
+      <label class="f">Цена, ${esc(KP.curInfo(order.currency).sign)} (0 - включено)<input id="sv_p${i}" data-sv="price" type="number" min="0" step="${KP.curInfo(order.currency).roundTo || 1}" value="${+s.price || 0}"></label>
       <button class="x" data-delsv="${i}" title="Удалить услугу" aria-label="Удалить услугу">×</button>
     </div>`).join("");
 }
@@ -496,13 +552,19 @@ $("logoFile").addEventListener("change", async e => {
 });
 $("logoDel").onclick = () => { company.logo = ""; renderLogo(); changed(); };
 $("coDemo").onclick = () => {
+  if (KP.countryOf(company) === "RU") {
+    Object.assign(company, { brand: "Пример Мебель", city: "Москва", phone: "+7 900 000-00-00", manager: "Имя дизайнера", email: "", site: "primer-mebel.ru", address: "г. Москва, ул. Примерная, д. 1",
+      legal: "ИП Примеров Пример Примерович", head: "Примерова Примера Примеровича", headSign: "Примеров П.П.", basis: "листа записи ЕГРИП", inn: "000000000000", kpp: "", ogrn: "000000000000000",
+      bank: 'АО "Пример Банк"', rs: "40802810000000000000", ks: "30101810000000000000", bik: "044500000", vat: "без НДС" });
+    fillForm(); changed(); toast("Это данные для примера - замените их своими"); return;
+  }
   Object.assign(company, { brand: "Пример Мебель", city: "Алматы", phone: "+7 700 000 00 00", manager: "Имя дизайнера", email: "", site: "@primer.mebel", address: "г. Алматы, ул. Примерная, 1",
     legal: 'ИП "Пример Мебель"', head: "Примерова Примера Примеровича", headSign: "Примеров П.П.", basis: "талона о регистрации ИП", bin: "000000000000", bank: 'АО "Пример Банк"', iik: "KZ00 0000 0000 0000 0000", bik: "PRIMKZKA", kbe: "19", vat: "без НДС" });
   fillForm(); changed(); toast("Это данные для примера - замените их своими");
 };
 
 // договор
-const CHIPS = ["номер", "дата", "город", "исполнитель", "руководитель", "основание", "заказчик", "адрес", "цена", "цена_прописью", "ндс", "предоплата", "предоплата_проц", "остаток", "остаток_когда", "срок", "дни", "срок_монтажа", "гарантия", "пеня", "пеня_лимит", "срок_устранения"];
+const CHIPS = ["номер", "дата", "город", "исполнитель", "руководитель", "основание", "заказчик", "адрес", "цена", "цена_прописью", "валюта_цены", "ндс", "предоплата", "предоплата_проц", "остаток", "остаток_когда", "срок", "дни", "срок_монтажа", "гарантия", "пеня", "пеня_лимит", "пеня_заказчика", "пеня_заказчика_лимит", "срок_устранения"];
 $("chips").innerHTML = CHIPS.map(c => `<button class="chip" data-chip="${c}">{${c}}</button>`).join("");
 $("chips").addEventListener("click", e => {
   const b = e.target.closest("[data-chip]"); if (!b) return;
@@ -511,7 +573,7 @@ $("chips").addEventListener("click", e => {
   order.contract.template = t.value; changed();
 });
 $("tplReset").onclick = function () {
-  if (this.dataset.sure) { order.contract.template = KP.CONTRACT_TEMPLATE; $("k_tpl").value = KP.CONTRACT_TEMPLATE; delete this.dataset.sure; this.textContent = "Вернуть стандартный текст"; changed(); toast("Стандартный текст возвращён"); }
+  if (this.dataset.sure) { order.contract.template = ""; $("k_tpl").value = KP.templateFor(order, company); renderCountry(); delete this.dataset.sure; this.textContent = "Вернуть стандартный текст"; changed(); toast("Стандартный текст возвращён"); }
   else { this.dataset.sure = "1"; this.textContent = "Нажмите ещё раз - ваши правки текста пропадут"; setTimeout(() => { delete this.dataset.sure; this.textContent = "Вернуть стандартный текст"; }, 4000); }
 };
 
@@ -541,7 +603,7 @@ $("doImport").onclick = () => doImport($("importText").value);
 $("importFile").addEventListener("change", async e => { const f = e.target.files[0]; if (!f) return; doImport(await f.text()); e.target.value = ""; });
 $("demoKitchen").onclick = () => loadDemo("kitchen");
 $("demoKupe").onclick = () => loadDemo("kupe");
-$("newOrder").onclick = () => { const o = KP.newOrder(); if (order) o.contract = order.contract; setOrder(o, "новый"); };
+$("newOrder").onclick = () => { const o = KP.newOrder(); if (order) o.contract = order.contract; o.currency = window.MebelOrder ? MebelOrder.countryInfo(KP.countryOf(company)).currency : o.currency; setOrder(o, "новый"); };
 
 // ---------- документ и просмотр ----------
 pdfMake.vfs = window.KP_FONTS;
@@ -554,14 +616,14 @@ function fileName() {
 }
 function updateSide() {
   const t = KP.totals(order);
-  $("sum").innerHTML = `<span>Сумма</span><span>${KP.money(t.subtotal)}</span>` + (t.discount ? `<span>Скидка</span><span>- ${KP.money(t.discount)}</span>` : "") + `<b>Итого клиенту</b><b>${KP.money(t.total)}</b><span>Предоплата</span><span>${KP.money(t.prepay)}</span><span>Остаток</span><span>${KP.money(t.rest)}</span>`;
+  $("sum").innerHTML = `<span>Сумма</span><span>${KP.money(t.subtotal, order.currency)}</span>` + (t.discount ? `<span>Скидка</span><span>- ${KP.money(t.discount, order.currency)}</span>` : "") + `<b>Итого клиенту</b><b>${KP.money(t.total, order.currency)}</b><span>Предоплата</span><span>${KP.money(t.prepay, order.currency)}</span><span>Остаток</span><span>${KP.money(t.rest, order.currency)}</span>`;
   const miss = KP.missing(order, company, kind === "kp" ? "kp" : "contract");
   $("missing").innerHTML = miss.length ? `<span class="notice" style="padding:4px 10px">Не заполнено: ${esc(miss.slice(0, 5).join(", "))}${miss.length > 5 ? " и ещё " + (miss.length - 5) : ""}</span>` : `<span class="okline" style="padding:4px 10px">Все нужные поля заполнены</span>`;
   const coMiss = KP.missing(order, company, "contract").filter(x => !/клиент|цена|номер|установки/.test(x)).length;
   $("coState").textContent = coMiss ? "- не заполнено: " + coMiss : "- заполнено";
   const digits = (order.client.phone || "").replace(/\D/g, "").replace(/^8(\d{10})$/, "7$1");
   const hello = (order.client.name || "").trim().split(/\s+/).slice(1, 2)[0] || (order.client.name || "").trim();
-  const msg = `Здравствуйте${hello ? ", " + hello : ""}! Отправляю ${kind === "kp" ? "коммерческое предложение" : "договор"} по вашему заказу${order.items[0] && order.items[0].title ? ": " + order.items[0].title.toLowerCase() : ""}. Стоимость - ${KP.money(t.total).replace(/ /g, " ")}, срок изготовления - ${order.days} дн. Файл прикрепляю следующим сообщением.`;
+  const msg = `Здравствуйте${hello ? ", " + hello : ""}! Отправляю ${kind === "kp" ? "коммерческое предложение" : "договор"} по вашему заказу${order.items[0] && order.items[0].title ? ": " + order.items[0].title.toLowerCase() : ""}. Стоимость - ${KP.money(t.total, order.currency).replace(/ /g, " ")}, срок изготовления - ${order.days} дн. Файл прикрепляю следующим сообщением.`;
   $("wa").href = "https://wa.me/" + digits + "?text=" + encodeURIComponent(msg);
 }
 let timer = 0;

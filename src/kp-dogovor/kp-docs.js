@@ -9,7 +9,28 @@
 
   // ---------- форматирование ----------
   KP.num = n => String(Math.round(+n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
-  KP.money = n => KP.num(n) + NBSP + "₸";
+  // Валюта: справочник в общем модуле заказа (MebelOrder). Без него - тенге, как раньше.
+  const MO = () => root.MebelOrder;
+  KP.curInfo = c => (MO() ? MO().currencyInfo(c || "KZT") : { code: "KZT", sign: "₸", forms: ["тенге", "тенге", "тенге"], roundTo: 1000 });
+  KP.money = (n, cur) => KP.num(n) + NBSP + KP.curInfo(cur).sign;
+  KP.curWord = (n, cur) => KP.plural(Math.floor(Math.abs(+n || 0)), ...KP.curInfo(cur).forms);
+  KP.region = () => (MO() ? MO().region() : { country: "KZ", currency: "KZT" });
+  // Страна исполнителя - от неё шаблон договора и реквизиты.
+  KP.COUNTRY = {
+    KZ: { name: "Казахстан", taxId: "БИН/ИИН", clientId: "ИИН", clientDoc: "Удостоверение личности", clientDocPh: "№, кем и когда выдано - для договора", account: "ИИК",
+      legalPh: 'ИП "..." или ТОО "..."', basisPh: "Устава / талона о регистрации ИП", vatPh: "без НДС или в т.ч. НДС 16%", phonePh: "+7 7__ ___ __ __", cityPh: "Напр. Алматы", namePh: "Как в удостоверении - для договора" },
+    RU: { name: "Россия", taxId: "ИНН", clientId: "", clientDoc: "Паспорт", clientDocPh: "серия, номер, кем и когда выдан - для договора", account: "Р/с",
+      legalPh: 'ИП Иванов Иван Иванович или ООО "..."', basisPh: "Устава / листа записи ЕГРИП", vatPh: "без НДС или в т.ч. НДС 22%", phonePh: "+7 9__ ___ __ __", cityPh: "Напр. Москва", namePh: "Как в паспорте - для договора" }
+  };
+  KP.countryOf = co => (co && KP.COUNTRY[co.country] ? co.country : (KP.region().country in KP.COUNTRY ? KP.region().country : "KZ"));
+  // НДС: "без НДС" как есть; "в т.ч. НДС 22%" - с суммой налога внутри цены.
+  KP.vatText = function (total, vat, cur) {
+    const v = String(vat || "").trim(); if (!v) return "";
+    const m = /(\d+(?:[.,]\d+)?)\s*%/.exec(v);
+    if (!m || /без/i.test(v)) return v;
+    const r = +m[1].replace(",", "."), tax = Math.floor(total * r / (100 + r));
+    return "в том числе НДС " + m[1] + "% - " + KP.num(tax) + NBSP + KP.curInfo(cur).sign;
+  };
 
   KP.words = function (n) {
     n = Math.round(+n || 0);
@@ -47,7 +68,8 @@
   // ---------- значения по умолчанию ----------
   KP.DEFAULT_COMPANY = {
     brand: "", legal: "", head: "", basis: "", bin: "", address: "", city: "", phone: "", email: "", site: "",
-    bank: "", iik: "", bik: "", kbe: "", manager: "", headSign: "", logo: "", accent: "#2f6f5e", vat: "без НДС"
+    bank: "", iik: "", bik: "", kbe: "", manager: "", headSign: "", logo: "", accent: "#2f6f5e", vat: "без НДС",
+    country: "", inn: "", kpp: "", ogrn: "", rs: "", ks: ""   // Россия: ИНН, КПП (у ООО), ОГРН/ОГРНИП, расчётный и корр. счёт
   };
   KP.DEFAULT_CONDITIONS = [
     "В стоимость входят доставка, подъём на этаж, сборка и установка.",
@@ -67,9 +89,9 @@
 Изделие изготавливается по индивидуальным размерам и пожеланиям Заказчика и имеет индивидуально-определённые свойства.
 
 ## Цена и порядок расчётов
-Цена Договора составляет {цена} ({цена_прописью}) тенге, {ндс}. Цена включает изготовление, материалы, фурнитуру, доставку и установку Изделия, если иное не указано в Спецификации.
-Предоплата в размере {предоплата} ({предоплата_прописью}) тенге, что составляет {предоплата_проц}% цены, вносится Заказчиком при подписании Договора.
-Оставшаяся сумма {остаток} ({остаток_прописью}) тенге оплачивается {остаток_когда}.
+Цена Договора составляет {цена} ({цена_прописью}) {валюта_цены}, {ндс}. Цена включает изготовление, материалы, фурнитуру, доставку и установку Изделия, если иное не указано в Спецификации.
+Предоплата в размере {предоплата} ({предоплата_прописью}) {валюта_предоплаты}, что составляет {предоплата_проц}% цены, вносится Заказчиком при подписании Договора.
+Оставшаяся сумма {остаток} ({остаток_прописью}) {валюта_остатка} оплачивается {остаток_когда}.
 Оплата производится наличными или переводом на счёт Исполнителя. Исполнитель выдаёт Заказчику документ, подтверждающий оплату.
 Цена является твёрдой и может быть изменена только по письменному соглашению Сторон при изменении состава заказа.
 
@@ -109,7 +131,7 @@
 
 ## Ответственность Сторон
 За нарушение срока изготовления или установки по вине Исполнителя он уплачивает Заказчику неустойку в размере {пеня}% цены Договора за каждый день просрочки, но не более {пеня_лимит}% цены Договора.
-За просрочку оплаты Заказчик уплачивает Исполнителю неустойку в размере {пеня}% просроченной суммы за каждый день просрочки, но не более {пеня_лимит}% этой суммы.
+За просрочку оплаты Заказчик уплачивает Исполнителю неустойку в размере {пеня_заказчика}% просроченной суммы за каждый день просрочки, но не более {пеня_заказчика_лимит}% этой суммы.
 Стороны освобождаются от ответственности, если неисполнение обязательств вызвано обстоятельствами непреодолимой силы, которые Сторона не могла предвидеть и предотвратить. Сторона обязана сообщить о них другой Стороне в течение 3 (трёх) рабочих дней.
 
 ## Заключительные положения
@@ -119,10 +141,80 @@
 Во всём, что не предусмотрено Договором, Стороны руководствуются Гражданским кодексом Республики Казахстан и Законом Республики Казахстан "О защите прав потребителей".
 Заказчик даёт согласие на сбор и обработку своих персональных данных в объёме, необходимом для исполнения Договора.
 Договор составлен в двух экземплярах, имеющих равную юридическую силу, по одному для каждой Стороны. Приложения: 1 - Спецификация, 2 - Эскиз.`;
+  KP.CONTRACT_TEMPLATE_RU = `{исполнитель}, именуемый в дальнейшем "Исполнитель", в лице {руководитель}, действующего на основании {основание}, с одной стороны, и {заказчик}, именуемый в дальнейшем "Заказчик", с другой стороны, вместе именуемые "Стороны", заключили настоящий Договор о нижеследующем.
+
+## Предмет договора
+Исполнитель обязуется изготовить по индивидуальному заказу Заказчика мебель (далее - Изделие), доставить и установить её, а Заказчик обязуется принять Изделие и оплатить его на условиях настоящего Договора.
+Наименование, размеры, материалы, комплектация и внешний вид Изделия определены в Спецификации (Приложение 1) и Эскизе (Приложение 2), которые являются неотъемлемой частью Договора.
+Адрес доставки и установки: {адрес}.
+Изделие изготавливается по индивидуальным размерам и пожеланиям Заказчика и имеет индивидуально-определённые свойства.
+
+## Цена и порядок расчётов
+Цена Договора составляет {цена} ({цена_прописью}) {валюта_цены}, {ндс}. Цена включает изготовление, материалы, фурнитуру, доставку и установку Изделия, если иное не указано в Спецификации.
+Предоплата в размере {предоплата} ({предоплата_прописью}) {валюта_предоплаты}, что составляет {предоплата_проц}% цены, вносится Заказчиком при подписании Договора.
+Оставшаяся сумма {остаток} ({остаток_прописью}) {валюта_остатка} оплачивается {остаток_когда}.
+Оплата производится наличными, переводом через Систему быстрых платежей (СБП) или на расчётный счёт Исполнителя. Исполнитель выдаёт Заказчику кассовый чек или иной документ, подтверждающий оплату, в соответствии с законодательством.
+Цена является твёрдой и может быть изменена только по письменному соглашению Сторон при изменении состава заказа.
+
+## Сроки
+Срок изготовления Изделия - {срок} {дни} с даты внесения предоплаты и согласования Заказчиком Эскиза и Спецификации.
+Доставка и установка производятся в течение {срок_монтажа} рабочих дней после готовности Изделия. Дату и время Стороны согласуют дополнительно.
+Сроки продлеваются на время задержки, возникшей по причинам, зависящим от Заказчика: просрочка оплаты, неготовность помещения, отсутствие доступа в помещение, изменение заказа после согласования.
+Исполнитель вправе выполнить работы досрочно, согласовав дату установки с Заказчиком.
+
+## Обязанности Сторон
+Исполнитель обязуется:
+- изготовить Изделие в соответствии со Спецификацией и Эскизом из согласованных материалов;
+- доставить и установить Изделие в согласованный срок;
+- вывезти упаковку и убрать производственный мусор после установки;
+- устранить недостатки, возникшие по его вине, в срок, указанный в разделе о приёмке.
+Заказчик обязуется:
+- оплатить Изделие в порядке и сроки, установленные Договором;
+- к дате установки подготовить помещение: завершить отделочные работы, освободить место установки, обеспечить доступ, освещение и электропитание;
+- до начала установки сообщить о расположении скрытой электропроводки, труб и других коммуникаций в стенах и полу;
+- принять Изделие и подписать акт приёма-передачи.
+
+## Приёмка
+Приёмка Изделия производится Заказчиком после установки и оформляется актом приёма-передачи.
+Замечания по качеству, комплектности и внешнему виду указываются в акте. Исполнитель устраняет обоснованные замечания в течение {срок_устранения} рабочих дней, если иной срок не согласован Сторонами.
+Право собственности на Изделие и риск его случайной гибели переходят к Заказчику с момента подписания акта приёма-передачи.
+
+## Гарантия
+Гарантийный срок на Изделие - {гарантия} со дня подписания акта приёма-передачи. На фурнитуру и механизмы действует гарантия их производителя, но не менее гарантийного срока на Изделие.
+В течение гарантийного срока Исполнитель бесплатно устраняет недостатки, возникшие по его вине.
+Гарантия не распространяется на недостатки, возникшие из-за нарушения правил эксплуатации, механических повреждений, воздействия воды, пара и высокой температуры, самостоятельного ремонта, переноса или переделки Изделия, а также на естественный износ.
+Не являются недостатками: незначительные отличия оттенка и текстуры материалов от образцов и изображений на экране, связанные с особенностями партии материала; зазоры и подгонка, вызванные неровностями стен, пола и потолка помещения.
+
+## Изменение заказа и отказ от договора
+Изменения в Спецификацию и Эскиз вносятся по письменному согласованию Сторон до запуска Изделия в производство. Изменения после запуска в производство возможны, если они технически выполнимы, с оплатой Заказчиком дополнительных расходов и соразмерным продлением срока.
+Заказчик вправе в любое время отказаться от Договора, оплатив Исполнителю фактически понесённые им расходы, связанные с исполнением Договора.
+
+## Ответственность Сторон
+За нарушение срока изготовления или установки по вине Исполнителя он уплачивает Заказчику неустойку в размере {пеня}% цены Договора за каждый день просрочки, но не более {пеня_лимит}% цены Договора (п. 5 ст. 28 Закона РФ "О защите прав потребителей").
+За просрочку оплаты Заказчик уплачивает Исполнителю неустойку в размере {пеня_заказчика}% просроченной суммы за каждый день просрочки, но не более {пеня_заказчика_лимит}% этой суммы.
+Стороны освобождаются от ответственности, если неисполнение обязательств вызвано обстоятельствами непреодолимой силы, которые Сторона не могла предвидеть и предотвратить. Сторона обязана сообщить о них другой Стороне в течение 3 (трёх) рабочих дней.
+
+## Заключительные положения
+Договор вступает в силу с момента подписания и действует до полного исполнения Сторонами своих обязательств.
+Согласование эскизов, размеров, материалов, дат и других рабочих вопросов может вестись в мессенджерах (WhatsApp, Telegram) и по электронной почте с номеров и адресов, указанных в реквизитах Сторон. Такая переписка признаётся Сторонами надлежащим письменным согласованием.
+Претензии рассматриваются в течение 10 (десяти) календарных дней. Если согласие не достигнуто, спор рассматривается судом в соответствии с законодательством Российской Федерации, в том числе по выбору Заказчика - по месту его жительства или пребывания.
+Во всём, что не предусмотрено Договором, Стороны руководствуются Гражданским кодексом Российской Федерации и Законом РФ "О защите прав потребителей".
+Заказчик даёт согласие на обработку своих персональных данных в объёме, необходимом для исполнения Договора, в соответствии с Федеральным законом "О персональных данных".
+Договор составлен в двух экземплярах, имеющих равную юридическую силу, по одному для каждой Стороны. Приложения: 1 - Спецификация, 2 - Эскиз.`;
+  KP.TEMPLATES = { KZ: KP.CONTRACT_TEMPLATE, RU: KP.CONTRACT_TEMPLATE_RU };
+  // Условия по умолчанию. В России неустойка исполнителя - 3% в день (п. 5 ст. 28 Закона о защите прав потребителей),
+  // меньше в договоре с потребителем поставить нельзя.
+  KP.CONTRACT_DEFAULTS = { KZ: { penaltyPct: "0,1", penaltyCap: 10, clientPenaltyPct: "0,1", clientPenaltyCap: 10 }, RU: { penaltyPct: "3", penaltyCap: 100, clientPenaltyPct: "0,1", clientPenaltyCap: 10 } };
+  // Шаблон договора: свой текст мастера или стандартный для страны (пустая строка = стандартный).
+  const djb = t => { let h = 5381; for (const c of String(t)) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0; return h; };
+  const OLD_STD = [989297516];   // стандартный текст до ноября 2026 (там слово "тенге" было вписано) - тоже считаем стандартным
+  KP.isStdTemplate = t => !t || !String(t).trim() || Object.values(KP.TEMPLATES).includes(t) || OLD_STD.includes(djb(t));
+  KP.templateFor = (o, co) => (o.contract && !KP.isStdTemplate(o.contract.template) ? o.contract.template : KP.TEMPLATES[KP.countryOf(co)]);
 
   KP.newOrder = function () {
+    const rg = KP.region();
     return {
-      number: "", date: KP.iso(new Date()), validDays: 14,
+      number: "", date: KP.iso(new Date()), validDays: 14, currency: rg.currency,
       client: { name: "", phone: "", address: "", iin: "", idDoc: "" },
       items: [{ title: "", size: "", desc: "", price: 0, image: "", imageW: 0, imageH: 0 }],
       services: [],
@@ -131,7 +223,7 @@
       days: 14, dayKind: "рабочих", installDays: 3, warrantyMonths: 12,
       showItemPrices: true,
       intro: KP.DEFAULT_INTRO, conditions: KP.DEFAULT_CONDITIONS,
-      contract: { penaltyPct: "0,1", penaltyCap: 10, fixDays: 10, template: KP.CONTRACT_TEMPLATE }
+      contract: Object.assign({ fixDays: 10, template: "" }, KP.CONTRACT_DEFAULTS[rg.country in KP.CONTRACT_DEFAULTS ? rg.country : "KZ"])
     };
   };
 
@@ -146,7 +238,7 @@
     return { subtotal, discount, total, prepay, rest: total - prepay };
   };
   KP.calcDiscount = (o) => { const s = KP.totals(Object.assign({}, o, { discountSum: 0 })).subtotal; return Math.round(s * (+o.discountPct || 0) / 100); };
-  KP.calcPrepay = (o) => { const t = KP.totals(o).total; const p = t * (+o.prepayPct || 0) / 100; return Math.min(t, Math.ceil(p / 1000) * 1000); };
+  KP.calcPrepay = (o) => { const t = KP.totals(o).total, step = KP.curInfo(o.currency).roundTo || 1; const p = t * (+o.prepayPct || 0) / 100; return Math.min(t, Math.ceil(p / step) * step); };
 
   // ---------- вход: JSON заказа или текст из калькулятора ----------
   const pick = (o, ...keys) => { for (const k of keys) { const v = k.split(".").reduce((a, p) => (a == null ? a : a[p]), o); if (v !== undefined && v !== null && v !== "") return v; } return undefined; };
@@ -164,7 +256,7 @@
     const desc = []; let total = 0, disc = 0, pre = 0, found = false;
     for (const raw of lines) {
       const l = raw.trim(); let x;
-      if ((x = /^Стоимость:\s*([\d\s ]+)/i.exec(l))) { total = toNum(x[1]); found = true; const d = /скидк\S*\s+(\d+(?:[.,]\d+)?)\s*%/i.exec(l); if (d) disc = toNum(d[1]); }
+      if ((x = /^Стоимость:\s*([\d\s ]+)/i.exec(l))) { total = toNum(x[1]); found = true; o.currency = /₽|руб/i.test(l) ? "RUB" : /₸|тг|тенге/i.test(l) ? "KZT" : o.currency; const d = /скидк\S*\s+(\d+(?:[.,]\d+)?)\s*%/i.exec(l); if (d) disc = toNum(d[1]); }
       else if ((x = /^Предоплата:\s*([\d\s ]+)/i.exec(l))) pre = toNum(x[1]);
       else if ((x = /^Срок изготовления:\s*(\d+)/i.exec(l))) o.days = +x[1];
       else if (/^Доставка и монтаж включены/i.test(l)) { /* это уже есть в условиях */ }
@@ -190,6 +282,7 @@
       if (!ord.quote || !Array.isArray(ord.quote.clientLines)) { try { MO.recalc(ord); } catch (e) { } }
     }
     const o = KP.newOrder(), q = ord.quote || {}, t = ord.terms || {}, c = ord.client || {};
+    o.currency = MO() ? MO().orderCurrency(ord) : (ord.currency || "KZT");
     o.number = String(ord.number || ord.id || "");
     if (/^\d{4}-\d{2}-\d{2}/.test(String(ord.createdAt || ""))) o.date = String(ord.createdAt).slice(0, 10);
     o.client = { name: c.name || "", phone: c.whatsapp || c.phone || "", address: c.address || "", iin: c.iin || "", idDoc: c.doc || "" };
@@ -218,7 +311,7 @@
     if (t.warrantyMonths != null) o.warrantyMonths = +t.warrantyMonths;
     if (t.validDays) o.validDays = +t.validDays;
     const s = ord.seller;
-    if (s && typeof s === "object") o._seller = { legal: s.name || "", bin: s.bin || "", address: s.address || "", phone: s.phone || "", iik: s.iban || "", bank: s.bank || "", bik: s.bik || "", headSign: s.director || "", logo: s.logo || "" };
+    if (s && typeof s === "object") o._seller = { legal: s.name || "", bin: s.bin || "", inn: s.inn || "", kpp: s.kpp || "", ogrn: s.ogrn || "", address: s.address || "", phone: s.phone || "", iik: s.iban || "", bank: s.bank || "", bik: s.bik || "", headSign: s.director || "", logo: s.logo || "" };
     return o;
   };
 
@@ -228,6 +321,7 @@
     if (Array.isArray(j)) j = { items: j };
     if (j.order && typeof j.order === "object") j = Object.assign({}, j, j.order);
     const o = KP.newOrder();
+    const jc = String(pick(j, "currency") || "").toUpperCase(); if (/^[A-Z]{3}$/.test(jc)) o.currency = jc;
     o.number = String(pick(j, "number", "no", "id", "orderId") || "");
     const d = pick(j, "date", "createdAt", "created");
     if (d && /^\d{4}-\d{2}-\d{2}/.test(String(d))) o.date = String(d).slice(0, 10);
@@ -285,21 +379,24 @@
   // ---------- подстановки ----------
   const BLANK = "____________";
   KP.vars = function (o, co) {
-    const t = KP.totals(o), b = v => (v && String(v).trim()) || BLANK;
+    const t = KP.totals(o), b = v => (v && String(v).trim()) || BLANK, cur = o.currency, ct = o.contract || {};
+    const cd = KP.CONTRACT_DEFAULTS[KP.countryOf(co)] || KP.CONTRACT_DEFAULTS.KZ;
     const wm = +o.warrantyMonths || 0;
     return {
       "номер": b(o.number), "дата": KP.dateLong(o.date), "город": b(co.city),
       "исполнитель": b(co.legal), "руководитель": b(co.head), "основание": b(co.basis),
       "заказчик": b(o.client.name), "адрес": b(o.client.address),
       "телефон_исполнителя": b(co.phone), "телефон_заказчика": b(o.client.phone),
-      "цена": KP.num(t.total), "цена_прописью": KP.words(t.total), "ндс": b(co.vat),
+      "цена": KP.num(t.total), "цена_прописью": KP.words(t.total), "ндс": b(KP.vatText(t.total, co.vat, cur)),
+      "валюта_цены": KP.curWord(t.total, cur), "валюта_предоплаты": KP.curWord(t.prepay, cur), "валюта_остатка": KP.curWord(t.rest, cur),
       "предоплата": KP.num(t.prepay), "предоплата_прописью": KP.words(t.prepay),
       "предоплата_проц": t.total ? String(Math.round(t.prepay / t.total * 100)) : "0",
       "остаток": KP.num(t.rest), "остаток_прописью": KP.words(t.rest), "остаток_когда": b(o.restWhen),
       "срок": (+o.days || 0) + " (" + KP.words(+o.days || 0) + ")", "дни": KP.plural(+o.days || 0, o.dayKind === "календарных" ? "календарный день" : "рабочий день", (o.dayKind || "рабочих") + " дня", (o.dayKind || "рабочих") + " дней"),
       "срок_монтажа": String(+o.installDays || 0),
       "гарантия": wm + " (" + KP.words(wm) + ") " + KP.plural(wm, "месяц", "месяца", "месяцев"),
-      "пеня": String(o.contract.penaltyPct), "пеня_лимит": String(o.contract.penaltyCap), "срок_устранения": String(o.contract.fixDays)
+      "пеня": String(ct.penaltyPct), "пеня_лимит": String(ct.penaltyCap), "срок_устранения": String(ct.fixDays),
+      "пеня_заказчика": String(ct.clientPenaltyPct != null ? ct.clientPenaltyPct : cd.clientPenaltyPct), "пеня_заказчика_лимит": String(ct.clientPenaltyCap != null ? ct.clientPenaltyCap : cd.clientPenaltyCap)
     };
   };
   KP.fill = (text, vars) => String(text).replace(/\{([^{}\n]+)\}/g, (m, k) => (k.trim() in vars ? vars[k.trim()] : m));
@@ -352,6 +449,7 @@
   // ---------- КП ----------
   KP.proposal = function (o, co) {
     co = Object.assign({}, KP.DEFAULT_COMPANY, co || {});
+    const M = n => KP.money(n, o.currency), CI = KP.COUNTRY[KP.countryOf(co)];
     const A = /^#[0-9a-f]{6}$/i.test(co.accent) ? co.accent : "#2f6f5e";
     const t = KP.totals(o), W = 515;
     const content = [];
@@ -376,7 +474,7 @@
     content.push({
       table: { widths: ["*", "auto"], body: [[
         { stack: [{ text: "ДЛЯ КОГО", fontSize: 7.5, color: A, bold: true, characterSpacing: 0.6, margin: [0, 0, 0, 3] }].concat(who), border: [false, false, false, false] },
-        { stack: [{ text: "СТОИМОСТЬ", fontSize: 7.5, color: A, bold: true, characterSpacing: 0.6, margin: [0, 0, 0, 2], alignment: "right" }, { text: KP.money(t.total), fontSize: 17, bold: true, alignment: "right" }], border: [false, false, false, false] }
+        { stack: [{ text: "СТОИМОСТЬ", fontSize: 7.5, color: A, bold: true, characterSpacing: 0.6, margin: [0, 0, 0, 2], alignment: "right" }, { text: M(t.total), fontSize: 17, bold: true, alignment: "right" }], border: [false, false, false, false] }
       ]] },
       layout: { fillColor: () => tint(A, 0.9), paddingLeft: () => 14, paddingRight: () => 14, paddingTop: () => 11, paddingBottom: () => 11, hLineWidth: () => 0, vLineWidth: () => 0 },
       margin: [0, 0, 0, 12]
@@ -406,21 +504,21 @@
     const body = [];
     const showRows = pr.rows.length && (pr.many || t.discount > 0);
     if (showRows) {
-      pr.rows.forEach(r => body.push([{ text: [r.name, r.sub ? { text: "  " + r.sub, color: MUTED, fontSize: 9 } : ""] }, { text: r.incl ? "включено" : KP.money(r.sum), alignment: "right", color: r.incl ? MUTED : INK, noWrap: true }]));
-      if (t.discount > 0) body.push([{ text: "Скидка" + (o.discountPct ? " " + String(o.discountPct).replace(".", ",") + "%" : ""), color: A }, { text: "-" + NBSP + KP.money(t.discount), alignment: "right", color: A, noWrap: true }]);
+      pr.rows.forEach(r => body.push([{ text: [r.name, r.sub ? { text: "  " + r.sub, color: MUTED, fontSize: 9 } : ""] }, { text: r.incl ? "включено" : M(r.sum), alignment: "right", color: r.incl ? MUTED : INK, noWrap: true }]));
+      if (t.discount > 0) body.push([{ text: "Скидка" + (o.discountPct ? " " + String(o.discountPct).replace(".", ",") + "%" : ""), color: A }, { text: "-" + NBSP + M(t.discount), alignment: "right", color: A, noWrap: true }]);
     }
     const priceBlock = [{ text: "Стоимость и оплата", fontSize: 14, bold: true, margin: [0, 18, 0, 8] }];
     if (body.length) priceBlock.push({ table: { widths: ["*", "auto"], body }, layout: Object.assign({}, hLines, { hLineWidth: (i) => (i === 0 ? 0 : 0.6), paddingRight: () => 0 }) });
     priceBlock.push({
-      table: { widths: ["*", "auto"], body: [[{ text: "Итого к оплате", bold: true, fontSize: 11.5, color: "#ffffff", margin: [0, 3, 0, 0] }, { text: KP.money(t.total), bold: true, fontSize: 15, color: "#ffffff", alignment: "right", noWrap: true }]] },
+      table: { widths: ["*", "auto"], body: [[{ text: "Итого к оплате", bold: true, fontSize: 11.5, color: "#ffffff", margin: [0, 3, 0, 0] }, { text: M(t.total), bold: true, fontSize: 15, color: "#ffffff", alignment: "right", noWrap: true }]] },
       layout: { fillColor: () => A, hLineWidth: () => 0, vLineWidth: () => 0, paddingLeft: () => 14, paddingRight: () => 14, paddingTop: () => 8, paddingBottom: () => 8 }, margin: [0, body.length ? 6 : 0, 0, 10]
     });
     const pct = t.total ? Math.round(t.prepay / t.total * 100) : 0;
     const tile = (label, big, small) => ({ stack: [{ text: label.toUpperCase(), fontSize: 7.5, color: MUTED, bold: true, characterSpacing: 0.5 }, { text: big, fontSize: 12.5, bold: true, margin: [0, 3, 0, 1] }, { text: small, fontSize: 8.5, color: MUTED }] });
     const wm = +o.warrantyMonths || 0;
     const tiles = [];
-    if (t.prepay > 0 && t.rest > 0) { tiles.push(tile("Предоплата " + pct + "%", KP.money(t.prepay), "при заключении договора")); tiles.push(tile("Остаток", KP.money(t.rest), "после установки")); }
-    else tiles.push(tile("Оплата", KP.money(t.total), t.prepay > 0 ? "при заключении договора" : "после установки"));
+    if (t.prepay > 0 && t.rest > 0) { tiles.push(tile("Предоплата " + pct + "%", M(t.prepay), "при заключении договора")); tiles.push(tile("Остаток", M(t.rest), "после установки")); }
+    else tiles.push(tile("Оплата", M(t.total), t.prepay > 0 ? "при заключении договора" : "после установки"));
     tiles.push(tile("Срок изготовления", (+o.days || 0) + NBSP + KP.plural(+o.days || 0, "день", "дня", "дней"), (o.dayKind === "календарных" ? "календарных" : "рабочих") + ", с даты предоплаты"));
     if (wm) tiles.push(tile("Гарантия", wm + NBSP + KP.plural(wm, "месяц", "месяца", "месяцев"), "на мебель и монтаж"));
     priceBlock.push({ table: { widths: tiles.map(() => "*"), body: [tiles] }, layout: { hLineWidth: () => 0, vLineWidth: (i) => (i > 0 && i < tiles.length ? 0.6 : 0), vLineColor: () => LINE, paddingLeft: (i) => (i === 0 ? 0 : 12), paddingRight: () => 8, paddingTop: () => 2, paddingBottom: () => 2 } });
@@ -432,7 +530,8 @@
     const sign = [co.manager, co.phone].filter(Boolean).join(", ");
     content.push({ stack: [{ text: "Готовы ответить на вопросы и внести изменения в проект.", margin: [0, 18, 0, 2] }, { text: sign ? "С уважением, " + sign : "С уважением, " + brand, bold: true }], unbreakable: true });
 
-    const foot = [co.legal, co.bin ? "БИН/ИИН " + co.bin : ""].filter(Boolean).join("   ·   ");
+    const taxNo = KP.countryOf(co) === "RU" ? co.inn : co.bin;
+    const foot = [co.legal, taxNo ? CI.taxId + " " + taxNo : ""].filter(Boolean).join("   ·   ");
     return {
       pageSize: "A4", pageMargins: [40, 38, 40, 48],
       info: { title: "Коммерческое предложение" + (o.number ? " № " + o.number : ""), author: brand },
@@ -458,7 +557,7 @@
 
   KP.contract = function (o, co) {
     co = Object.assign({}, KP.DEFAULT_COMPANY, co || {});
-    const v = KP.vars(o, co), t = KP.totals(o), W = 491;
+    const v = KP.vars(o, co), t = KP.totals(o), W = 491, ru = KP.countryOf(co) === "RU", CI = KP.COUNTRY[ru ? "RU" : "KZ"];
     const b = x => (x && String(x).trim()) || BLANK;
     const content = [];
     const title = "ДОГОВОР № " + v["номер"];
@@ -466,7 +565,7 @@
     content.push({ text: "на изготовление мебели по индивидуальному заказу", alignment: "center", fontSize: 10.5, margin: [0, 2, 0, 12] });
     content.push({ columns: [{ text: "г. " + v["город"] }, { text: v["дата"], alignment: "right" }], margin: [0, 0, 0, 10] });
 
-    const blocks = KP.parseTemplate(o.contract && o.contract.template || KP.CONTRACT_TEMPLATE);
+    const blocks = KP.parseTemplate(KP.templateFor(o, co));
     let secN = 0;
     blocks.forEach(bl => {
       if (bl.type === "pre") content.push({ text: KP.fill(bl.text, v), alignment: "justify", margin: [0, 0, 0, 4] });
@@ -482,9 +581,11 @@
     // реквизиты
     const kv = (k, val) => ({ text: [{ text: k + ": ", color: MUTED }, b(val)], margin: [0, 0, 0, 2] });
     const cl = o.client || {};
-    const left = [{ text: "Исполнитель", bold: true, margin: [0, 0, 0, 4] }, { text: b(co.legal), bold: true, margin: [0, 0, 0, 3] }, kv("БИН/ИИН", co.bin), kv("Адрес", co.address), kv("Банк", co.bank), kv("ИИК", co.iik), kv("БИК", co.bik), kv("Кбе", co.kbe), kv("Телефон", co.phone)];
+    const left = [{ text: "Исполнитель", bold: true, margin: [0, 0, 0, 4] }, { text: b(co.legal), bold: true, margin: [0, 0, 0, 3] }].concat(ru
+      ? [kv("ИНН", co.inn)].concat(co.kpp ? [kv("КПП", co.kpp)] : []).concat([kv(/^(ООО|АО|ПАО)/i.test(String(co.legal).trim()) ? "ОГРН" : "ОГРНИП", co.ogrn), kv("Адрес", co.address), kv("Банк", co.bank), kv("Р/с", co.rs), kv("К/с", co.ks), kv("БИК", co.bik), kv("Телефон", co.phone)])
+      : [kv("БИН/ИИН", co.bin), kv("Адрес", co.address), kv("Банк", co.bank), kv("ИИК", co.iik), kv("БИК", co.bik), kv("Кбе", co.kbe), kv("Телефон", co.phone)]);
     if (co.email) left.push(kv("E-mail", co.email));
-    const right = [{ text: "Заказчик", bold: true, margin: [0, 0, 0, 4] }, { text: b(cl.name), bold: true, margin: [0, 0, 0, 3] }, kv("ИИН", cl.iin), kv("Удостоверение личности", cl.idDoc), kv("Адрес", cl.address), kv("Телефон", cl.phone)];
+    const right = [{ text: "Заказчик", bold: true, margin: [0, 0, 0, 4] }, { text: b(cl.name), bold: true, margin: [0, 0, 0, 3] }].concat(ru ? [] : [kv("ИИН", cl.iin)]).concat([kv(CI.clientDoc, cl.idDoc), kv("Адрес", cl.address), kv("Телефон", cl.phone)]);
     const signRow = (lname, rname) => ({ columns: [{ text: "_______________ / " + (lname || "_______________") + " /", width: "*" }, { text: "_______________ / " + (rname || "_______________") + " /", width: "*" }], columnGap: 20, margin: [0, 16, 0, 0] });
     const short = n => { const p = String(n || "").trim().split(/\s+/); return p.length >= 2 && !/["«]/.test(n) ? p[0] + " " + p.slice(1).map(x => x[0] + ".").join("") : ""; };
     const mp = { columns: [{ text: "М.П.", color: MUTED, fontSize: 8, width: "*" }, { text: "", width: "*" }], margin: [0, 3, 0, 0] };
@@ -502,7 +603,7 @@
     ];
     content.push(...apHead(1, "СПЕЦИФИКАЦИЯ"));
     const th = s => ({ text: s, bold: true, fontSize: 9, color: MUTED });
-    const body = [[th("№"), th("Наименование и описание"), Object.assign(th("Цена, ₸"), { alignment: "right" })]];
+    const body = [[th("№"), th("Наименование и описание"), Object.assign(th("Цена, " + KP.curInfo(o.currency).sign), { alignment: "right" })]];
     o.items.forEach((it, i) => {
       const st = [{ text: [{ text: it.title || "Изделие", bold: true }, it.size ? { text: "   " + it.size, color: MUTED } : ""] }];
       const sp = specTable(it.desc, 88); if (sp) st.push(Object.assign(sp, { margin: [0, 4, 0, 0], fontSize: 9.5 }));
@@ -512,7 +613,7 @@
     if (t.discount > 0) body.push([{ text: "" }, { text: "Скидка" + (o.discountPct ? " " + String(o.discountPct).replace(".", ",") + "%" : "") }, { text: "-" + NBSP + KP.num(t.discount), alignment: "right", noWrap: true }]);
     body.push([{ text: "" }, { text: "Итого", bold: true }, { text: KP.num(t.total), bold: true, alignment: "right", noWrap: true }]);
     content.push({ table: { headerRows: 1, widths: [18, "*", 70], body }, layout: { hLineWidth: () => 0.6, vLineWidth: () => 0, hLineColor: () => LINE, paddingLeft: () => 0, paddingRight: () => 6, paddingTop: () => 6, paddingBottom: () => 6 } });
-    content.push({ text: "Итого: " + KP.num(t.total) + " (" + KP.words(t.total) + ") тенге, " + v["ндс"] + ".", margin: [0, 10, 0, 0] });
+    content.push({ text: "Итого: " + KP.num(t.total) + " (" + KP.words(t.total) + ") " + v["валюта_цены"] + ", " + v["ндс"] + ".", margin: [0, 10, 0, 0] });
     content.push({ text: "Заказчик подтверждает, что размеры, материалы, цвета и комплектация Изделия с ним согласованы.", margin: [0, 6, 0, 0] });
     content.push({ stack: [{ columns: [{ text: "Исполнитель", bold: true }, { text: "Заказчик", bold: true }], columnGap: 20, margin: [0, 18, 0, 0] }, signRow(co.headSign, short(cl.name))], unbreakable: true });
 
@@ -548,9 +649,13 @@
     need(o.client.name, "имя клиента");
     if (!KP.totals(o).total) m.push("цена");
     if (kind === "contract") {
-      need(o.number, "номер договора"); need(o.client.address, "адрес установки"); need(o.client.iin, "ИИН клиента");
-      need(co.legal, "название исполнителя"); need(co.head, "руководитель"); need(co.basis, "основание"); need(co.bin, "БИН/ИИН"); need(co.city, "город");
-      need(co.address, "адрес компании"); need(co.bank, "банк"); need(co.iik, "ИИК"); need(co.bik, "БИК"); need(co.phone, "телефон компании");
+      const ru = KP.countryOf(co) === "RU";
+      need(o.number, "номер договора"); need(o.client.address, "адрес установки");
+      if (ru) need(o.client.idDoc, "паспорт клиента"); else need(o.client.iin, "ИИН клиента");
+      need(co.legal, "название исполнителя"); need(co.head, "руководитель"); need(co.basis, "основание"); need(co.city, "город");
+      if (ru) { need(co.inn, "ИНН"); need(co.ogrn, "ОГРН/ОГРНИП"); need(co.rs, "расчётный счёт"); need(co.ks, "корр. счёт"); }
+      else { need(co.bin, "БИН/ИИН"); need(co.iik, "ИИК"); }
+      need(co.address, "адрес компании"); need(co.bank, "банк"); need(co.bik, "БИК"); need(co.phone, "телефон компании");
     } else {
       need(co.brand || co.legal, "название компании"); need(co.phone, "телефон компании");
     }
