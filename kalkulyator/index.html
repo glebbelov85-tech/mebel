@@ -121,6 +121,15 @@ button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-
 .mbar small{display:block;opacity:.85;font-size:11px}
 .mbar button{background:#fff;color:var(--accent);padding:8px 12px}
 @media(min-width:940px){.mbar{display:none}}
+/* телефон: маленький эскиз всегда вверху экрана, пока мастер вводит размеры */
+.mini{position:sticky;top:0;z-index:40;background:var(--card,#fffdf9);border:1px solid var(--line);border-radius:12px;box-shadow:0 4px 14px rgba(40,30,20,.12);padding:6px 8px;display:flex;flex-direction:column;gap:4px}
+.mini svg{width:100%;height:24vh;max-height:210px;display:block}
+.mini-b{display:flex;align-items:center;gap:8px;font-size:12.5px;min-width:0}
+.mini-b b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.mini-b span{font-weight:700;white-space:nowrap}
+.mini-b button{border:0;background:#e6efe9;color:var(--accent,#2f6f5e);border-radius:8px;padding:5px 9px;font-size:12.5px;font-weight:600}
+.mini.off svg{display:none}
+@media(min-width:940px){.mini{display:none}}
 /* прайс */
 .ptool{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
 .ptool input[type=search]{flex:1 1 220px;min-width:160px}
@@ -271,6 +280,10 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
   <div class="btns"><button class="b1" id="demoVoice">Описать словами</button><a class="btn wa" id="demoWa" target="_blank" rel="noopener" href="https://wa.me/?text=%D0%9E%D1%82%D0%B7%D1%8B%D0%B2%20%D0%BE%20%D0%BA%D0%B0%D0%BB%D1%8C%D0%BA%D1%83%D0%BB%D1%8F%D1%82%D0%BE%D1%80%D0%B5%20%D0%BC%D0%B5%D0%B1%D0%B5%D0%BB%D0%B8%3A%20">Написать отзыв в WhatsApp</a></div>
 </div></div>
 <main id="calcView">
+<div class="mini" id="mini">
+  <svg id="miniSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div class="mini-b"><b id="miniTitle"></b><span id="miniTotal"></span><button id="miniToggle" type="button">Свернуть</button></div>
+</div>
 <div class="col">
   <div class="card">
     <h2>Заказ</h2>
@@ -3479,6 +3492,21 @@ function drawSketch(){
   const used=[...new Set(CUR.parts.filter(p=>!MAT(p.mat).virt).map(p=>p.mat))];
   $("legend").innerHTML=used.map(m=>`<span><i style="background:${MAT(m).css}"></i>${esc(matName(m))}</span>`).join("")+
     (use3d?`<span>оси: <b style="color:#d33">X</b> <b style="color:#3a3">Y</b> <b style="color:#33d">Z</b></span>`:"");
+  drawMini(use3d);
+}
+// Маленький эскиз для телефона: копия плоского вида. Если открыт 3D - рисуем вид спереди.
+function drawMini(use3d){
+  const mini=$("mini"); if(!mini || !window.matchMedia("(max-width:939px)").matches) return;
+  const sk=$("sketch"), ms=$("miniSvg");
+  if(!mini.classList.contains("off")){
+    if(use3d){
+      const keepV=sk.getAttribute("viewBox"), keepH=sk.innerHTML;
+      if(S.mode==="kitchen") drawKitchenElev(); else drawOrtho("front",null);
+      ms.setAttribute("viewBox",sk.getAttribute("viewBox")); ms.innerHTML=sk.innerHTML;
+      if(keepV) sk.setAttribute("viewBox",keepV); sk.innerHTML=keepH;
+    } else { ms.setAttribute("viewBox",sk.getAttribute("viewBox")||"0 0 100 40"); ms.innerHTML=sk.innerHTML; }
+  }
+  $("miniTitle").textContent=CUR.title; $("miniTotal").textContent=CUR.quote?money(CUR.quote.total):"";
 }
 
 // ================= РЕЖИМЫ И СТРАНИЦЫ =================
@@ -5483,6 +5511,9 @@ function initEvents(){
   document.addEventListener("click",e=>{ const g=e.target.closest("[data-go]"); if(g) setMode(g.dataset.go); });
   $("fitAllBtn").addEventListener("click",fitAll);
   $("itemAdd").addEventListener("click",itemAdd);
+  if(LS.get("mk2_mini_off",false)){ $("mini").classList.add("off"); $("miniToggle").textContent="Эскиз"; }
+  $("miniToggle").addEventListener("click",e=>{ e.stopPropagation(); const off=$("mini").classList.toggle("off"); LS.set("mk2_mini_off",off); $("miniToggle").textContent=off?"Эскиз":"Свернуть"; drawSketch(); });
+  $("miniSvg").addEventListener("click",()=>$("sketchCard").scrollIntoView({behavior:"smooth",block:"start"}));
   $("itemsList").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; if(b.dataset.iedit) itemEdit(+b.dataset.iedit); else if(b.dataset.idel) itemDel(+b.dataset.idel); });
   $("walls").addEventListener("click",e=>{ const b=e.target.closest("[data-act]"); if(b) wallAct(...b.dataset.act.split(",")); });
   $("k_alignTall").onclick=()=>{ const c=kitCtx(S.kit); S.kit.Ht=c.Hl+c.topT+c.apronH+c.Hu; refreshBinds(); calc(); toast(`Высота пенала: ${S.kit.Ht} мм`); };

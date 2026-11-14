@@ -595,6 +595,21 @@ function drawSketch(){
   const used=[...new Set(CUR.parts.filter(p=>!MAT(p.mat).virt).map(p=>p.mat))];
   $("legend").innerHTML=used.map(m=>`<span><i style="background:${MAT(m).css}"></i>${esc(matName(m))}</span>`).join("")+
     (use3d?`<span>оси: <b style="color:#d33">X</b> <b style="color:#3a3">Y</b> <b style="color:#33d">Z</b></span>`:"");
+  drawMini(use3d);
+}
+// Маленький эскиз для телефона: копия плоского вида. Если открыт 3D - рисуем вид спереди.
+function drawMini(use3d){
+  const mini=$("mini"); if(!mini || !window.matchMedia("(max-width:939px)").matches) return;
+  const sk=$("sketch"), ms=$("miniSvg");
+  if(!mini.classList.contains("off")){
+    if(use3d){
+      const keepV=sk.getAttribute("viewBox"), keepH=sk.innerHTML;
+      if(S.mode==="kitchen") drawKitchenElev(); else drawOrtho("front",null);
+      ms.setAttribute("viewBox",sk.getAttribute("viewBox")); ms.innerHTML=sk.innerHTML;
+      if(keepV) sk.setAttribute("viewBox",keepV); sk.innerHTML=keepH;
+    } else { ms.setAttribute("viewBox",sk.getAttribute("viewBox")||"0 0 100 40"); ms.innerHTML=sk.innerHTML; }
+  }
+  $("miniTitle").textContent=CUR.title; $("miniTotal").textContent=CUR.quote?money(CUR.quote.total):"";
 }
 
 // ================= РЕЖИМЫ И СТРАНИЦЫ =================
