@@ -589,6 +589,7 @@ $("openImport").onclick = () => { $("importBox").classList.remove("hide"); $("im
 $("closeImport").onclick = () => { $("importBox").classList.add("hide"); $("importErr").classList.add("hide"); };
 async function doImport(text) {
   try {
+    if (window.kpReady) await window.kpReady;
     const o = KP.normalize(text);
     const keep = order && order.contract ? order.contract : null;
     if (keep) o.contract = keep;
@@ -692,7 +693,8 @@ $("paneForm").onclick = () => setPane("form");
 $("paneView").onclick = () => setPane("view");
 
 // ---------- старт ----------
-(async function start() {
+// заказ, переданный из другого инструмента, ждёт окончания старта, иначе пример его перезапишет
+window.kpReady = (async function start() {
   const saved = LS.get("kpdoc_order", null);
   if (saved && saved.items) setOrder(saved, "");
   else { order = KP.newOrder(); await loadDemo("kitchen"); }

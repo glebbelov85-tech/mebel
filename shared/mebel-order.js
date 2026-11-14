@@ -1,5 +1,5 @@
 /*!
- * mebel-order.js - общий формат заказа "Мебельный конструктор", версия 1.0
+ * mebel-order.js - общий формат заказа "Мебельный конструктор", версия 1.1
  *
  * Один файл без зависимостей. Работает в браузере (<script src> или вставить целиком
  * в <script> одной HTML-страницы - появится глобальный объект MebelOrder) и в Node (require).
@@ -18,6 +18,8 @@
  *   MebelOrder.bom(order)          - расход материалов, кромки, фурнитуры
  *   MebelOrder.quote(order)        - расчёт цены; recalc(order) записывает его в order.quote
  *   MebelOrder.balance(order)      - оплачено, остаток, расходы, прибыль
+ *   MebelOrder.region / setRegion  - страна и валюта мастера (одна настройка на все инструменты)
+ *   MebelOrder.money(n, "RUB")     - "354 000 ₽"; moneyWords - сумма прописью в нужной валюте
  *
  * Подробное описание - README.md рядом с этим файлом.
  */
@@ -28,7 +30,7 @@
   "use strict";
 
   var FORMAT = "mebel-order";
-  var VERSION = "1.0";
+  var VERSION = "1.1";
   var FILE_EXT = ".mebel.json";
 
   // ---------- Справочники ----------
@@ -64,14 +66,161 @@
   var MATERIAL_KINDS = { sheet: "лист", area: "м2", length: "п.м." };
   var EXTRA_KINDS = { item: "Своя позиция", delivery: "Доставка", install: "Монтаж", service: "Услуга" };
   var PAYMENT_KINDS = { prepay: "Предоплата", payment: "Оплата", refund: "Возврат" };
-  var PAYMENT_METHODS = { cash: "Наличные", kaspi: "Kaspi", card: "Карта", transfer: "Перевод на счёт", other: "Другое" };
+  var PAYMENT_METHODS = { cash: "Наличные", kaspi: "Kaspi", sbp: "СБП", card: "Карта", transfer: "Перевод на счёт", other: "Другое" };
   var EXPENSE_CATEGORIES = {
     materials: "Плитные материалы", facades: "Фасады", hardware: "Фурнитура", cutting: "Распил и кромление",
     countertop: "Столешница", delivery: "Доставка", install: "Монтаж / сборка", other: "Другое"
   };
 
+  // ---------- Страна и валюта ----------
+  // Валюта заказа - order.currency (код ISO 4217), страна - order.country (KZ, RU).
+  // Страна задаёт шаблон договора, реквизиты, способы оплаты и НДС по умолчанию; валюта - знак,
+  // слова для сумм прописью и шаг округления. Добавить валюту = добавить строку в CURRENCIES.
+  // inWord - для фраз "цены в рублях". rateKZT - сколько тенге стоит единица валюты, очень примерно: нужен только чтобы получить
+  // стартовые цены там, где нет своего набора. Настоящие цены мастер задаёт сам.
+  var CURRENCIES = {
+    KZT: { code: "KZT", sign: "₸", name: "Тенге", forms: ["тенге", "тенге", "тенге"], roundTo: 1000, inWord: "тенге", rateKZT: 1 },
+    RUB: { code: "RUB", sign: "₽", name: "Рубли", forms: ["рубль", "рубля", "рублей"], roundTo: 100, inWord: "рублях", rateKZT: 6.5 },
+    BYN: { code: "BYN", sign: "Br", name: "Белорусские рубли", forms: ["белорусский рубль", "белорусских рубля", "белорусских рублей"], roundTo: 10, inWord: "белорусских рублях", rateKZT: 170 },
+    UZS: { code: "UZS", sign: "сум", name: "Сумы", forms: ["сум", "сума", "сумов"], roundTo: 10000, inWord: "сумах", rateKZT: 0.043 },
+    KGS: { code: "KGS", sign: "сом", name: "Сомы", forms: ["сом", "сома", "сомов"], roundTo: 100, inWord: "сомах", rateKZT: 6 },
+    USD: { code: "USD", sign: "$", name: "Доллары США", forms: ["доллар США", "доллара США", "долларов США"], roundTo: 10, inWord: "долларах США", rateKZT: 520 },
+    EUR: { code: "EUR", sign: "€", name: "Евро", forms: ["евро", "евро", "евро"], roundTo: 10, inWord: "евро", rateKZT: 600 }
+  };
+  // vatPct - ставка НДС с 2026 года (РК - 16%, РФ - 22%). Многие мастера работают без НДС,
+  // поэтому в документах по умолчанию "без НДС", ставка подставляется, если мастер плательщик.
+  var COUNTRIES = {
+    KZ: {
+      code: "KZ", name: "Казахстан", currency: "KZT", vatPct: 16, phonePrefix: "7",
+      payMethods: ["cash", "kaspi", "card", "transfer", "other"],
+      law: "Республики Казахстан"
+    },
+    RU: {
+      code: "RU", name: "Россия", currency: "RUB", vatPct: 22, phonePrefix: "7",
+      payMethods: ["cash", "sbp", "card", "transfer", "other"],
+      law: "Российской Федерации"
+    }
+  };
+  var DEFAULT_COUNTRY = "KZ";
+  var REGION_KEY = "mebel-region";
+
+  function currencyInfo(code) {
+    var c = CURRENCIES[String(code || "").toUpperCase()];
+    if (c) return c;
+    var s = isStr(code) && code ? code.toUpperCase() : "KZT";
+    return CURRENCIES[s] || { code: s, sign: s, name: s, forms: [s, s, s], roundTo: 1, rateKZT: 0 };
+  }
+  function countryInfo(code) { return COUNTRIES[String(code || "").toUpperCase()] || COUNTRIES[DEFAULT_COUNTRY]; }
+  function countryOfCurrency(cur) { for (var k in COUNTRIES) if (COUNTRIES[k].currency === cur) return k; return null; }
+
+  // Страна по настройкам браузера: часовой пояс надёжнее языка (в Казахстане браузеры часто на русском).
+  function guessCountry() {
+    try {
+      var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      if (/^Asia\/(Almaty|Qyzylorda|Aqtobe|Aqtau|Oral|Atyrau|Qostanay)$/.test(tz)) return "KZ";
+      if (/^(Europe\/(Moscow|Kaliningrad|Samara|Volgograd|Saratov|Ulyanovsk|Astrakhan|Kirov)|Asia\/(Yekaterinburg|Omsk|Novosibirsk|Barnaul|Tomsk|Novokuznetsk|Krasnoyarsk|Irkutsk|Chita|Yakutsk|Khandyga|Vladivostok|Ust-Nera|Magadan|Sakhalin|Srednekolymsk|Kamchatka|Anadyr))$/.test(tz)) return "RU";
+      var lang = (typeof navigator !== "undefined" && (navigator.languages || [navigator.language]).join(",")) || "";
+      if (/\bkk\b|-KZ\b/i.test(lang)) return "KZ";
+      if (/-RU\b/i.test(lang)) return "RU";
+    } catch (e) { }
+    return DEFAULT_COUNTRY;
+  }
+  // Настройка "страна и валюта" одна на все инструменты сайта (общий localStorage).
+  // { country, currency, set } - set: true, если мастер выбрал сам, а не угадано.
+  function region() {
+    var r = null;
+    try { r = JSON.parse(localStorage.getItem(REGION_KEY) || "null"); } catch (e) { }
+    if (isObj(r) && COUNTRIES[r.country]) return { country: r.country, currency: currencyInfo(r.currency || COUNTRIES[r.country].currency).code, set: true };
+    var c = guessCountry();
+    return { country: c, currency: COUNTRIES[c].currency, set: false };
+  }
+  function setRegion(r) {
+    var cur = region(), next = { country: countryInfo(r && r.country || cur.country).code };
+    next.currency = currencyInfo(r && r.currency || (r && r.country ? COUNTRIES[next.country].currency : cur.currency)).code;
+    try { localStorage.setItem(REGION_KEY, JSON.stringify({ country: next.country, currency: next.currency, at: nowIso() })); } catch (e) { }
+    try { if (typeof window !== "undefined" && window.dispatchEvent && typeof CustomEvent === "function") window.dispatchEvent(new CustomEvent("mebel-region", { detail: next })); } catch (e) { }
+    next.set = true;
+    return next;
+  }
+  // Страна заказа: своя, иначе по валюте, иначе настройка.
+  function orderCountry(order) {
+    if (isObj(order) && COUNTRIES[order.country]) return order.country;
+    var byCur = isObj(order) && order.currency ? countryOfCurrency(order.currency) : null;
+    return byCur || region().country;
+  }
+  function orderCurrency(order) { return currencyInfo(isObj(order) && order.currency ? order.currency : region().currency).code; }
+
+  function plural(n, forms) {
+    n = Math.abs(Math.round(n)) % 100; var d = n % 10;
+    return (n > 10 && n < 20) ? forms[2] : d === 1 ? forms[0] : (d >= 2 && d <= 4) ? forms[1] : forms[2];
+  }
+  // 354 000 ₸ / 354 000 ₽ / 1 200 $ - знак после числа, через неразрывный пробел.
+  function money(n, cur) { return fmtMoney(n) + " " + currencyInfo(cur || "KZT").sign; }
+  // Число прописью (именительный падеж, мужской род, тысячи - женский).
+  function numWords(n) {
+    n = Math.floor(Math.abs(num(n)));
+    if (n === 0) return "ноль";
+    var u = ["", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять", "десять", "одиннадцать", "двенадцать", "тринадцать", "четырнадцать", "пятнадцать", "шестнадцать", "семнадцать", "восемнадцать", "девятнадцать"];
+    var t = ["", "", "двадцать", "тридцать", "сорок", "пятьдесят", "шестьдесят", "семьдесят", "восемьдесят", "девяносто"];
+    var h = ["", "сто", "двести", "триста", "четыреста", "пятьсот", "шестьсот", "семьсот", "восемьсот", "девятьсот"];
+    var g = [null, ["тысяча", "тысячи", "тысяч"], ["миллион", "миллиона", "миллионов"], ["миллиард", "миллиарда", "миллиардов"]];
+    var out = [], i = 0;
+    while (n > 0) {
+      var tri = n % 1000; n = Math.floor(n / 1000);
+      if (tri && g[i] !== undefined) {
+        var w = [h[Math.floor(tri / 100)]], r = tri % 100, fem = i === 1;
+        var one = function (k) { return fem && k === 1 ? "одна" : fem && k === 2 ? "две" : u[k]; };
+        if (r < 20) w.push(one(r)); else { w.push(t[Math.floor(r / 10)]); w.push(one(r % 10)); }
+        if (i > 0) w.push(plural(tri, g[i]));
+        out.unshift(w.filter(Boolean).join(" "));
+      }
+      i++;
+    }
+    return out.join(" ");
+  }
+  // "сто двадцать тысяч рублей" - сумма прописью с названием валюты в нужной форме.
+  function moneyWords(n, cur) { var c = currencyInfo(cur || "KZT"); return numWords(n) + " " + plural(Math.floor(Math.abs(num(n))), c.forms); }
+  // Только название валюты, согласованное с числом: 5 -> "рублей", 21 -> "рубль".
+  function currencyWord(n, cur) { return plural(Math.floor(Math.abs(num(n))), currencyInfo(cur || "KZT").forms); }
+  function roundStep(cur) { return currencyInfo(cur).roundTo || 1; }
+  // Красивое округление стартовой цены после пересчёта по курсу: 2 значащие цифры (3 для больших).
+  function niceRound(v) {
+    v = num(v); if (v <= 0) return 0;
+    var p = Math.pow(10, Math.max(0, Math.floor(Math.log10(v)) - (v >= 10000 ? 2 : 1)));
+    return Math.round(v / p) * p;
+  }
+  // Пересчёт суммы между валютами по примерному курсу (или по своему: rate = сколько "to" за 1 "from").
+  function convert(v, from, to, rate) {
+    if (from === to) return num(v);
+    var r = isNum(rate) && rate > 0 ? rate : (currencyInfo(from).rateKZT / (currencyInfo(to).rateKZT || 1));
+    return num(v) * r;
+  }
+
+  // Стартовые цены в рублях (Россия, 2026, примерно - средний сегмент). Ключи как в defaultCatalog.
+  var STARTER_RUB = {
+    materials: { ldsp16: 4200, dvp3: 700, "mdf18-film": 5000, "mdf18-plastic": 7000, "mdf18-enamel": 9500, mirror4: 2800, lacobel4: 4500, top38: 2500 },
+    edges: { pvc04: 15, pvc2: 35 },
+    hardware: { handle: 250, hinge: 350, kguide: 1500, guide: 600, lift: 2500, leg: 80, push: 250, gola: 1200, rod: 500, led: 700, ledpow: 1500, dryer: 1500, "prof-eco": 2500, "prof-std": 3500, "prof-prem": 6000, fasteners: 300 },
+    pricing: { cutPerSheet: 1200 }
+  };
+  // Стартовая цена в нужной валюте: тенге - как есть, рубли - свой набор, остальное - по примерному курсу.
+  function starterPrice(kzt, cur, rub) {
+    cur = currencyInfo(cur || "KZT").code;
+    if (cur === "KZT") return kzt;
+    if (cur === "RUB" && isNum(rub)) return rub;
+    return niceRound(convert(kzt, "KZT", cur));
+  }
+
   // Примерные цены из калькулятора. Это стартовый набор, настоящие цены задаёт мастер.
-  function defaultCatalog() {
+  // currency - в какой валюте нужны цены (по умолчанию тенге, как в версии 1.0).
+  function defaultCatalog(currency) {
+    var c = kztCatalog();
+    if (currency && currencyInfo(currency).code !== "KZT") ["materials", "edges", "hardware"].forEach(function (g) {
+      for (var id in c[g]) c[g][id].price = starterPrice(c[g][id].price, currency, STARTER_RUB[g][id]);
+    });
+    return c;
+  }
+  function kztCatalog() {
     return {
       materials: {
         ldsp16: { name: "ЛДСП 16 мм", group: "ldsp", kind: "sheet", t: 16, sheet: { w: 2800, h: 2070 }, grain: true, price: 22000, cut: true, color: "#e9d3b5" },
@@ -108,13 +257,21 @@
     };
   }
 
-  function defaultPricing() {
+  function defaultPricing(currency) {
+    var p = kztPricing();
+    if (currency && currencyInfo(currency).code !== "KZT") {
+      p.roundTo = roundStep(currency);
+      p.cutPerSheet = starterPrice(p.cutPerSheet, currency, STARTER_RUB.pricing.cutPerSheet);
+    }
+    return p;
+  }
+  function kztPricing() {
     return {
       workPct: 15,          // сборка, % от материалов
       markupPct: 30,        // наценка, % от себестоимости
       discountPct: 0,       // скидка клиенту, %
       prepayPct: 50,        // предоплата, %
-      roundTo: 1000,        // округлять итог вверх до, тенге
+      roundTo: 1000,        // округлять итог вверх до, в валюте заказа
       sheetUsagePct: 80,    // использование листа, % (остальное - отходы)
       edgeReservePct: 10,   // запас кромки, %
       cutPerSheet: 3000     // распил и кромление, за лист
@@ -153,7 +310,9 @@
   // ---------- Создание и значения по умолчанию ----------
 
   function create(init) {
-    var t = nowIso();
+    var t = nowIso(), reg = region();
+    var cur = isObj(init) && init.currency ? currencyInfo(init.currency).code : reg.currency;
+    var country = isObj(init) && COUNTRIES[init.country] ? init.country : (isObj(init) && init.currency ? (countryOfCurrency(cur) || reg.country) : reg.country);
     var o = {
       format: FORMAT,
       version: VERSION,
@@ -162,14 +321,15 @@
       title: "",
       createdAt: t,
       updatedAt: t,
-      currency: "KZT",
+      currency: cur,
+      country: country,
       units: "mm",
       stage: "lead",
       client: { name: "", phone: "", address: "" },
       products: [],
-      catalog: defaultCatalog(),
+      catalog: defaultCatalog(cur),
       extras: [],
-      pricing: defaultPricing(),
+      pricing: defaultPricing(cur),
       production: defaultProduction(),
       terms: { days: 30, daysKind: "work", warrantyMonths: 12 },
       timeline: [{ stage: "lead", done: t.slice(0, 10) }],
@@ -214,7 +374,7 @@
     if (!Array.isArray(o.products)) o.products = [];
     if (!isObj(o.catalog)) o.catalog = {};
     ["materials", "edges", "hardware"].forEach(function (k) { if (!isObj(o.catalog[k])) o.catalog[k] = {}; });
-    var dp = defaultPricing();
+    var dp = defaultPricing(o.currency);
     if (!isObj(o.pricing)) o.pricing = {};
     for (var k in dp) if (!isNum(o.pricing[k])) o.pricing[k] = dp[k];
     var dpr = defaultProduction();
@@ -440,7 +600,7 @@
         role: part.role || "",
         product: { id: product.id, name: product.name || "" },
         module: e.module ? { id: e.module.id, name: e.module.name || "" } : null,
-        material: { id: mat.id, name: mat.name, t: mat.t, decor: mat.decor || "", sheet: mat.sheet ? clone(mat.sheet) : null, grain: !!mat.grain },
+        material: { id: mat.id, name: mat.name, t: mat.t, decor: mat.decor || "", sheet: mat.sheet ? clone(mat.sheet) : null, grain: !!mat.grain, kind: mat.kind || "", price: num(mat.price, 0) },
         length: L,
         width: W,
         cutLength: r2(L - cut(eW[0]) - cut(eW[1])),
@@ -623,7 +783,7 @@
 
     return {
       calcAt: nowIso(),
-      currency: order.currency || "KZT",
+      currency: orderCurrency(order),
       lines: lines,
       materials: materials,
       work: work,
@@ -713,8 +873,9 @@
     arr(order.products).forEach(function (p) { out.push(productSummary(order, p).join("\n")); });
     var ex = arr(q.clientLines).filter(function (l) { return l.kind !== "product"; }).map(function (l) { return "- " + l.name; });
     if (ex.length) out.push("Дополнительно:\n" + ex.join("\n"));
-    var tail = ["Стоимость: " + fmtMoney(q.total) + " ₸" + (q.discountPct ? " (со скидкой " + q.discountPct + "%)" : "")];
-    if (q.prepaySum) tail.push("Предоплата: " + fmtMoney(q.prepaySum) + " ₸");
+    var cur = orderCurrency(order);
+    var tail = ["Стоимость: " + money(q.total, cur) + (q.discountPct ? " (со скидкой " + q.discountPct + "%)" : "")];
+    if (q.prepaySum) tail.push("Предоплата: " + money(q.prepaySum, cur));
     if (t.days) tail.push("Срок изготовления: " + t.days + (t.daysKind === "calendar" ? " календарных дн." : " рабочих дн."));
     if (t.warrantyMonths) tail.push("Гарантия: " + t.warrantyMonths + " мес.");
     out.push(tail.join("\n"));
@@ -763,7 +924,9 @@
     else if (order.version.split(".")[0] !== VERSION.split(".")[0]) E("version", "Версия " + order.version + " не поддерживается этим модулем (нужна " + VERSION.split(".")[0] + ".x). Сначала вызовите migrate().");
     if (!isStr(order.id) || !order.id) E("id", "У заказа нет id.");
     ["createdAt", "updatedAt"].forEach(function (k) { if (order[k] !== undefined && !isDate(order[k])) E(k, "Дата " + k + " должна быть в виде 2026-11-14 или 2026-11-14T10:30:00Z."); });
-    if (order.currency !== undefined && order.currency !== "KZT") W("currency", 'Валюта не "KZT" - инструменты считают в тенге.');
+    if (order.currency !== undefined && !CURRENCIES[order.currency]) W("currency", 'Незнакомая валюта "' + order.currency + '". Известные: ' + Object.keys(CURRENCIES).join(", ") + ".");
+    if (order.country !== undefined && !COUNTRIES[order.country]) W("country", 'Незнакомая страна "' + order.country + '". Известные: ' + Object.keys(COUNTRIES).join(", ") + ".");
+    if (isObj(order.quote) && order.quote.currency && order.currency && order.quote.currency !== order.currency) W("quote.currency", "Расчёт сделан в " + order.quote.currency + ", а валюта заказа " + order.currency + ". Пересчитайте заказ.");
     if (order.units !== undefined && order.units !== "mm") E("units", 'Размеры должны быть в миллиметрах (units: "mm").');
     var stageKeys = STAGES.map(function (s) { return s.key; });
     if (order.stage !== undefined && stageKeys.indexOf(order.stage) < 0) E("stage", 'Неизвестный этап "' + order.stage + '". Возможные: ' + stageKeys.join(", ") + ".");
@@ -957,7 +1120,7 @@
         if (!isNum(order.quote.total)) E("quote.total", "В расчёте нет итоговой суммы total.");
         else {
           var bal = balance(order);
-          if (bal.overpaid > 0) W("payments", "Оплачено больше, чем стоит заказ: переплата " + fmtMoney(bal.overpaid) + " ₸.");
+          if (bal.overpaid > 0) W("payments", "Оплачено больше, чем стоит заказ: переплата " + money(bal.overpaid, orderCurrency(order)) + ".");
           if (order.stage === "production" && bal.paid === 0) W("payments", "Заказ в производстве, а оплат нет.");
         }
         if (order.audience !== "client" && isDate(order.quote.calcAt) && isDate(order.updatedAt) && Date.parse(order.updatedAt) - Date.parse(order.quote.calcAt) > 60000) W("quote", "Заказ менялся после расчёта цены. Пересчитайте, чтобы цена была актуальной.");
@@ -1055,7 +1218,7 @@
       o.extras.push({ id: uid("x"), kind: "install", name: "Доставка и сборка", qty: 1, unit: "усл", price: prices && isNum(prices.uinstall) ? prices.uinstall : 10000 });
       o.products.push(pr);
       recalc(o);
-      if (saved && isNum(saved.total) && saved.total !== o.quote.total) notes.push("Цена пересчитана по правилам формата: было " + fmtMoney(saved.total) + " ₸, стало " + fmtMoney(o.quote.total) + " ₸. Проверьте цены и позиции.");
+      if (saved && isNum(saved.total) && saved.total !== o.quote.total) notes.push("Цена пересчитана по правилам формата: было " + money(saved.total, "KZT") + ", стало " + money(o.quote.total, "KZT") + ". Проверьте цены и позиции.");
     } else {
       var keysKupe = ["type", "W", "H", "D", "N", "DH", "ant", "back", "led", "M", "prof"];
       var keysKitchen = ["k_layout", "k_fac", "k_Hl", "k_Hu", "k_Ht", "k_handles", "k_top", "k_cutSink", "k_cutHob", "k_apron", "k_tplinth", "k_led"];
@@ -1174,6 +1337,10 @@
   return {
     FORMAT: FORMAT, VERSION: VERSION, FILE_EXT: FILE_EXT,
     STAGES: STAGES, PRODUCT_TYPES: PRODUCT_TYPES, ORIENT: ORIENT, SIDE_NAMES: SIDE_NAMES, ROLES: ROLES,
+    CURRENCIES: CURRENCIES, COUNTRIES: COUNTRIES,
+    currencyInfo: currencyInfo, countryInfo: countryInfo, countryOfCurrency: countryOfCurrency, guessCountry: guessCountry,
+    region: region, setRegion: setRegion, orderCountry: orderCountry, orderCurrency: orderCurrency,
+    money: money, moneyWords: moneyWords, numWords: numWords, currencyWord: currencyWord, plural: plural, roundStep: roundStep, convert: convert, niceRound: niceRound, starterPrice: starterPrice,
     MATERIAL_KINDS: MATERIAL_KINDS, EXTRA_KINDS: EXTRA_KINDS, PAYMENT_KINDS: PAYMENT_KINDS, PAYMENT_METHODS: PAYMENT_METHODS, EXPENSE_CATEGORIES: EXPENSE_CATEGORIES,
     defaultCatalog: defaultCatalog, defaultPricing: defaultPricing, defaultProduction: defaultProduction,
     create: create, newProduct: newProduct, newModule: newModule, newPart: newPart, normalize: normalize, touch: touch, uid: uid, clone: clone,

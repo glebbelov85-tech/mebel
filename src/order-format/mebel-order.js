@@ -600,7 +600,7 @@
         role: part.role || "",
         product: { id: product.id, name: product.name || "" },
         module: e.module ? { id: e.module.id, name: e.module.name || "" } : null,
-        material: { id: mat.id, name: mat.name, t: mat.t, decor: mat.decor || "", sheet: mat.sheet ? clone(mat.sheet) : null, grain: !!mat.grain },
+        material: { id: mat.id, name: mat.name, t: mat.t, decor: mat.decor || "", sheet: mat.sheet ? clone(mat.sheet) : null, grain: !!mat.grain, kind: mat.kind || "", price: num(mat.price, 0) },
         length: L,
         width: W,
         cutLength: r2(L - cut(eW[0]) - cut(eW[1])),

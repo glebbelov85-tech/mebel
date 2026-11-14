@@ -282,7 +282,7 @@
       if (!ord.quote || !Array.isArray(ord.quote.clientLines)) { try { MO.recalc(ord); } catch (e) { } }
     }
     const o = KP.newOrder(), q = ord.quote || {}, t = ord.terms || {}, c = ord.client || {};
-    o.currency = MO() ? MO().orderCurrency(ord) : (ord.currency || "KZT");
+    o.currency = MO ? MO.orderCurrency(ord) : (ord.currency || "KZT");
     o.number = String(ord.number || ord.id || "");
     if (/^\d{4}-\d{2}-\d{2}/.test(String(ord.createdAt || ""))) o.date = String(ord.createdAt).slice(0, 10);
     o.client = { name: c.name || "", phone: c.whatsapp || c.phone || "", address: c.address || "", iin: c.iin || "", idDoc: c.doc || "" };

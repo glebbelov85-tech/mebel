@@ -44,6 +44,12 @@ footer{max-width:1040px;margin:0 auto;padding:10px 16px 30px;font-size:13px;colo
 .hide{display:none!important}
 @media(max-width:560px){.top h1{font-size:23px}.top{padding:20px 14px 28px}.wrap{padding:0 12px 30px}.grid{grid-template-columns:1fr}}
 </style>
+<style>
+.region{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:14px 0 0;padding:10px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;font-size:14px;color:var(--muted)}
+.region label{display:flex;gap:6px;align-items:center;color:var(--ink)}
+.region select{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+.region span{flex:1 1 260px;font-size:13px}
+</style>
 <link rel="stylesheet" href="shared/site.css">
 </head>
 <body>
@@ -55,6 +61,11 @@ footer{max-width:1040px;margin:0 auto;padding:10px 16px 30px;font-size:13px;colo
 <div class="wrap">
   <div class="order" id="order"></div>
   <div class="grid" id="tools"></div>
+  <div class="region" id="region">
+    <label>Страна <select id="rgCountry"></select></label>
+    <label>Валюта <select id="rgCur"></select></label>
+    <span id="rgNote"></span>
+  </div>
 
   <h2 class="sec">Как это устроено</h2>
   <div class="how">
@@ -107,7 +118,7 @@ footer{max-width:1040px;margin:0 auto;padding:10px 16px 30px;font-size:13px;colo
       return;
     }
     var s = S.summary(rec.order);
-    var meta = [s.client, s.total ? S.money(s.total) : "", "из инструмента \"" + S.toolName(rec.from) + "\"", S.ago(rec.at)].filter(Boolean).join(" · ");
+    var meta = [s.client, s.total ? S.money(s.total, s.cur) : "", "из инструмента \"" + S.toolName(rec.from) + "\"", S.ago(rec.at)].filter(Boolean).join(" · ");
     el.innerHTML = '<h2>Последний переданный заказ</h2><div class="t">' + esc(s.title) + '</div><div class="m">' + esc(meta) + "</div>" +
       '<div class="btns">' + S.TOOLS.map(function (t) { return '<a class="btn' + (t.id === "kp" ? " p" : "") + '" href="' + t.id + '/?from=home">Открыть в: ' + esc(t.name) + "</a>"; }).join("") + "</div>" +
       '<div class="btns"><button class="btn l" type="button" data-a="save">Скачать файл заказа</button><button class="btn l" type="button" data-a="file">Открыть другой файл</button><button class="btn l" type="button" data-a="clear">Убрать</button></div>';
@@ -129,7 +140,17 @@ footer{max-width:1040px;margin:0 auto;padding:10px 16px 30px;font-size:13px;colo
   };
   window.addEventListener("storage", function (e) { if (e.key === "mebel-site-order") order(); });
   window.addEventListener("pageshow", order);
-  tools(); order();
+  // Страна и валюта - одна настройка для всех инструментов (калькулятор, КП, учёт, раскрой, конфигуратор)
+  function region() {
+    var MO = window.MebelOrder; if (!MO) { $("region").classList.add("hide"); return; }
+    var r = MO.region();
+    $("rgCountry").innerHTML = Object.keys(MO.COUNTRIES).map(function (k) { var c = MO.COUNTRIES[k]; return '<option value="' + k + '"' + (k === r.country ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("");
+    $("rgCur").innerHTML = Object.keys(MO.CURRENCIES).map(function (k) { var c = MO.CURRENCIES[k]; return '<option value="' + k + '"' + (k === r.currency ? " selected" : "") + ">" + esc(c.name) + ", " + esc(c.sign) + "</option>"; }).join("");
+    $("rgNote").textContent = (r.set ? "" : "Выбрано по часовому поясу - проверьте. ") + "От страны зависят договор и реквизиты, от валюты - цены и суммы во всех инструментах. У каждой валюты в калькуляторе свой прайс.";
+  }
+  $("rgCountry").onchange = function (e) { var MO = window.MebelOrder; MO.setRegion({ country: e.target.value, currency: MO.countryInfo(e.target.value).currency }); region(); S.toast("Сохранено для всех инструментов"); };
+  $("rgCur").onchange = function (e) { window.MebelOrder.setRegion({ currency: e.target.value }); region(); S.toast("Сохранено для всех инструментов"); };
+  tools(); order(); region();
 })();
 </script>
 </body>
