@@ -165,7 +165,7 @@ function updateKitchenHints(info){
 // ================= ДОП. ПОЗИЦИИ =================
 function renderExtras(){
   const box=$("extras");
-  box.innerHTML=(S.extras.length?`<div class="extra"><label>Название</label><label>Кол-во</label><label>Цена, ₸</label><span></span></div>`:"")+
+  box.innerHTML=(S.extras.length?`<div class="extra"><label>Название</label><label>Кол-во</label><label>Цена, ${CS()}</label><span></span></div>`:"")+
     S.extras.map((x,i)=>`<div class="extra"><input value="${esc(x.name)}" data-i="${i}" data-f="name" placeholder="Название">
       <input type="number" min="0" value="${x.q}" data-i="${i}" data-f="q"><input type="number" min="0" value="${x.p}" data-i="${i}" data-f="p">
       <button class="bx" data-del="${i}" title="Убрать">&times;</button></div>`).join("");
@@ -262,7 +262,7 @@ function panelsClick(e){
 }
 function renderHw(){
   const u=S.u, box=$("u_hw");
-  box.innerHTML=(u.hw.length?`<div class="extra"><label>Название</label><label>Кол-во</label><label>Цена, ₸</label><span></span></div>`:"")+
+  box.innerHTML=(u.hw.length?`<div class="extra"><label>Название</label><label>Кол-во</label><label>Цена, ${CS()}</label><span></span></div>`:"")+
     u.hw.map((h,i)=>`<div class="extra"><input value="${esc(h.name)}" data-i="${i}" data-f="name"><input type="number" value="${h.q}" data-i="${i}" data-f="q">
       <input type="number" value="${hwPrice(h)}" data-i="${i}" data-f="p" title="${h.id&&h.p===undefined?"Цена из прайса. Если изменить здесь - будет своя цена только для этого изделия":""}">
       <button class="bx" data-del="${i}">&times;</button></div>`).join("");
@@ -316,7 +316,7 @@ function calc(){
   const pre=Math.min(total,Math.ceil(total*prepay/100/R-1e-9)*R);
   R0.quote={rows,mat,work,install,installName,cost:cst,markup,disc,discSum,total,prepay,pre,days};
 
-  let h=`<tr><th>Позиция</th><th class="n">Кол-во</th><th class="n">₸</th></tr>`;
+  let h=`<tr><th>Позиция</th><th class="n">Кол-во</th><th class="n">${CS()}</th></tr>`;
   rows.forEach(r=>h+=`<tr><td>${esc(r[0])}</td><td class="n">${esc(r[1])}</td><td class="n">${fmt(r[2])}</td></tr>`);
   h+=`<tr class="sum"><td>Материалы и фурнитура</td><td></td><td class="n">${fmt(mat)}</td></tr>`;
   h+=`<tr><td>Сборка (${P.work}%)</td><td></td><td class="n">${fmt(work)}</td></tr>`;
@@ -327,13 +327,13 @@ function calc(){
   h+=`<tr class="sum"><td>Итого клиенту</td><td></td><td class="n">${fmt(total)}</td></tr>`;
   h+=`<tr><td>Предоплата (${prepay}%)</td><td></td><td class="n">${fmt(pre)}</td></tr>`;
   $("costs").innerHTML=h;
-  $("total").textContent=fmt(total)+" ₸"; $("mbarTotal").textContent=fmt(total)+" ₸";
-  $("totalSub").textContent=`себестоимость ${fmt(cst)} ₸ · прибыль ${fmt(total-cst)} ₸`;
+  $("total").textContent=money(total); $("mbarTotal").textContent=money(total);
+  $("totalSub").textContent=`себестоимость ${money(cst)} · прибыль ${money(total-cst)}`;
   const pm=$("pmInfo"); pm.classList.add("hide");
   if(R0.type==="kitchen"){
     updateKitchenHints(R0.info);
     const Lm=R0.info.lowRunMM/1000;
-    if(Lm>0){ pm.classList.remove("hide"); pm.textContent=`Длина кухни по низу ${Lm.toFixed(1)} п.м. Выходит ${fmt(total/Lm)} ₸ за погонный метр.`+(P.pm>0?` По вашей цене за метр (${fmt(P.pm)} ₸) было бы ${fmt(P.pm*Lm)} ₸.`:""); }
+    if(Lm>0){ pm.classList.remove("hide"); pm.textContent=`Длина кухни по низу ${Lm.toFixed(1)} п.м. Выходит ${money(total/Lm)} за погонный метр.`+(P.pm>0?` По вашей цене за метр (${money(P.pm)}) было бы ${money(P.pm*Lm)}.`:""); }
   }
   const wb=$("warns");
   if(R0.warns.length){ wb.style.display="block"; wb.innerHTML=`<b>Проверьте:</b><ul>${R0.warns.map(w=>`<li>${w}</li>`).join("")}</ul>`; } else wb.style.display="none";
@@ -343,8 +343,8 @@ function calc(){
   lastClient=`${R0.desc}${S.decor.trim()?"\nЦвет: "+S.decor.trim():""}${ex?"\nДополнительно:"+ex:""}
 Доставка и монтаж включены
 
-Стоимость: ${fmt(total)} ₸${disc?` (со скидкой ${disc}%)`:""}
-Предоплата: ${fmt(pre)} ₸
+Стоимость: ${money(total)}${disc?` (со скидкой ${disc}%)`:""}
+Предоплата: ${money(pre)}
 Срок изготовления: ${days} дн.`;
   $("wa").href="https://wa.me/?text="+encodeURIComponent(lastClient);
   if(SEL.part>=R0.parts.length){ SEL.part=-1; SEL.mod=null; }

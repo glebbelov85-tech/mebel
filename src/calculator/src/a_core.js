@@ -13,11 +13,25 @@ const LS = {
   set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ return false; } }
 };
 
+// ================= СТРАНА И ВАЛЮТА =================
+// Справочник валют и настройка "страна и валюта" - в общем модуле заказа (MebelOrder, вклеивается при сборке).
+// Без него (тесты в node) калькулятор считает в тенге, как раньше.
+const MO = typeof MebelOrder!=="undefined" ? MebelOrder : null;
+let CURCODE = "KZT";       // валюта текущего прайса и всех сумм калькулятора
+let COUNTRY = "KZ";
+const KZT_INFO = {code:"KZT",sign:"₸",name:"Тенге",forms:["тенге","тенге","тенге"],roundTo:1000,inWord:"тенге",rateKZT:1};
+function curInfo(c){ return MO ? MO.currencyInfo(c||CURCODE) : KZT_INFO; }
+function curList(){ return MO ? Object.values(MO.CURRENCIES) : [KZT_INFO]; }
+const CS = () => curInfo().sign;
+const money = (n,c) => fmt(n)+"\u00a0"+curInfo(c).sign;
+// "¤" в единице позиции = сумма в валюте прайса (услуга одной суммой, правило округления)
+const unitLabel = u => u==="¤" ? CS() : u;
+
 // ================= ПРАЙС =================
 // Позиция прайса: id, g - группа, name - полное название, s - короткое название для расчёта,
 // u - единица, v - цена, sku - артикул поставщика, m - свойства материала (если это материал для деталей)
 const GROUPS = ["Плиты","Фасады","Стекло и зеркало","Столешницы","Кромка","Фурнитура","Двери-купе","Услуги","Правила расчёта"];
-const UNITS = ["лист","м²","п.м.","м","шт.","компл.","мод.","%","₸"];
+const UNITS = ["лист","м²","п.м.","м","шт.","компл.","мод.","%","¤"];
 const SHEET = {kind:"sheet",sw:2800,sh:2070};
 const PRICE_DEF = [
   {id:"ldsp16", g:"Плиты", name:"ЛДСП 16 мм (корпус), лист 2800×2070", s:"ЛДСП 16", u:"лист", v:22000, m:{...SHEET,t:16,css:"#e9d3b5",edge:"edge",cut:1}},
@@ -63,14 +77,14 @@ const PRICE_DEF = [
   {id:"cut",     g:"Услуги", name:"Распил и кромление, за лист", s:"Распил и кромление", u:"лист", v:3000},
   {id:"cutout",  g:"Услуги", name:"Вырез под мойку / варочную, шт.", s:"Вырезы под мойку и варку", u:"шт.", v:5000},
   {id:"topjoin", g:"Услуги", name:"Стык столешниц в углу, шт.", s:"Стык столешниц в углу", u:"шт.", v:8000},
-  {id:"install", g:"Услуги", name:"Доставка и монтаж шкафа-купе", s:"Доставка и монтаж", u:"₸", v:15000},
-  {id:"kinstall",g:"Услуги", name:"Доставка и монтаж кухни", s:"Доставка и монтаж кухни", u:"₸", v:40000},
-  {id:"uinstall",g:"Услуги", name:"Доставка и сборка прочих изделий", s:"Доставка и сборка", u:"₸", v:10000},
+  {id:"install", g:"Услуги", name:"Доставка и монтаж шкафа-купе", s:"Доставка и монтаж", u:"¤", v:15000},
+  {id:"kinstall",g:"Услуги", name:"Доставка и монтаж кухни", s:"Доставка и монтаж кухни", u:"¤", v:40000},
+  {id:"uinstall",g:"Услуги", name:"Доставка и сборка прочих изделий", s:"Доставка и сборка", u:"¤", v:10000},
   {id:"work",   g:"Правила расчёта", name:"Сборка, % от материалов", u:"%", v:15},
   {id:"markup", g:"Правила расчёта", name:"Наценка, %", u:"%", v:30},
   {id:"usage",  g:"Правила расчёта", name:"Использование листа, % (остальное - отходы)", u:"%", v:80},
-  {id:"round",  g:"Правила расчёта", name:"Округлять итог до, ₸", u:"₸", v:1000},
-  {id:"pm",     g:"Правила расчёта", name:"Цена кухни за погонный метр - для сравнения (0 - не показывать)", u:"₸", v:0}
+  {id:"round",  g:"Правила расчёта", name:"Округлять итог до", u:"¤", v:1000},
+  {id:"pm",     g:"Правила расчёта", name:"Цена кухни за погонный метр - для сравнения (0 - не показывать)", u:"¤", v:0}
 ];
 // служебные "материалы" только для картинки: техника, металл, цоколь - в цену и распил не идут
 const VIRT = {
@@ -86,29 +100,48 @@ let P = {};            // id -> цена
 let PI = {};           // id -> позиция
 let MATS = {};         // id -> материал
 
-function priceDefaults(){ return clone(PRICE_DEF).map(x=>Object.assign(x,{sys:1,sku:""})); }
+// Стартовые цены в рублях (Россия, 2026, средний сегмент, примерно). Остальные валюты - пересчёт тенге по примерному курсу.
+const PRICE_RUB = {ldsp16:4200, ldsp16f:5200, ldsp10:3800, dvp:700, mdf:5000, mdf_plastic:7000, mdf_enamel:9500, mirror:2800, mirror_t:4000, glass:4500,
+  top38:2500, top_compact:12000, top_stone:20000, apron:2000, tplinth:500, edge:15, edge2:35, handle:250, hinge:350, kguide:1500, guide:600, lift:2500,
+  leg:80, plinth:500, gola:1200, push:250, dryer:1500, cargo:4000, kmisc:300, rod:500, led:700, ledpow:1500, umisc:30, hook:100, lamels:4000, bedlift:5000,
+  prof_eco:2500, prof_std:3500, prof_prem:6000, misc:1200, cut:1200, cutout:800, topjoin:1500, install:4000, kinstall:10000, uinstall:2500, round:100, pm:0};
+let PRICE_META = {};   // о прайсе: валюта, откуда цены (поставщик), дата
+function starterV(d,cur){
+  if(d.u==="%") return d.v;
+  if(d.id==="round") return MO ? MO.roundStep(cur) : d.v;
+  if(!MO || cur==="KZT") return d.v;
+  return MO.starterPrice(d.v,cur,PRICE_RUB[d.id]);
+}
+function priceDefaults(cur){ cur=cur||CURCODE; return clone(PRICE_DEF).map(x=>Object.assign(x,{v:starterV(x,cur),sys:1,sku:""})); }
+function priceKey(cur){ return cur==="KZT" ? "mk2_price" : "mk2_price_"+cur; }
+function hasPrice(cur){ const st=LS.get(priceKey(cur),null); return !!(st && Array.isArray(st.items)); }
 function reindexPrice(){
   P={}; PI={}; MATS={};
   PRICE.forEach(it=>{ P[it.id]=+it.v||0; PI[it.id]=it; if(it.m) MATS[it.id]=Object.assign({id:it.id,name:it.s||it.name},it.m); });
   for(const k in VIRT) MATS[k]=Object.assign({id:k},VIRT[k]);
 }
-function loadPrice(){
-  const def=priceDefaults();
-  const st=LS.get("mk2_price",null);
+function loadPrice(cur){
+  if(!cur){ const r=MO?MO.region():null; cur=r?r.currency:"KZT"; COUNTRY=r?r.country:"KZ"; }
+  CURCODE=curInfo(cur).code;
+  const def=priceDefaults(CURCODE);
+  const st=LS.get(priceKey(CURCODE),null);
+  PRICE_META=Object.assign({cur:CURCODE}, st&&st.meta||{}, st?{}:{starter:true});
   if(st && Array.isArray(st.items)){
     const ids=new Set(st.items.map(x=>x.id));
     PRICE=st.items.filter(x=>x&&x.id);
     // новые стандартные позиции (после обновления программы) добавляются в конец своей группы
-    def.forEach(d=>{ if(!ids.has(d.id)) PRICE.push(d); else { const it=PRICE.find(x=>x.id===d.id); it.sys=1; if(d.m && !it.m) it.m=d.m; if(!it.s && d.s) it.s=d.s; } });
+    def.forEach(d=>{ if(!ids.has(d.id)) PRICE.push(d); else { const it=PRICE.find(x=>x.id===d.id); it.sys=1; if(d.m && !it.m) it.m=d.m; if(!it.s && d.s) it.s=d.s; if(d.g==="Правила расчёта"){ it.name=d.name; it.u=d.u; } } });
+    PRICE.forEach(it=>{ if(it.u==="₸") it.u="¤"; });   // до 2026-11: единица "₸" = сумма
   }else{
     PRICE=def;
-    const old=LS.get("kupe_prices",null);   // цены из прошлой версии калькулятора
+    const old=CURCODE==="KZT" && LS.get("kupe_prices",null);   // цены из прошлой версии калькулятора
     if(old) for(const k in old){ const it=PRICE.find(x=>x.id===(OLD_PRICE_KEYS[k]||k)); if(it && isFinite(+old[k])) it.v=+old[k]; }
   }
   reindexPrice();
 }
-function savePrice(){ LS.set("mk2_price",{v:2,items:PRICE}); reindexPrice(); }
-function defOf(id){ return PRICE_DEF.find(x=>x.id===id); }
+// keepStarter - сохранить, но оставить пометку "стартовые цены" (мастер их ещё не правил)
+function savePrice(keepStarter){ if(!keepStarter) delete PRICE_META.starter; LS.set(priceKey(CURCODE),{v:3,cur:CURCODE,meta:PRICE_META,items:PRICE}); reindexPrice(); }
+function defOf(id){ const d=PRICE_DEF.find(x=>x.id===id); return d ? Object.assign({},d,{v:starterV(d,CURCODE)}) : d; }
 function MAT(id){ return MATS[id]||MATS.ldsp16; }
 function matName(id){ return MAT(id).name; }
 function hwName(id){ const it=PI[id]; return it ? (it.s||it.name) : id; }

@@ -133,9 +133,9 @@ function savedList(){
 function renderSaved(){
   const list=savedList(), box=$("savedList");
   if(!list.length){ box.innerHTML=`<p class="note">Пока пусто.</p>`; return; }
-  box.innerHTML=list.map((x,i)=>`<div class="saved"><span>${esc(x.name)}<small>${esc(x.date)} · ${fmt(x.total)} ₸</small></span>
+  box.innerHTML=list.map((x,i)=>`<div class="saved"><span>${esc(x.name)}<small>${esc(x.date)} · ${money(x.total,x.cur||"KZT")}</small></span>
     <button class="b2 small" data-open="${i}">Открыть</button><button class="bx" data-del="${i}" title="Удалить">&times;</button></div>`).join("");
-  box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{ loadState(list[+b.dataset.open].state); toast("Расчёт открыт"); window.scrollTo({top:0,behavior:"smooth"}); });
+  box.querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>{ const x=list[+b.dataset.open]; loadState(x.state); toast((x.cur||"KZT")!==CURCODE?`Расчёт открыт и пересчитан по прайсу в ${curIn()} (был в ${curIn(x.cur||"KZT")})`:"Расчёт открыт"); window.scrollTo({top:0,behavior:"smooth"}); });
   box.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ const x=list[+b.dataset.del]; confirmBox(`Удалить расчёт "${x.name}"?`,"Удалить",()=>{ list.splice(+b.dataset.del,1); LS.set("mk2_saved",list); renderSaved(); }); });
 }
 function loadState(st){
@@ -144,14 +144,15 @@ function loadState(st){
 }
 function saveCalc(){
   const total=calc(), list=savedList();
-  list.unshift({name:(S.client||"Без имени")+" - "+CUR.title, date:today(), total, state:clone(S)});
+  list.unshift({name:(S.client||"Без имени")+" - "+CUR.title, date:today(), total, cur:CURCODE, state:clone(S)});
   if(!LS.set("mk2_saved",list.slice(0,80))) toast("Не получилось сохранить: в браузере нет места"); else toast("Расчёт сохранён");
   renderSaved();
 }
 
 // ================= РЕЗЕРВНАЯ КОПИЯ =================
 function backupSave(){
-  const data={app:"mebel-calc",v:2,date:new Date().toISOString(),price:PRICE,lib:LIB,saved:savedList(),current:S};
+  const prices={}; curList().forEach(c=>{ const st=LS.get(priceKey(c.code),null); if(st&&Array.isArray(st.items)) prices[c.code]=st; });
+  const data={app:"mebel-calc",v:3,date:new Date().toISOString(),cur:CURCODE,price:PRICE,prices,lib:LIB,saved:savedList(),current:S};
   const txt=JSON.stringify(data);
   saveFile(`mebel-kopiya-${new Date().toISOString().slice(0,10)}.json`,txt,txt);
 }
@@ -160,7 +161,9 @@ function backupLoad(text){
   if(d && d.format==="mebel-order"){ importOrder(d); return; }
   if(!d || d.app!=="mebel-calc"){ toast("Это не файл резервной копии калькулятора"); return; }
   confirmBox(`Восстановить копию от ${String(d.date||"").slice(0,10)}? Текущий прайс, модули и сохранённые расчёты будут заменены.`,"Восстановить",()=>{
-    if(Array.isArray(d.price)){ LS.set("mk2_price",{v:2,items:d.price}); loadPrice(); }
+    if(d.prices){ for(const c in d.prices) if(d.prices[c]&&Array.isArray(d.prices[c].items)) LS.set(priceKey(c),d.prices[c]); }
+    else if(Array.isArray(d.price)) LS.set(priceKey(d.cur||"KZT"),{v:3,cur:d.cur||"KZT",items:d.price});
+    loadPrice(CURCODE);
     if(d.lib){ LIB=Object.assign({w:{},hidden:{},custom:[]},d.lib); saveLib(); }
     if(Array.isArray(d.saved)) LS.set("mk2_saved",d.saved);
     if(d.current) S=fixState(d.current);
@@ -168,7 +171,7 @@ function backupLoad(text){
   });
 }
 
-// ================= ФАЙЛ ЗАКАЗА (общий формат mebel-order 1.0) =================
+// ================= ФАЙЛ ЗАКАЗА (общий формат mebel-order 1.1) =================
 const ROLE_RX=[[/ящик/,"drawer"],[/боков|стойк/,"side"],[/крыш/,"top"],[/дно/,"bottom"],[/полк/,"shelf"],[/перегород/,"partition"],[/задн/,"back"],[/цокол/,"plinth"],[/столешн/,"countertop"],[/заглушк|планк/,"filler"]];
 function orderEdges(p,edgeId){
   const sides={X:[["front","back"],["top","bottom"]],Y:[["front","back"],["left","right"]],Z:[["top","bottom"],["left","right"]]}[p.o], n=clamp(+p.edge||0,0,4);
@@ -206,13 +209,13 @@ function toOrder(){
   if(q.install>0) extras.push({id:"xi",kind:"install",name:q.installName,qty:1,unit:"усл",price:q.install});
   const lines=q.rows.map(r=>({group:"material",name:r[0],qty:parseFloat(r[1])||1,unit:String(r[1]).replace(/^[\d.,\s]+/,"")||"шт",price:Math.round(r[2]/(parseFloat(r[1])||1)),sum:Math.round(r[2])}));
   const total=q.total, sub=q.disc?Math.round(total/(1-q.disc/100)):total;
-  return {format:"mebel-order", version:"1.0", id:"o_"+Date.now().toString(36), number:"", title:R0.title, createdAt:now, updatedAt:now, currency:"KZT", units:"mm", stage:"lead",
+  return {format:"mebel-order", version:"1.1", id:"o_"+Date.now().toString(36), number:"", title:R0.title, createdAt:now, updatedAt:now, currency:CURCODE, country:COUNTRY, units:"mm", stage:"lead",
     client:{name:S.client||"", phone:"", address:""},
     products:[{id:"pr1", type:R0.type, name:R0.title, qty:1, size:{w:bb.W,h:bb.H,d:bb.D}, finish:fin, params:clone(R0.type==="kupe"?S.kupe:R0.type==="kitchen"?S.kit:{tpl:S.u.tpl,prms:S.u.prms[S.u.tpl]}),
       generator:{id:"calc."+R0.type,version:"2"}, modules:[], parts, hardware, describe:R0.desc.split("\n")}],
     catalog:cat, extras,
     pricing:{workPct:P.work, markupPct:P.markup, discountPct:q.disc, prepayPct:q.prepay, roundTo:P.round||1, sheetUsagePct:P.usage, edgeReservePct:10, cutPerSheet:P.cut},
-    quote:{calcAt:now, currency:"KZT", lines, materials:Math.round(q.mat), work:Math.round(q.work), services:Math.round(q.install), cost:Math.round(q.cost), markup:Math.round(q.markup),
+    quote:{calcAt:now, currency:CURCODE, lines, materials:Math.round(q.mat), work:Math.round(q.work), services:Math.round(q.install), cost:Math.round(q.cost), markup:Math.round(q.markup),
       clientLines:[{kind:"product",ref:"pr1",name:R0.title,qty:1,unit:"шт",sum:sub}], subtotal:sub, discountPct:q.disc, discountSum:sub-total, total, prepayPct:q.prepay, prepaySum:q.pre, profit:Math.round(total-q.cost)},
     terms:{days:q.days, daysKind:"work", warrantyMonths:12}, notes:S.decor?("Цвет: "+S.decor):"",
     x:{calculator:{v:2,state:clone(S)}}};
@@ -224,7 +227,8 @@ function exportOrder(){
 }
 function importOrder(o){
   const st=o.x&&o.x.calculator&&o.x.calculator.state;
-  if(st){ loadState(migrateState(st)); toast("Заказ открыт"); return; }
+  const curNote = o.currency && o.currency!==CURCODE ? ` Он был посчитан в ${curIn(o.currency)}, цены взяты из вашего прайса в ${curIn()}.` : "";
+  if(st){ loadState(migrateState(st)); toast("Заказ открыт."+curNote); return; }
   // заказ из другого инструмента: берём детали как есть в "Любое изделие"
   const pr=(o.products||[])[0]; if(!pr){ toast("В файле заказа нет изделий"); return; }
   const fin=pr.finish||{}, res=m=>{ const id=String(m||"").startsWith("@")?fin[String(m).slice(1)]:m; return MATS[id]?id:({dvp3:"dvp","mdf18-film":"mdf",mirror4:"mirror",lacobel4:"glass"})[id]||"ldsp16"; };
@@ -232,7 +236,7 @@ function importOrder(o){
   (pr.parts||[]).forEach(p=>push(p,0,0,0));
   (pr.modules||[]).forEach(m=>{ if(!m.rot) (m.parts||[]).forEach(p=>push(p,m.pos.x,m.pos.y,m.pos.z)); });
   S.u.tpl="empty"; S.u.panels=ps; S.u.hw=(pr.hardware||[]).map(h=>({name:h.name,q:+h.qty||0,p:+h.price||0})); S.u.manual=true; S.u.built=true;
-  S.client=(o.client&&o.client.name)||""; setMode("univ"); toast("Детали заказа открыты в режиме \"Любое изделие\"");
+  S.client=(o.client&&o.client.name)||""; setMode("univ"); toast("Детали заказа открыты в режиме \"Любое изделие\"."+curNote);
 }
 function partsXlsx(){
   const rows=[["Материал","Деталь","Длина, мм","Ширина, мм","Кромка","Шт."]].concat(CUR.cut.map(r=>[r.matName,r.name,r.L,r.S,MAT(r.mat).kind==="sheet"?EDGES[r.edge]:"",r.q]));

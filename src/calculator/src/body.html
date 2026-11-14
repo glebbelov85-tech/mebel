@@ -1,6 +1,6 @@
 <header>
   <h1>Калькулятор мебели</h1>
-  <p>Шкафы-купе, кухни и любые корпусные изделия: детали, материалы и цена в тенге</p>
+  <p id="hdrSub">Шкафы-купе, кухни и любые корпусные изделия: детали, материалы и цена</p>
   <button class="b1" id="voiceBtn" style="margin-left:auto"></button>
 </header>
 <nav class="mode" id="modeBar">
@@ -223,12 +223,23 @@
 </main>
 
 <section id="priceView" class="page hide">
+  <div class="card" id="regionCard">
+    <h2>Страна и валюта</h2>
+    <div class="row4">
+      <div class="field"><label>Страна</label><select id="rg_country"></select></div>
+      <div class="field"><label>Валюта</label><select id="rg_cur"></select></div>
+      <div class="field"><label>Откуда цены</label><input id="rg_src" placeholder="Напр. магазин, поставщик"></div>
+      <div class="field"><label>Цены на дату</label><input id="rg_date" type="date"></div>
+    </div>
+    <p class="note" id="rg_note"></p>
+  </div>
   <div class="card">
     <h2>Мой прайс</h2>
     <div class="ptool">
       <input type="search" id="p_search" placeholder="Поиск по названию или артикулу">
-      <button class="b1" id="p_import">Загрузить цены из Excel</button>
+      <button class="b1" id="p_import">Загрузить цены</button>
       <button class="b2" id="p_export">Скачать прайс в Excel</button>
+      <button class="b2" id="p_exportFile" title="Файл .mebel-price.json - отправить коллеге или перенести на другое устройство">Сохранить прайс файлом</button>
       <button class="b2" id="p_add">+ Позиция</button>
     </div>
     <div class="chips" id="p_chips"></div>
@@ -237,7 +248,7 @@
   </div>
   <div class="card">
     <h2>Резервная копия</h2>
-    <p class="note" style="margin-top:0">Прайс, модули и сохранённые расчёты лежат в этом браузере. Скачайте копию, чтобы перенести их на другой компьютер или телефон или не потерять при очистке браузера.</p>
+    <p class="note" style="margin-top:0">Прайсы (в каждой валюте свой), модули и сохранённые расчёты лежат в этом браузере. Скачайте копию, чтобы перенести их на другой компьютер или телефон или не потерять при очистке браузера.</p>
     <div class="btns">
       <button class="b2" id="bk_save">Скачать резервную копию</button>
       <button class="b2" id="bk_load">Восстановить из копии</button>
