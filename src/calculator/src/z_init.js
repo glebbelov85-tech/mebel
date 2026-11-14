@@ -3,6 +3,8 @@ function initEvents(){
   $("modeBar").addEventListener("click",e=>{ const b=e.target.closest("[data-mode]"); if(b) setMode(b.dataset.mode); });
   document.addEventListener("click",e=>{ const g=e.target.closest("[data-go]"); if(g) setMode(g.dataset.go); });
   $("fitAllBtn").addEventListener("click",fitAll);
+  $("itemAdd").addEventListener("click",itemAdd);
+  $("itemsList").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; if(b.dataset.iedit) itemEdit(+b.dataset.iedit); else if(b.dataset.idel) itemDel(+b.dataset.idel); });
   $("walls").addEventListener("click",e=>{ const b=e.target.closest("[data-act]"); if(b) wallAct(...b.dataset.act.split(",")); });
   $("k_alignTall").onclick=()=>{ const c=kitCtx(S.kit); S.kit.Ht=c.Hl+c.topT+c.apronH+c.Hu; refreshBinds(); calc(); toast(`Высота пенала: ${S.kit.Ht} мм`); };
   $("doorsSame").onclick=()=>{ const d=S.kupe.doors; for(let i=1;i<d.length;i++) d[i]=clone(d[0]); renderDoors(); calc(); };
