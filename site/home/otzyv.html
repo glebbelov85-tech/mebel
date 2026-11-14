@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Отзыв о тестовой версии - Мебельный конструктор</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%2324302c'/%3E%3Cpath fill='%23d9b48a' d='M5 5h6v6H5zM13 5h6v3h-6zM13 10h6v9h-6zM5 13h6v6H5z'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#f4f1ec;--card:#fffdf9;--ink:#25221f;--muted:#70675f;--line:#e4dbd0;--dark:#24302c;--accent:#2f6f5e;--accent-l:#e3f0ec;--wood:#b98a5a;--wa:#1faa54}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45}
+a{color:var(--accent)}
+.top{background:var(--dark);color:#eef2f0;padding:14px 16px 26px}
+.top a{color:#eef2f0;text-decoration:none;opacity:.8;font-size:14px}
+.top h1{margin:12px 0 0;font-size:26px}
+.top p{margin:8px 0 0;opacity:.8}
+.in{max-width:720px;margin:0 auto}
+.wrap{max-width:720px;margin:-14px auto 0;padding:0 14px 40px}
+.q{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:12px}
+.q h2{margin:0 0 2px;font-size:16px}
+.q .h{margin:0 0 10px;color:var(--muted);font-size:13.5px}
+textarea,input[type=text]{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px;background:#fff;color:var(--ink)}
+textarea{min-height:84px;resize:vertical}
+textarea:focus,input:focus{outline:2px solid var(--accent);border-color:transparent}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips label{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:14px;cursor:pointer;user-select:none}
+.chips input{position:absolute;opacity:0;pointer-events:none}
+.chips label:has(input:checked){background:var(--accent-l);border-color:var(--accent);color:var(--accent);font-weight:600}
+.chips label:has(input:focus-visible){outline:2px solid var(--accent)}
+.stars{display:flex;gap:6px}
+.stars label{flex:1;text-align:center;justify-content:center}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:520px){.g2{grid-template-columns:1fr}}
+.send{position:sticky;bottom:0;background:linear-gradient(transparent,var(--bg) 35%);padding:16px 0 calc(10px + env(safe-area-inset-bottom))}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:12px 16px;font:inherit;font-weight:600;cursor:pointer;text-decoration:none}
+.btn.wa{background:var(--wa);border-color:var(--wa);color:#fff;flex:1;min-width:0}
+.btns{flex-wrap:nowrap}
+.send .btn{white-space:nowrap;padding:12px 14px}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+#toast{position:fixed;left:50%;top:14px;transform:translateX(-50%);background:#1d2321;color:#fff;padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:10;max-width:92%;text-align:center}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div class="top"><div class="in">
+  <a href="../">← Все инструменты</a>
+  <h1>Расскажите, что думаете</h1>
+  <p>Это тестовая версия. Нам важно мнение мебельщиков: что удобно, что мешает, чего не хватает. Отвечайте только на те вопросы, на которые хочется, - любое поле можно оставить пустым. Займёт 3-5 минут.</p>
+</div></div>
+
+<form class="wrap" id="f" autocomplete="on">
+  <div class="q">
+    <h2>Кто вы?</h2>
+    <p class="h">Можно выбрать несколько</p>
+    <div class="chips" data-name="role">
+      <label><input type="checkbox" value="Делаю мебель сам">Делаю мебель сам</label>
+      <label><input type="checkbox" value="Свой цех или мастерская">Свой цех или мастерская</label>
+      <label><input type="checkbox" value="Дизайнер, замерщик">Дизайнер, замерщик</label>
+      <label><input type="checkbox" value="Продаю мебель, салон">Продаю мебель, салон</label>
+      <label><input type="checkbox" value="Другое">Другое</label>
+    </div>
+    <div class="g2" style="margin-top:10px">
+      <input type="text" name="city" placeholder="Город">
+      <input type="text" name="volume" placeholder="Сколько заказов в месяц, примерно">
+    </div>
+  </div>
+
+  <div class="q">
+    <h2>Чем вы сейчас считаете заказы?</h2>
+    <div class="chips" data-name="now">
+      <label><input type="checkbox" value="Базис-Мебельщик">Базис-Мебельщик</label>
+      <label><input type="checkbox" value="PRO100">PRO100</label>
+      <label><input type="checkbox" value="К3-Мебель">К3-Мебель</label>
+      <label><input type="checkbox" value="Excel">Excel</label>
+      <label><input type="checkbox" value="На бумаге, калькулятором">На бумаге, калькулятором</label>
+      <label><input type="checkbox" value="Другая программа">Другая программа</label>
+    </div>
+  </div>
+
+  <div class="q">
+    <h2>Что вы попробовали?</h2>
+    <div class="chips" data-name="tried">
+      <label><input type="checkbox" value="Калькулятор">Калькулятор</label>
+      <label><input type="checkbox" value="Описание голосом">Описание голосом</label>
+      <label><input type="checkbox" value="Конфигуратор для клиента">Конфигуратор для клиента</label>
+      <label><input type="checkbox" value="КП и договор">КП и договор</label>
+      <label><input type="checkbox" value="Карта раскроя">Карта раскроя</label>
+      <label><input type="checkbox" value="Учёт заказов">Учёт заказов</label>
+    </div>
+  </div>
+
+  <div class="q">
+    <h2>Насколько удобно в целом?</h2>
+    <p class="h">1 - совсем неудобно, 5 - отлично</p>
+    <div class="chips stars" data-name="score" data-one>
+      <label><input type="radio" name="score" value="1">1</label>
+      <label><input type="radio" name="score" value="2">2</label>
+      <label><input type="radio" name="score" value="3">3</label>
+      <label><input type="radio" name="score" value="4">4</label>
+      <label><input type="radio" name="score" value="5">5</label>
+    </div>
+  </div>
+
+  <div class="q">
+    <h2>Что понравилось?</h2>
+    <textarea name="liked" placeholder="Например: быстро считает купе, удобно отправить клиенту ссылку"></textarea>
+  </div>
+
+  <div class="q">
+    <h2>Что неудобно или не работает?</h2>
+    <p class="h">Если что-то сломалось - напишите, в каком инструменте и что нажимали. С какого устройства: телефон или компьютер.</p>
+    <textarea name="bad"></textarea>
+  </div>
+
+  <div class="q">
+    <h2>Посчитал ли калькулятор цену правильно?</h2>
+    <p class="h">Сравните с тем, как считаете вы. Цены материалов в тестовой версии примерные.</p>
+    <div class="chips" data-name="price" data-one>
+      <label><input type="radio" name="price" value="Близко к моему расчёту">Близко к моему</label>
+      <label><input type="radio" name="price" value="Дешевле, чем считаю я">Дешевле</label>
+      <label><input type="radio" name="price" value="Дороже, чем считаю я">Дороже</label>
+      <label><input type="radio" name="price" value="Не проверял">Не проверял</label>
+    </div>
+    <textarea name="priceNote" style="margin-top:10px;min-height:60px" placeholder="Что посчитано не так: материалы, кромка, фурнитура, работа, монтаж..."></textarea>
+  </div>
+
+  <div class="q">
+    <h2>Чего не хватает? Что бы вы изменили?</h2>
+    <p class="h">Изделия, материалы, документы, отчёты, функции - что угодно</p>
+    <textarea name="missing"></textarea>
+  </div>
+
+  <div class="q">
+    <h2>Ваши идеи и советы</h2>
+    <p class="h">Как бы вы сделали этот инструмент полезнее для своей работы</p>
+    <textarea name="ideas"></textarea>
+  </div>
+
+  <div class="q">
+    <h2>Стали бы пользоваться в работе?</h2>
+    <div class="chips" data-name="use" data-one>
+      <label><input type="radio" name="use" value="Да, уже сейчас">Да, уже сейчас</label>
+      <label><input type="radio" name="use" value="Да, если доделать">Да, если доделать</label>
+      <label><input type="radio" name="use" value="Скорее нет">Скорее нет</label>
+    </div>
+    <textarea name="useWhy" style="margin-top:10px;min-height:60px" placeholder="Что должно появиться, чтобы вы перешли? Сколько были бы готовы платить в месяц?"></textarea>
+  </div>
+
+  <div class="q">
+    <h2>Как с вами связаться</h2>
+    <p class="h">Необязательно. Если оставите - сможем уточнить вопросы и показать новую версию первым.</p>
+    <div class="g2">
+      <input type="text" name="name" placeholder="Имя" autocomplete="name">
+      <input type="text" name="phone" placeholder="Телефон или WhatsApp" autocomplete="tel" inputmode="tel">
+    </div>
+  </div>
+
+  <p class="note" id="hint">Откроется WhatsApp с готовым сообщением - останется нажать "Отправить". Ответы сохраняются на этой странице, пока вы их не отправите.</p>
+  <div class="send">
+    <div class="btns">
+      <a class="btn wa" id="wa" href="#" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.2.5.1.6-.1l.9-1.1c.2-.3.4-.2.7-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.3z"/></svg>Отправить в WhatsApp</a>
+      <button class="btn" type="button" id="copy">Скопировать</button>
+    </div>
+  </div>
+</form>
+<div id="toast"></div>
+
+<script>
+"use strict";
+(function () {
+  // Номер, на который приходят отзывы (только цифры, с кодом страны). Пусто - тестировщик сам выберет, кому отправить.
+  var WA_NUMBER = "";
+  var KEY = "mebel-site-feedback";
+  var $ = function (id) { return document.getElementById(id); };
+  var f = $("f");
+  var LABELS = { role: "Кто", city: "Город", volume: "Заказов в месяц", now: "Сейчас считает в", tried: "Попробовал", score: "Удобство (1-5)",
+    liked: "Понравилось", bad: "Неудобно / не работает", price: "Цена в калькуляторе", priceNote: "Что не так с ценой",
+    missing: "Не хватает / изменить", ideas: "Идеи и советы", use: "Стал бы пользоваться", useWhy: "Что нужно, сколько готов платить",
+    name: "Имя", phone: "Контакт" };
+
+  function collect() {
+    var d = {};
+    f.querySelectorAll("[data-name]").forEach(function (g) {
+      var v = [].map.call(g.querySelectorAll("input:checked"), function (i) { return i.value; });
+      if (v.length) d[g.dataset.name] = v.join(", ");
+    });
+    f.querySelectorAll("textarea[name], input[type=text][name]").forEach(function (el) { var v = el.value.trim(); if (v) d[el.name] = v; });
+    return d;
+  }
+  function text() {
+    var d = collect(), lines = ["Отзыв о тестовой версии \"Мебельного конструктора\"", ""];
+    Object.keys(LABELS).forEach(function (k) {
+      if (!d[k]) return;
+      var v = d[k];
+      lines.push(v.indexOf("\n") >= 0 || v.length > 60 ? "*" + LABELS[k] + ":*\n" + v + "\n" : "*" + LABELS[k] + ":* " + v);
+    });
+    return { text: lines.join("\n").replace(/\n{3,}/g, "\n\n").trim(), empty: Object.keys(d).length === 0 };
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(collect())); } catch (e) {} }
+  function load() {
+    var d; try { d = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {}
+    if (!d) return;
+    f.querySelectorAll("[data-name]").forEach(function (g) {
+      var v = (d[g.dataset.name] || "").split(", ");
+      g.querySelectorAll("input").forEach(function (i) { i.checked = v.indexOf(i.value) >= 0; });
+    });
+    f.querySelectorAll("textarea[name], input[type=text][name]").forEach(function (el) { if (d[el.name]) el.value = d[el.name]; });
+  }
+  function toast(t) { var el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(function () { el.classList.remove("on"); }, 2600); }
+  function upd() {
+    var t = text().text;
+    $("wa").href = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(t);
+  }
+  f.addEventListener("input", function () { save(); upd(); });
+  f.addEventListener("change", function () { save(); upd(); });
+  f.addEventListener("submit", function (e) { e.preventDefault(); });
+  $("wa").addEventListener("click", function (e) {
+    if (text().empty) { e.preventDefault(); toast("Ответьте хотя бы на один вопрос"); }
+  });
+  $("copy").onclick = function () {
+    var t = text();
+    if (t.empty) return toast("Ответьте хотя бы на один вопрос");
+    (navigator.clipboard ? navigator.clipboard.writeText(t.text) : Promise.reject()).then(function () { toast("Ответы скопированы"); }, function () { prompt("Скопируйте текст", t.text); });
+  };
+  if (!WA_NUMBER) $("hint").textContent = "Откроется WhatsApp с готовым сообщением - выберите того, кто дал вам ссылку на сайт, и нажмите \"Отправить\". Ответы сохраняются на этой странице.";
+  load(); upd();
+})();
+</script>
+</body>
+</html>

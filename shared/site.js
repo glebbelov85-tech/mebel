@@ -154,6 +154,7 @@
     h += '<div class="ms-more">';
     extra.forEach(function (x, i) { h += '<button type="button" data-extra="' + i + '">' + esc(x.label) + "</button>"; });
     h += '<button type="button" data-dl>Скачать файл заказа (.mebel.json)</button>';
+    h += '<a class="ms-fb" href="' + root() + 'otzyv/">Оставить отзыв о тестовой версии</a>';
     if (rec && rec.from !== me && adapter && adapter.put) {
       var s = summary(rec.order);
       h += '<button type="button" data-last>Открыть здесь последний переданный заказ: ' + esc(s.title) + (s.client ? ", " + esc(s.client) : "") + " (" + esc(toolName(rec.from)) + ", " + esc(ago(rec.at)) + ")</button>";
