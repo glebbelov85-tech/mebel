@@ -37,7 +37,7 @@ assert "</script" not in ORDER_JS.lower()
 def inject(html, tool, adapter=True):
     """Общие стили и site.js - в <head> (до кода инструмента), адаптер - в конец <body>."""
     head = ('<link rel="stylesheet" href="../shared/site.css">\n'
-            '<script>window.MEBEL_TOOL = "%s";</script>\n<script src="../shared/site.js"></script>\n' % tool)
+            '<script>window.MEBEL_TOOL = "%s";</script>\n<script src="../shared/golos.js"></script>\n<script src="../shared/site.js"></script>\n' % tool)
     assert "</head>" in html, tool  # первое вхождение - настоящий head (дальше бывает внутри строк)
     html = html.replace("</head>", head + "</head>", 1)
     if adapter:
@@ -62,7 +62,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
 
     # общая часть и главная
-    for f in ("site.js", "site.css"):
+    for f in ("site.js", "site.css", "golos.js"):
         os.makedirs(os.path.join(OUT, "shared"), exist_ok=True)
         shutil.copy(os.path.join(HERE, "shared", f), os.path.join(OUT, "shared", f))
     wr(os.path.join(OUT, "shared", "mebel-order.js"), ORDER_JS)

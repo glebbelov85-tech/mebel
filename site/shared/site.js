@@ -249,14 +249,16 @@
   }
   // панель голоса (на страницах без своего голосового помощника)
   var VS = { rec: null, want: false, on: false, gen: 0 };
-  function speak(text) { try { if (!window.speechSynthesis || localStorage.getItem("mk2_ed_mute") === "1") return; speechSynthesis.cancel(); var u = new SpeechSynthesisUtterance(text.slice(0, 250)); u.lang = "ru-RU"; speechSynthesis.speak(u); } catch (e) {} }
+  // ответ вслух (shared/golos.js): пока говорит - микрофон на паузе, чтобы не услышать сам себя
+  function speak(text, after) { if (window.MebelVoice) MebelVoice.say(text, after); else if (after) after(); }
   function voicePanel() {
     if (document.getElementById("msVoice")) return;
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     var mic = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
     var w = document.createElement("div"); w.id = "msVoice";
     w.innerHTML = '<button type="button" class="msv-pill" id="msvPill">' + mic + ' Голосом</button>' +
-      '<div class="msv-panel" id="msvPanel" hidden><div class="msv-top"><b>Голосовой помощник</b><span id="msvSt"></span><button type="button" class="msv-x" id="msvX" aria-label="Свернуть">&times;</button></div>' +
+      '<div class="msv-panel" id="msvPanel" hidden><div class="msv-top"><b>Голосовой помощник</b><span id="msvSt"></span><button type="button" class="msv-set" id="msvSet" title="Отвечать вслух и каким голосом">звук</button><button type="button" class="msv-x" id="msvX" aria-label="Свернуть">&times;</button></div>' +
+      '<div class="msv-tts" id="msvTts" hidden></div>' +
       '<div class="msv-log" id="msvLog"><div class="msv-info">Скажите, куда перейти или что нажать: "открой калькулятор", "передай заказ в раскрой", "нажми сохранить", "что здесь можно нажать".</div></div>' +
       '<div class="msv-live" id="msvLive" hidden></div>' +
       '<div class="msv-row">' + (SR ? '<button type="button" class="msv-mic" id="msvMic" title="Говорить">' + mic + '</button>' : '') + '<input id="msvIn" placeholder="Куда перейти или что нажать" autocomplete="off"><button type="button" class="msv-go" id="msvGo">OK</button></div></div>';
@@ -268,8 +270,9 @@
       add("msv-q", "&laquo;" + esc(text) + "&raquo;");
       if (/^(стоп|хватит|выключи микрофон)$/.test(vn(text))) { stop(); return; }
       var r = voiceNav(text);
-      if (r) { add("msv-ok", esc(r)); if (byVoice) speak(r); } else add("msv-err", "Не понял. Скажите, например: \"открой учёт заказов\" или \"нажми сохранить\".");
+      if (r) { add("msv-ok", esc(r)); if (byVoice) talk(r); } else { add("msv-err", "Не понял. Скажите, например: \"открой учёт заказов\" или \"нажми сохранить\"."); if (byVoice) talk("Не понял, скажите иначе"); }
     }
+    function talk(t) { var was = VS.want; if (was) { VS.want = false; try { VS.rec && VS.rec.stop(); } catch (e) {} } speak(t, function () { if (was && !$("msvPanel").hidden) start(); }); }
     function show(o) { $("msvPanel").hidden = !o; $("msvPill").hidden = o; try { localStorage.setItem("ms-voice-open", o ? "1" : "0"); } catch (e) {} if (!o) stop(); }
     function setOn(o) { VS.on = o; var b = $("msvMic"); if (b) b.className = "msv-mic" + (o ? " on" : ""); $("msvSt").textContent = o ? "Слушаю..." : ""; }
     function spawn() {
@@ -286,6 +289,7 @@
     function stop() { VS.want = false; try { VS.rec && VS.rec.stop(); } catch (e) {} setOn(false); }
     $("msvPill").onclick = function () { show(true); };
     $("msvX").onclick = function () { show(false); };
+    $("msvSet").onclick = function () { var b = $("msvTts"); b.hidden = !b.hidden; if (!b.hidden && window.MebelVoice) MebelVoice.settings(b); };
     $("msvGo").onclick = function () { run($("msvIn").value); $("msvIn").value = ""; };
     $("msvIn").addEventListener("keydown", function (e) { if (e.key === "Enter") { run($("msvIn").value); $("msvIn").value = ""; } });
     if ($("msvMic")) $("msvMic").onclick = function () { if (VS.on) stop(); else start(); };

@@ -61,3 +61,10 @@ html[data-tool="kp"] input,html[data-tool="kp"] select,html[data-tool="kp"] text
 #msVoice .msv-mic,#msVoice .msv-go{border:0;border-radius:10px;padding:8px 12px;background:#2f6f5e;color:#fff;cursor:pointer;font:600 14px system-ui,sans-serif;width:auto}
 #msVoice .msv-mic.on{background:#25d366}
 @media(max-width:600px){#msVoice{left:8px;right:8px;display:flex;justify-content:flex-end}#msVoice .msv-panel{width:100%}}
+#msVoice .msv-set{background:none;border:0;font-size:12px;color:#7a7068;text-decoration:underline;cursor:pointer;width:auto;padding:0 4px;margin-left:auto}
+#msVoice .msv-tts,.ed-tts{font-size:12px;padding:6px 10px;border-bottom:1px solid #e8e2da;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+#msVoice .msv-tts[hidden],.ed-tts[hidden]{display:none}
+#msVoice .msv-tts select,.ed-tts select{max-width:220px;font-size:12px;padding:2px 4px;width:auto}
+#msVoice .msv-tts input[type=range],.ed-tts input[type=range]{width:90px;vertical-align:middle}
+#msVoice .msv-tts button,.ed-tts button{font-size:12px;padding:3px 10px;width:auto}
+.mv-tip{flex-basis:100%;color:#7a7068}
