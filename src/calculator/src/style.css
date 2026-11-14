@@ -161,3 +161,26 @@ button.mcard:hover{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-
 .mcard .mrow2{display:flex;gap:4px;align-items:center;justify-content:center}
 .mcard .mrow2 input{width:72px;padding:5px;font-size:13px;text-align:center}
 .mcard .mrow2 button{padding:5px 8px;font-size:12px}
+/* описание словами */
+.vo-live{margin-top:6px;padding:6px 10px;border:1px dashed var(--line);border-radius:10px;color:var(--muted);font-style:italic;font-size:14px}
+.vo-bar{align-items:center;margin-top:8px}
+.vo-st{font-size:13px;color:var(--muted)}
+.vo-st.rec{color:#c0392b}
+.vo-st.rec::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#e74c3c;margin-right:6px;animation:voPulse 1s infinite}
+@keyframes voPulse{50%{opacity:.25}}
+.vo-sum{margin-top:10px;border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:#fff}
+.vo-sh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.vo-sm{padding:4px 10px;font-size:12px}
+.vo-t{width:100%;border-collapse:collapse;font-size:13px}
+.vo-t td{padding:3px 6px;vertical-align:top;border-top:1px solid #f1ebe3}
+.vo-t td:first-child{color:var(--muted);width:38%}
+.vo-t .vo-g td{border-top:0;padding-top:8px;font-weight:600;color:var(--ink)}
+.vo-t .vo-dim td:last-child{color:var(--muted)}
+.vo-src{font-size:11px;color:var(--muted);background:#f3eee7;border-radius:6px;padding:0 5px;white-space:nowrap}
+.vo-ask{margin-top:8px;font-size:13px;background:var(--accent-l);border-radius:10px;padding:8px 10px}
+.vo-ask ul{margin:4px 0 0;padding-left:18px}
+.vo-ask li{margin:3px 0}
+.vo-link{background:none;border:0;padding:0;color:var(--accent);font:inherit;font-weight:600;text-decoration:underline;cursor:pointer}
+.vo-help{margin-top:12px;font-size:13px}
+.vo-help summary{cursor:pointer;color:var(--muted)}
+.vo-help .vo-t{margin-top:6px}
