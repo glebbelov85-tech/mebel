@@ -318,13 +318,43 @@ function edKitchen(f){
   if(/подгони|заполни|выровня/.test(f)){ const notes=[]; LAYOUTS[K.layout].walls.forEach(wi=>notes.push(...edBalanceWall(wi))); return ["Ряды подогнаны по длине стен",...notes]; }
   return null;
 }
+// ---------- новый проект из той же панели ----------
+const ED_NOUN=/^(угловая |угловую |прямая |прямую |п-образная |п-образную |встроенный |встроенная |корпусный |распашной |большой |маленький |небольшой )?(кухн|кухон|шкаф|купе|комод|тумб|прихож|стеллаж|гардероб|пенал|полк|антресол)/;
+const ED_NEW=/^(нов[а-я]+ (проект|заказ|изделие)|начн[а-я]* (заново|новый проект)|опиши заново|опиши (новый )?(проект|заказ)|(мне |нам )?(клиенту )?(нужн[аоы]?|нужен|хочу|давай|сделай|сделаем|собери|делаем|проектируем|спроектируй)( нов[а-я]+)?(?= )|нов[а-я]+(?= (угл|прям|п-обр|кухн|кухон|шкаф|купе|комод|тумб|прихож|стеллаж|гардероб)))/;
+function edNoun(t){ return ED_NOUN.test(t); }
+// тело описания после "новый проект"/"сделай"; null - это не новый проект
+function edNewBody(t){ if(/^новый расчет/.test(t)) return null; const m=t.match(ED_NEW); if(!m) return null;
+  const rest=t.slice(m[0].length).replace(/^[\s,:-]+/,"");
+  if(/^(проект|заказ|изделие|заново|новый проект)/.test(m[0].replace(/^нов[а-я]+ /,"")) || /^нов/.test(m[0])) return rest;
+  return edNoun(rest) ? rest : null; }
+// фраза начинается с изделия, и это другое изделие или проект ещё не трогали
+function edLooksNew(t){ if(!edNoun(t)) return false;
+  if(S.mode==="kitchen" && /^шкаф(?![а-я -]*(купе|распаш|гардероб))/.test(t)) return false; // "шкаф 400 после мойки" - модуль кухни
+  const ps=parseSpeech(t); if(!ps||!ps.mode) return false;
+  if(ps.mode!==S.mode) return true;
+  const key=S.mode==="kitchen"?"kit":S.mode==="kupe"?"kupe":"u", d=defaultState();
+  return JSON.stringify(d[key])===JSON.stringify(S[key]); }
+function edBuild(text, more){
+  const ps=parseSpeech(text); if(!ps||!ps.mode||!ps.apply) return null;
+  ED.undo.push({s:JSON.stringify(S),p:JSON.stringify(PRICE)}); if(ED.undo.length>40) ED.undo.shift();
+  ps.apply(S); SEL={part:-1,mod:null}; ED.wantDesc=false; ED.desc={text, live:true};
+  const said=ps.rows.filter(r=>r.src==="said").map(r=>`${esc(r.label)}: <b>${esc(r.val)}</b>`), def=ps.rows.filter(r=>r.src!=="said").length;
+  const h=[(more?"Дополнил проект":"Собрал проект")+" - "+esc(({kitchen:"Кухня",kupe:"Шкаф-купе",univ:"Изделие"})[ps.mode]||"")+".", said.join("; ")+(def?`. Остальное (${def}) - типовое, можно поправить.`:"")];
+  if(ps.asks.length) h.push("Уточните: "+ps.asks.map(a=>`<button class="vo-link" data-say="${esc(a.ins||a.say)}" title="Например: ${esc(a.say)}">${esc(a.label)}</button>`).join(" · "));
+  if(ps.warns&&ps.warns.length) h.push(ps.warns.map(esc).join("<br>"));
+  return {ok:true, built:true, mode:ps.mode, html:true, msg:h, say:more?"Дополнил":"Собрал проект"};
+}
 // ---------- одна фраза = одна или несколько правок ----------
 function editProject(text){
   const t=vNorm(text).replace(/(?<!\d)[.!?]+|[.!?]+(?!\d)/g,",").replace(/^[\s,]+|[\s,]+$/g,"").trim();
   if(!t) return {ok:false, msg:[]};
   if(/^(отмен|верни( как было)?$|назад$|отмени)/.test(t)) return edUndo();
   if(typeof tplCommand==="function"){ const r=tplCommand(t); if(r) return r; }
-  if(/^(нов[а-я]+ (проект|кухн|шкаф|изделие|комод|тумб)|начн[а-я]* заново|опиши заново|опиши (новый )?(проект|заказ)|сделай (нов[а-я]+ )?(проект|кухню|шкаф))/.test(t) && !/^новый расчет/.test(t)) return {ok:false, newProject:true, msg:["Это похоже на новый проект - открываю описание словами"]};
+  // новый проект голосом: "новая кухня ...", "сделай шкаф-купе ...", "угловая кухня 3 на 2" - собираем сразу здесь же
+  const nb=edNewBody(t);
+  if(nb!=null){ if(nb.trim()){ const b=edBuild(nb); if(b) return b; }
+    ED.wantDesc=true; return {ok:false, info:true, msg:["Опишите, что делаем: например \"угловая кухня, стена 3 метра и 2 метра, посудомойка 60\" или \"шкаф-купе 2,4 на 2,4, две двери\"."], say:"Опишите, что делаем"}; }
+  if(ED.wantDesc || edLooksNew(t)){ const b=edBuild(t); if(b) return b; }
   if(typeof edWhole==="function"){ const w=edWhole(t); if(w){
     if(w.pre){ ED.undo.push({s:JSON.stringify(S),p:JSON.stringify(PRICE)}); w.pre(); return w; }
     if(w.act){ try{ w.act(); }catch(e){ return {ok:false,msg:[],errs:[e.message||String(e)]}; } }
@@ -345,7 +375,13 @@ function editProject(text){
     if(!r && prevVerb && !VERB.test(c)){ try{ r=one(prevVerb+" "+c); if(r) err=null; }catch(e){ err=err||e.message; } }
     const vm=c.match(VERB); if(vm) prevVerb=vm[0];
     if(r){ msg.push(...r); changed=true; } else errs.push(err||`Не понял: "${c}"`); }
-  if(changed){ ED.undo.push(snap); if(ED.undo.length>40) ED.undo.shift(); }
+  if(changed){ ED.undo.push(snap); if(ED.undo.length>40) ED.undo.shift(); if(ED.desc) ED.desc.live=false; }
+  // правкой не понял - может, это продолжение описания только что собранного проекта ("вторая стена 2 метра")
+  if(!changed && ED.desc && ED.desc.live){ const said=x=>{ const p=parseSpeech(x); return p&&p.mode?JSON.stringify(p.rows.filter(r=>r.src==="said")):""; };
+    const a=said(ED.desc.text), c=ED.desc.text+", "+text, bb=said(c);
+    if(bb && bb!==a && parseSpeech(c).mode===S.mode){ const b=edBuild(c, true); if(b) return b; } }
+  // или описание нового изделия ("комод 90 на 90, 4 ящика")
+  if(!changed && edNoun(t)){ const b=edBuild(text); if(b) return b; }
   // ничего не понял - может, это переход по сайту или кнопка на экране ("перейди в раскрой", "нажми сохранить")
   if(!changed && window.MebelSite && MebelSite.voiceNav){ const nv=MebelSite.voiceNav(text); if(nv) return {ok:false, msg:[nv], errs:[], info:true, say:nv}; }
   return {ok:changed, msg, errs};
@@ -374,7 +410,7 @@ const ED_HELP={
   common:["сколько стоит проект","сколько стоит ЛДСП","цена петли 1500","прайс загружен?","добавь в расчёт смеситель 15000","без монтажа","скидка 5 процентов","телефон 8 701 123 45 67","покажи 3D","открой прайс","покажи клиенту","сохрани расчёт","сохрани как шаблон угловая белая","перейди в раскрой","нажми скачать Excel","новый проект","отмена","помощь"]};
 function edHelpHtml(){
   const L=a=>a.map(x=>`<button class="vo-link" data-h="${esc(x)}">${esc(x)}</button>`).join(" · ");
-  return (PAGE==="calc"&&ED_HELP[S.mode]?`<div class="ed-hg"><b>${({kitchen:"Кухня",kupe:"Шкаф-купе",univ:"Изделие"})[S.mode]}:</b> ${L(ED_HELP[S.mode])}</div>`:"")+`<div class="ed-hg"><b>Везде:</b> ${L(ED_HELP.common)}</div><div class="note">Можно несколько правок одной фразой через "и" или запятую. На вопросы помощник отвечает вслух.</div>`;
+  return (PAGE==="calc"&&ED_HELP[S.mode]?`<div class="ed-hg"><b>${({kitchen:"Кухня",kupe:"Шкаф-купе",univ:"Изделие"})[S.mode]}:</b> ${L(ED_HELP[S.mode])}</div>`:"")+`<div class="ed-hg"><b>Везде:</b> ${L(ED_HELP.common)}</div><div class="note">Новый проект - просто опишите его: "угловая кухня 3 на 2 метра, посудомойка 60". Правки - можно несколько одной фразой через "и" или запятую.</div>`;
 }
 function edInit(){
   const box=document.createElement("div"); box.id="edBar"; box.className="edbar";
@@ -383,8 +419,8 @@ function edInit(){
       <div class="ed-top"><b>Голосовой помощник</b><button class="vo-link ed-mute" id="edVoiceSet" title="Отвечать вслух и каким голосом">звук</button><span class="vo-st" id="edSt"></span><button class="bx" id="edX" title="Свернуть">&times;</button></div>
       <div class="ed-log" id="edLog"></div>
       <div class="vo-live hide" id="edLive"></div>
-      <div class="ed-row"><button class="b1 hide" id="edMic" title="Говорить">${MIC_SVG}</button><input id="edIn" placeholder="Правка, вопрос или куда перейти" autocomplete="off"><button class="b1" id="edGo">OK</button></div>
-      <div class="ed-tools"><button class="b2 vo-sm" id="edUndo">Отменить правку</button><button class="b2 vo-sm" id="edNew">Новый проект</button><button class="b2 vo-sm" id="edTpl">Сохранить как шаблон</button><button class="b2 vo-sm" id="edShow">Показать клиенту</button><details><summary>Что можно сказать</summary><div class="ed-help" id="edHelp"></div></details></div>
+      <div class="ed-row"><button class="b1 hide" id="edMic" title="Говорить">${MIC_SVG}</button><input id="edIn" placeholder="Опишите проект, правку или вопрос" autocomplete="off"><button class="b1" id="edGo">OK</button></div>
+      <div class="ed-tools"><button class="b2 vo-sm" id="edUndo">Отменить правку</button><button class="b2 vo-sm" id="edNew" title="Большое поле: диктовать долго, шаблоны, выжимка">Подробное описание</button><button class="b2 vo-sm" id="edTpl">Сохранить как шаблон</button><button class="b2 vo-sm" id="edShow">Показать клиенту</button><details><summary>Что можно сказать</summary><div class="ed-help" id="edHelp"></div></details></div>
     </div>`;
   document.body.appendChild(box);
   const log=$("edLog"), inp=$("edIn"), live=$("edLive"), mic=$("edMic");
@@ -396,14 +432,18 @@ function edInit(){
     const c=voiceCmd(text); if(c==="stop"){ ED.eng&&ED.eng.stop(); return; }
     const r=editProject(text);
     if(r.applied){ addLog("ed-q","&laquo;"+esc(text)+"&raquo;"); addLog("ed-ok",r.msg.map(esc).join("<br>")); if(byVoice) edSpeak("Готово"); return; }
-    if(r.newProject){ if(ED.eng) ED.eng.stop(); openVoice(); const ta=$("voTxt"); if(ta){ ta.value=text.replace(/^(новый проект|новая|новый)\s*/i,""); ta.dispatchEvent(new Event("input")); } return; }
     addLog("ed-q","&laquo;"+esc(text)+"&raquo;");
     if(r.msg.length) addLog(r.info?"ed-info":"ed-ok",r.html?r.msg.join("<br>"):r.msg.map(esc).join("<br>"));
     if(byVoice) edSpeak(r.say || (r.ok ? (r.undone?"Отменил":"Готово") : (r.errs&&r.errs.length&&!r.msg.length ? "Не понял, скажите иначе" : "")));
     if(r.errs&&r.errs.length) addLog("ed-err",r.errs.map(esc).join("<br>")+(r.ok?"":`<br><span class="note">Примеры - в "Что можно сказать".</span>`));
-    if(r.ok){ edRefresh(); if(window.innerWidth<940){ const sk=$("sketch"); if(sk) sk.scrollIntoView({behavior:"smooth",block:"start"}); } }
+    if(r.built){ setMode(r.mode); calc(); } else if(r.ok) edRefresh();
+    if(r.ok){ if(window.innerWidth<940){ const sk=$("sketch"); if(sk) sk.scrollIntoView({behavior:"smooth",block:"start"}); } }
   };
   $("edVoiceSet").onclick=()=>{ let b=$("edTts"); if(!b){ b=document.createElement("div"); b.id="edTts"; b.className="ed-tts"; $("edVoiceSet").closest(".ed-top").insertAdjacentElement("afterend",b); } else if(!b.hidden){ b.hidden=true; return; } b.hidden=false; if(window.MebelVoice) MebelVoice.settings(b); };
+  const hint=()=>{ if(!ED.log.length) log.innerHTML=`<div class="ed-info">Говорите или пишите:<br>• новый проект - "угловая кухня, стены 3 и 2 метра, посудомойка 60"<br>• правки - "добавь ящик", "убери ручки", "двери зеркало"<br>• вопросы и переходы - "сколько стоит проект", "открой прайс"</div>`; };
+  hint();
+  // кнопка "Голосом" вверху и в демо: открыть помощника и сразу слушать
+  window.edOpen=()=>{ show(true); if(ED.eng&&!ED.on) ED.eng.start(); else inp.focus(); };
   $("edPill").onclick=()=>show(true);
   $("edX").onclick=()=>show(false);
   $("edGo").onclick=()=>{ run(inp.value); inp.value=""; inp.focus(); };
@@ -411,11 +451,12 @@ function edInit(){
   $("edUndo").onclick=()=>run("отмена");
   $("edNew").onclick=()=>{ if(ED.eng) ED.eng.stop(); openVoice(); };
   $("edShow").onclick=()=>{ if(typeof clientShow==="function") clientShow(true); };
-  $("edTpl").onclick=()=>openModal("Сохранить как шаблон",`<p class="note" style="margin-top:0">Шаблон - копия текущего изделия. Его можно открыть в "Новый проект" или голосом: "открой шаблон ...".</p>
+  $("edTpl").onclick=()=>openModal("Сохранить как шаблон",`<p class="note" style="margin-top:0">Шаблон - копия текущего изделия. Его можно открыть в "Подробное описание" или голосом: "открой шаблон ...".</p>
       <input id="tplName" placeholder="Например: Угловая белая с пеналом" value="${esc((MODE_NAMES[S.mode]||"")+" ")}"><div class="btns"><button class="b1" id="tplOk">Сохранить</button></div>`,()=>{
       const i=$("tplName"); i.focus(); i.setSelectionRange(i.value.length,i.value.length);
       const ok=()=>{ const n=tplSave(i.value); if(n){ closeModal(); toast("Шаблон \""+n+"\" сохранён"); } };
       $("tplOk").onclick=ok; i.addEventListener("keydown",e=>{ if(e.key==="Enter") ok(); }); });
+  log.addEventListener("click",e=>{ const b=e.target.closest("[data-say]"); if(b){ inp.value=b.dataset.say.replace(/\s*$/," "); inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); } });
   $("edHelp").addEventListener("click",e=>{ const b=e.target.closest("[data-h]"); if(b){ inp.value=b.dataset.h; inp.focus(); } });
   // микрофон: каждая договорённая фраза сразу выполняется
   const H={ final(f){ live.classList.add("hide"); run(f,true); },

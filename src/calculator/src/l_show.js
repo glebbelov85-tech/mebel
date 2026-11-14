@@ -1,5 +1,5 @@
 // ================= ШАБЛОНЫ И ПОКАЗ КЛИЕНТУ =================
-// Готовые шаблоны - это фразы: их можно подставить в "Описать словами", дополнить голосом и собрать.
+// Готовые шаблоны - это фразы: их можно подставить в "Подробное описание", дополнить голосом и собрать.
 // Свои шаблоны - снимок текущего изделия (localStorage mk2_tpl), открываются сразу.
 const TPL_BUILTIN = [
   {name:"Кухня прямая 2,4 м", text:"Прямая кухня 2 метра 40, холодильник отдельно, посудомойка 45"},
@@ -30,7 +30,7 @@ function tplApply(t){
 }
 function tplFind(q){ q=vNorm(q).trim(); if(!q) return null; const all=tplList();
   return all.find(x=>vNorm(x.name).trim()===q) || all.find(x=>vNorm(x.name).includes(q)) || all.find(x=>q.includes(vNorm(x.name).trim())) || null; }
-// ряд шаблонов в окне "Описать словами"
+// ряд шаблонов в окне "Подробное описание"
 function renderTplRow(onPick){
   const box=$("voTpl"); if(!box) return;
   const own=tplList();
@@ -47,7 +47,7 @@ function renderTplRow(onPick){
 function tplCommand(t){
   let m=t.match(/^(сохрани|запомни|сохранить)[а-я]*( (это|проект|как))*( как)? шаблон[а-я]*\s*(.*)$/);
   if(m){ const name=(m[5]||"").trim()||((MODE_NAMES[S.mode]||"Проект")+" "+new Date().toLocaleDateString("ru-RU"));
-    tplSave(name.charAt(0).toUpperCase()+name.slice(1)); return {ok:false, msg:[`Сохранил шаблон "${name}". Он появится в "Новый проект словами".`], errs:[]}; }
+    tplSave(name.charAt(0).toUpperCase()+name.slice(1)); return {ok:false, msg:[`Сохранил шаблон "${name}". Открыть: "открой шаблон ..." или в "Подробное описание".`], errs:[]}; }
   m=t.match(/^(открой|возьми|загрузи|покажи)[а-я]* шаблон[а-я]*\s*(.*)$/);
   if(m){ const q=m[2]; const own=tplFind(q);
     if(own){ tplApply(own); return {ok:false, applied:true, msg:[`Открыл шаблон "${own.name}"`], errs:[]}; }

@@ -14,7 +14,7 @@ const {open,OUT,chromium}=require('./pw.js');
     window.webkitSpeechRecognition=FakeSR; delete window.SpeechRecognition;
   });
   const val=()=>page.inputValue('#voTxt');
-  await page.click('#voiceBtn'); await page.waitForSelector('#voMic:not(.hide)');
+  await page.evaluate(()=>openVoice()); await page.waitForSelector('#voMic:not(.hide)');
   await page.click('#voMic');
   await page.evaluate(()=>{ __sr.say("угловая кухня",false); }); console.log('interim live:',await page.textContent('#voLive'),'| field:',JSON.stringify(await val()));
   await page.evaluate(()=>{ __sr.say("угловая кухня основная стена 3 метра",true); __sr.say("вторая 2 метра",true); });
@@ -37,10 +37,10 @@ const {open,OUT,chromium}=require('./pw.js');
   console.log('modal closed:',!(await page.$('#voTxt')),'mode kitchen:',await page.evaluate(()=>S.mode),'client:',await page.evaluate(()=>S.client),'disc',await page.evaluate(()=>S.disc),'decor',await page.evaluate(()=>S.decor));
   await page.screenshot({path:OUT+'/voice-built.png'});
   // черновик: после сборки пусто, без сборки - сохраняется
-  await page.click('#voiceBtn'); console.log('draft after build:',JSON.stringify(await val()));
-  await page.fill('#voTxt','комод ширина 1 метр'); await page.click('#modalX'); await page.click('#voiceBtn'); console.log('draft kept:',JSON.stringify(await val()));
+  await page.evaluate(()=>openVoice()); console.log('draft after build:',JSON.stringify(await val()));
+  await page.fill('#voTxt','комод ширина 1 метр'); await page.click('#modalX'); await page.evaluate(()=>openVoice()); console.log('draft kept:',JSON.stringify(await val()));
   // телефон
-  const m=await open(browser,{vp:{width:390,height:844}}); await m.page.click('#voiceBtn'); await m.page.fill('#voTxt',"шкаф купе 2400 на 2600 на 600 три двери все зеркальные"); await m.page.waitForTimeout(100);
+  const m=await open(browser,{vp:{width:390,height:844}}); await m.page.evaluate(()=>openVoice()); await m.page.fill('#voTxt',"шкаф купе 2400 на 2600 на 600 три двери все зеркальные"); await m.page.waitForTimeout(100);
   await m.page.screenshot({path:OUT+'/voice-phone.png',fullPage:true});
   console.log('errors:',errs.concat(m.errs).filter(e=>!/jsdelivr|ERR_FAILED|net::/.test(e)));
   await browser.close();
