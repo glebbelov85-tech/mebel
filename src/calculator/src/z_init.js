@@ -2,6 +2,12 @@
 function initEvents(){
   $("modeBar").addEventListener("click",e=>{ const b=e.target.closest("[data-mode]"); if(b) setMode(b.dataset.mode); });
   document.addEventListener("click",e=>{ const g=e.target.closest("[data-go]"); if(g) setMode(g.dataset.go); });
+  $("fitAllBtn").addEventListener("click",fitAll);
+  $("itemAdd").addEventListener("click",itemAdd);
+  if(LS.get("mk2_mini_off",false)){ $("mini").classList.add("off"); $("miniToggle").textContent="Эскиз"; }
+  $("miniToggle").addEventListener("click",e=>{ e.stopPropagation(); const off=$("mini").classList.toggle("off"); LS.set("mk2_mini_off",off); $("miniToggle").textContent=off?"Эскиз":"Свернуть"; drawSketch(); });
+  $("miniSvg").addEventListener("click",()=>$("sketchCard").scrollIntoView({behavior:"smooth",block:"start"}));
+  $("itemsList").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; if(b.dataset.iedit) itemEdit(+b.dataset.iedit); else if(b.dataset.idel) itemDel(+b.dataset.idel); });
   $("walls").addEventListener("click",e=>{ const b=e.target.closest("[data-act]"); if(b) wallAct(...b.dataset.act.split(",")); });
   $("k_alignTall").onclick=()=>{ const c=kitCtx(S.kit); S.kit.Ht=c.Hl+c.topT+c.apronH+c.Hu; refreshBinds(); calc(); toast(`Высота пенала: ${S.kit.Ht} мм`); };
   $("doorsSame").onclick=()=>{ const d=S.kupe.doors; for(let i=1;i<d.length;i++) d[i]=clone(d[0]); renderDoors(); calc(); };

@@ -264,6 +264,7 @@ document.addEventListener("change", e => {
   const t = e.target;
   if (t.type === "range" && t.dataset.k) render();
   if (t.dataset.c) render();
+  if (t.id === "priceFile" && t.files[0]) { t.files[0].text().then(loadPriceFile); return; }
   if (t.dataset.p) proField(t);
 });
 
@@ -299,6 +300,7 @@ function cfgOf(withClient) {
   const o = { v: 1, type: S.type, room: S.room, studio: S.studio, lock: S.lock, showPrice: S.showPrice, markup: S.markup, cur: S.cur, orderId: S.orderId };
   o[S.type] = JSON.parse(JSON.stringify(S[S.type])); delete o[S.type]._topT;
   if (S.handleCat) o.handleCat = S.handleCat;
+  if (S.prices && Object.keys(S.prices).length) o.prices = S.prices;
   if (withClient) o.client = S.client;
   return o;
 }
@@ -332,11 +334,11 @@ async function openCode(text) {
   const res = await MO.decode(code); adopt(res.order); return "Заказ открыт";
 }
 function applyCfg(d) {
-  const keep = { studio: S.studio, markup: S.markup, showPrice: S.showPrice, cur: S.cur };
+  const keep = { studio: S.studio, markup: S.markup, showPrice: S.showPrice, cur: S.cur, prices: S.prices, pricesFrom: S.pricesFrom };
   const fromClient = !!d.client && pro.me;
   S = merge(defaultState(), d); S.ext = null; S.extFin = {};
   if (!d.cur) S.cur = "KZT";   // коды до ноября 2026 - в тенге
-  if (fromClient) merge(S, keep);
+  if (fromClient) { S.prices = null; merge(S, keep); }
   if (!S.orderId) S.orderId = MO.uid("o");
   sanitize(); tab = S.lock ? 1 : 0; openDoors = false;
 }
@@ -411,7 +413,17 @@ function proSheet() {
   if (S.type === "kitchen") h += sec("Каталог ручек", handleList(S).length + " шт.", '<p class="note">Одна строка - одна ручка: название; цена; вид (скоба, рейлинг, кнопка, ракушка, торцевая); цвет (чёрный, хром, латунь, бронза, белый). Можно скопировать столбцы прямо из прайса магазина в Excel. Длину берём из названия ("160 мм").</p><label class="f">Список ручек<textarea id="catIn" style="min-height:150px;font-size:13px">' + esc(handlesText(handleList(S))) + '</textarea></label><div class="btns"><button class="cta sec2" data-a="catSave">Обновить каталог</button><button class="cta sec2" data-a="catReset">Вернуть пример</button></div>');
   const warns = (cur.info.warns || []).concat(MO.validate(cur.order).errors.map(e => e.msg));
   if (warns.length) h += '<div class="warn"><b>Проверьте:</b><ul>' + warns.slice(0, 8).map(w => "<li>" + esc(w) + "</li>").join("") + "</ul></div>";
-  if (q.total) h += '<div class="info">Себестоимость ' + money(q.cost || 0) + " · наценка " + money(q.markup || 0) + " · клиенту " + money(q.total) + ". Цены материалов примерные, как в калькуляторе.</div>";
+  if (S.type !== "ext") {
+    const np = S.prices ? Object.keys(S.prices).length : 0, calcSt = calcPriceState();
+    h += sec("Цены", np ? "ваш прайс: " + Object.keys(S.prices).filter(k => k !== "sheetMode").length + " поз." : "стартовые, примерные",
+      '<p class="note">' + (np ? "Клиент видит цену по вашим ценам" + (S.pricesFrom ? " (" + esc(S.pricesFrom) + ")" : "") + ". Они же уходят в ссылку и код для клиента." : "Пока цена для клиента считается по примерным ценам. Возьмите свой прайс из калькулятора, загрузите файлом или впишите руками - тогда цена здесь и в калькуляторе совпадёт.") + "</p>" +
+      '<div class="btns">' + (calcSt ? '<button class="cta" data-a="priceCalc">Взять цены из калькулятора</button>' : "") + '<button class="cta sec2" data-a="priceFilePick">Загрузить файл прайса</button></div>' +
+      '<input type="file" id="priceFile" accept=".json,application/json" hidden>' +
+      (calcSt ? "" : '<p class="note">Файл прайса: в калькуляторе откройте "Прайс" и сохраните прайс файлом (*.mebel-price.json) или резервную копию.</p>') +
+      '<button class="linkbtn" data-a="priceToggle">' + (priceOpen ? "Скрыть таблицу цен" : "Показать и поправить цены руками") + "</button>" + (np ? ' <button class="linkbtn" data-a="priceReset">Вернуть стартовые цены</button>' : "") +
+      (priceOpen ? '<div class="ptable">' + priceRows(S).map(r => '<label class="prow"><span>' + esc(r[1]) + ", " + esc(r[2] === "%" ? "%" : curSign() + " за " + r[2]) + '</span><input type="number" min="0" inputmode="decimal" data-p="price.' + r[0] + '" placeholder="' + r[3] + '" value="' + (S.prices && S.prices[r[0]] != null ? S.prices[r[0]] : "") + '"></label>').join("") + '</div><p class="note">Пустое поле - стартовая цена (серым). Наценка задаётся выше, в "Ваши данные".</p>' : ""));
+  }
+  if (q.total) h += '<div class="info">Себестоимость ' + money(q.cost || 0) + " · наценка " + money(q.markup || 0) + " · клиенту " + money(q.total) + (S.prices ? ". Посчитано по вашим ценам." : ". Цены материалов примерные - задайте свои в разделе \"Цены\".") + "</div>";
   h += sec("Работа вместе с клиентом", "", (S.type === "ext" ? "" : '<div class="chips">' + toggle("lock", "Закрепить размеры: клиент меняет только отделку", S.lock) + "</div>") +
     '<p class="note">Задайте размеры, закрепите их и отправьте клиенту код. Клиент на этой же странице нажмёт "Есть код", подберёт цвета и пришлёт заявку вам в WhatsApp. Можно и проще: закрепить размеры и дать клиенту свой телефон или планшет.</p>' +
     '<div class="code" id="proCode">...</div><div class="btns"><button class="cta" data-a="copyCode">Скопировать код для клиента</button><button class="cta sec2" data-a="copyOrder">Скопировать заказ (JSON)</button></div>' +
@@ -421,13 +433,40 @@ function proSheet() {
   openSheet("pro", h, true); if (was) $("card").scrollTop = st;
   projectCode(false).then(c => { if ($("proCode")) $("proCode").textContent = c; });
 }
+// --- прайс мастера ---
+let priceOpen = false;
+const curSign = () => MO.currencyInfo(curCode()).sign;
+// прайс калькулятора на этом же устройстве (тот же сайт): mk2_price для тенге, mk2_price_RUB для рублей
+function calcPriceState() {
+  try { const c = S.cur || "KZT", t = localStorage.getItem(c === "KZT" ? "mk2_price" : "mk2_price_" + c); const st = t && JSON.parse(t); return st && Array.isArray(st.items) && !(st.meta && st.meta.starter) ? st : null; } catch (e) { return null; }
+}
+function applyPrices(items, from) {
+  const r = pricesFromCalc(items);
+  if (!r.n) { toast("В этом прайсе не нашлось знакомых позиций"); return; }
+  S.prices = Object.assign({}, S.prices || {}, r.prices); S.pricesFrom = from;
+  if (r.markup != null) S.markup = Math.max(0, Math.min(300, r.markup));
+  render(); rebuild(); proSheet(); toast("Цены обновлены: " + r.n + " поз." + (r.markup != null ? ", наценка " + S.markup + "%" : ""));
+}
+function loadPriceFile(text) {
+  let d; try { d = JSON.parse(text); } catch (e) { toast("Это не файл прайса"); return; }
+  const c = S.cur || "KZT", date = new Date().toISOString().slice(0, 10);
+  if (d && d.format === "mebel-price" && Array.isArray(d.items)) {
+    if (d.currency && d.currency !== c) { toast("Прайс в другой валюте (" + d.currency + "). Сначала выберите эту валюту выше"); return; }
+    applyPrices(d.items, "файл прайса от " + (d.date || date));
+  } else if (d && d.app === "mebel-calc") {   // резервная копия калькулятора
+    const st = d.prices && d.prices[c] ? d.prices[c] : ((d.cur || "KZT") === c && Array.isArray(d.price) ? { items: d.price } : null);
+    if (!st) { toast("В копии нет прайса в нужной валюте"); return; }
+    applyPrices(st.items, "копия калькулятора от " + String(d.date || date).slice(0, 10));
+  } else toast("Это не файл прайса. Нужен *.mebel-price.json или резервная копия калькулятора");
+}
 function manualize() { const k = S.kitchen; if (!k.manual) k.manual = JSON.parse(JSON.stringify(kitchenLayout(k))); return k.manual; }
 function proField(t) {
   const p = t.dataset.p.split("."), v = t.value;
   if (p[0] === "studio") S.studio[p[1]] = v;
   else if (p[0] === "markup") S.markup = Math.max(0, Math.min(300, +v || 0));
   else if (p[0] === "showPrice") S.showPrice = v === "1";
-  else if (p[0] === "cur") { S.cur = v; if (S.handleCat) toast("Цены в вашем каталоге ручек остались как были - проверьте их"); }
+  else if (p[0] === "price") { S.prices = S.prices || {}; if (v === "" || !(+v >= 0)) delete S.prices[p[1]]; else S.prices[p[1]] = +v; if (!Object.keys(S.prices).length) S.prices = null; S.pricesFrom = S.prices ? (S.pricesFrom || "внесены вручную") : ""; }
+  else if (p[0] === "cur") { if (S.prices) { S.prices = null; S.pricesFrom = ""; toast("Валюта другая - ваши цены сброшены, загрузите прайс в новой валюте"); } S.cur = v; if (S.handleCat) toast("Цены в вашем каталоге ручек остались как были - проверьте их"); }
   else if (p[0] === "k") S.kitchen.len[p[2]] = Math.max(1000, Math.min(8000, Math.round(+v) || 2400));
   else if (p[0] === "q") { if (p[1] === "kind") S.kupe.kind = v; else if (p[1] === "back") S.kupe.back = v === "1"; else { S.kupe[p[1]] = +v; sanitize(); fitKupe(); } }
   else if (p[0] === "mod") { const m = manualize()[+p[1]][p[2]][+p[3]]; if (p[4] === "t") { m.t = v; delete m.what; } else m.w = Math.max(150, Math.min(1400, Math.round(+v) || 600)); }
@@ -444,6 +483,10 @@ function sheetAction(a, b) {
     }
     case "lock": S.lock = !S.lock; render(); rebuild(); proSheet(); break;
     case "copyCode": projectCode(false).then(c => copyText(c, "Код скопирован - отправьте его клиенту")); break;
+    case "priceCalc": { const st = calcPriceState(); if (st) applyPrices(st.items, "из калькулятора, " + new Date().toISOString().slice(0, 10)); break; }
+    case "priceFilePick": $("priceFile").click(); break;
+    case "priceToggle": priceOpen = !priceOpen; proSheet(); break;
+    case "priceReset": S.prices = null; S.pricesFrom = ""; render(); rebuild(); proSheet(); toast("Цены снова стартовые"); break;
     case "copyOrder": copyText(MO.stringify(cur.order), "Заказ скопирован"); break;
     case "modDel": manualize()[+b.dataset.w][b.dataset.kind].splice(+b.dataset.i, 1); render(); rebuild(); proSheet(); break;
     case "modAdd": manualize()[+b.dataset.w][b.dataset.kind].push(b.dataset.kind === "lower" ? { t: "shelf", w: 600 } : { t: "u_shelf", w: 600 }); render(); rebuild(); proSheet(); break;

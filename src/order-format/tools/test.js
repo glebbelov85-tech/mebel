@@ -190,5 +190,32 @@ const test = (name, fn) => Promise.resolve().then(fn).then(() => { n++; console.
     assert.ok(!validate(bad));
   });
 
+  await test("листы по раскладке деталей", () => {
+    const sheet = { w: 2800, h: 2070 };
+    // 4 детали 1380x1000 помещаются на один лист, пятая - уже второй
+    const four = Array.from({ length: 4 }, () => ({ w: 1380, h: 1000, rot: false }));
+    assert.strictEqual(M.nestSheets(four, sheet).sheets, 1);
+    assert.strictEqual(M.nestSheets(four.concat([{ w: 1380, h: 1000, rot: false }]), sheet).sheets, 2);
+    // длинные боковины: по площади хватило бы 1 листа, на деле нужно 2
+    const sides = Array.from({ length: 4 }, () => ({ w: 2500, h: 600, rot: false }));
+    assert.strictEqual(M.nestSheets(sides, sheet).sheets, 2);
+    // деталь больше листа не раскладывается; порядок деталей на результат не влияет
+    assert.strictEqual(M.nestSheets([{ w: 3000, h: 500, rot: true }], sheet).unplaced.length, 1);
+    const mix = four.concat(sides, [{ w: 700, h: 300, rot: true }, { w: 2000, h: 450, rot: false }]);
+    assert.strictEqual(M.nestSheets(mix, sheet).sheets, M.nestSheets(mix.slice().reverse(), sheet).sheets);
+    const o = JSON.parse(ex("shkaf-kupe.mebel.json")); o.pricing.sheetMode = "nest";
+    const m = M.bom(o).materials.find(x => x.id === "ldsp16");
+    assert.ok(m.sheets >= Math.ceil(m.area / 5.796) && m.nest.unplaced === 0);
+    assert.strictEqual(M.create().pricing.sheetMode, "nest");
+    // столешница плитами по 3 м: 3300 - две плиты, 1800 + 1100 - одна, 2000 + 1800 - две
+    assert.strictEqual(M.packLengths([3300], 3000), 2);
+    assert.strictEqual(M.packLengths([1800, 1100], 3000), 1);
+    assert.strictEqual(M.packLengths([2000, 1800], 3000), 2);
+    const k = JSON.parse(ex("kuhnya.mebel.json")), was = M.bom(k).materials.find(x => x.kind === "length");
+    k.catalog.materials[was.id].slab = 3000;
+    const now = M.bom(k).materials.find(x => x.id === was.id);
+    assert.ok(now.slabs >= 1 && now.qty === now.slabs * 3 && now.qty >= was.qty);
+  });
+
   console.log(process.exitCode ? "\nЕСТЬ ОШИБКИ" : "\nВсе проверки прошли: " + n);
 })();

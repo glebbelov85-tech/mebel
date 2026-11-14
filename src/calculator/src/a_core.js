@@ -46,7 +46,7 @@ const PRICE_DEF = [
   {id:"mirror",  g:"Стекло и зеркало", name:"Зеркало серебро 4 мм, м²", s:"Зеркало", u:"м²", v:15000, m:{kind:"area",t:4,css:"#b9d3df",facade:1}},
   {id:"mirror_t",g:"Стекло и зеркало", name:"Зеркало тонированное (бронза, графит), м²", s:"Зеркало тонир.", u:"м²", v:19000, m:{kind:"area",t:4,css:"#9a8b78",facade:1}},
   {id:"glass",   g:"Стекло и зеркало", name:"Стекло лакобель 4 мм, м²", s:"Лакобель", u:"м²", v:22000, m:{kind:"area",t:4,css:"#3d4a52",facade:1}},
-  {id:"top38",      g:"Столешницы", name:"Столешница ЛДСП 38 мм, п.м.", s:"Столешница 38", u:"п.м.", v:12000, m:{kind:"length",t:38,css:"#8a6a4a"}},
+  {id:"top38",      g:"Столешницы", name:"Столешница ЛДСП 38 мм, п.м.", s:"Столешница 38", u:"п.м.", v:12000, m:{kind:"length",t:38,css:"#8a6a4a",slab:3000}},
   {id:"top_compact",g:"Столешницы", name:"Столешница компакт-плита 12 мм, п.м.", s:"Столешница компакт", u:"п.м.", v:45000, m:{kind:"length",t:12,css:"#4a4a4a"}},
   {id:"top_stone",  g:"Столешницы", name:"Столешница искусственный камень, п.м.", s:"Столешница камень", u:"п.м.", v:90000, m:{kind:"length",t:38,css:"#cfcac2"}},
   {id:"apron",   g:"Столешницы", name:"Стеновая панель (фартук), п.м.", s:"Стеновая панель", u:"п.м.", v:10000},
@@ -84,7 +84,8 @@ const PRICE_DEF = [
   {id:"uinstall",g:"Услуги", name:"Доставка и сборка прочих изделий", s:"Доставка и сборка", u:"¤", v:10000},
   {id:"work",   g:"Правила расчёта", name:"Сборка, % от материалов", u:"%", v:15},
   {id:"markup", g:"Правила расчёта", name:"Наценка, %", u:"%", v:30},
-  {id:"usage",  g:"Правила расчёта", name:"Использование листа, % (остальное - отходы)", u:"%", v:80},
+  {id:"nest",   g:"Правила расчёта", name:"Листы считать по раскрою (детали раскладываются на лист)", u:"да/нет", v:1},
+  {id:"usage",  g:"Правила расчёта", name:"Использование листа, % - если листы считаются не по раскрою", u:"%", v:80},
   {id:"round",  g:"Правила расчёта", name:"Округлять итог до", u:"¤", v:1000},
   {id:"pm",     g:"Правила расчёта", name:"Цена кухни за погонный метр - для сравнения (0 - не показывать)", u:"¤", v:0}
 ];
@@ -109,7 +110,7 @@ const PRICE_RUB = {ldsp16:4200, ldsp16f:5200, ldsp10:3800, dvp:700, mdf:5000, md
   prof_eco:2500, prof_std:3500, prof_prem:6000, misc:1200, cut:1200, cutout:800, topjoin:1500, install:4000, kinstall:10000, uinstall:2500, round:100, pm:0};
 let PRICE_META = {};   // о прайсе: валюта, откуда цены (поставщик), дата
 function starterV(d,cur){
-  if(d.u==="%") return d.v;
+  if(d.u==="%" || d.u==="да/нет") return d.v;
   if(d.id==="round") return MO ? MO.roundStep(cur) : d.v;
   if(!MO || cur==="KZT") return d.v;
   return MO.starterPrice(d.v,cur,PRICE_RUB[d.id]);
@@ -132,7 +133,7 @@ function loadPrice(cur){
     const ids=new Set(st.items.map(x=>x.id));
     PRICE=st.items.filter(x=>x&&x.id);
     // новые стандартные позиции (после обновления программы) добавляются в конец своей группы
-    def.forEach(d=>{ if(!ids.has(d.id)) PRICE.push(d); else { const it=PRICE.find(x=>x.id===d.id); it.sys=1; if(d.m && !it.m) it.m=d.m; if(!it.s && d.s) it.s=d.s; if(d.g==="Правила расчёта"){ it.name=d.name; it.u=d.u; } } });
+    def.forEach(d=>{ if(!ids.has(d.id)) PRICE.push(d); else { const it=PRICE.find(x=>x.id===d.id); it.sys=1; if(d.m && !it.m) it.m=d.m; if(d.m && d.m.slab && it.m && it.m.slab===undefined) it.m.slab=d.m.slab; if(!it.s && d.s) it.s=d.s; if(d.g==="Правила расчёта"){ it.name=d.name; it.u=d.u; } } });
     PRICE.forEach(it=>{ if(it.u==="₸") it.u="¤"; });   // до 2026-11: единица "₸" = сумма
   }else{
     PRICE=def;

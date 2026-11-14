@@ -1,6 +1,6 @@
 // ================= СОСТОЯНИЕ =================
 function defaultState(){
-  return {v:2, mode:"kupe", client:"", phone:"", decor:"", disc:0, prepay:50, days:14, daysKind:"work", install:null, instNoMk:false, extras:[],
+  return {v:2, mode:"kupe", client:"", phone:"", decor:"", disc:0, prepay:50, days:14, daysKind:"work", install:null, instNoMk:false, extras:[], items:[],
     kupe:kupeDefaults(), kit:kitDefaults(),
     u:{tpl:"cab", prms:tplDefaults(), panels:[], hw:[], manual:false, built:false},
     view:{kupe:"in", kitchen:"elev", univ:"3d"}, hideFac:false};
@@ -148,7 +148,34 @@ function wallAct(act,wi,row,j){
   }
   renderWalls(); calc();
 }
+// Подогнать все ряды под длину стен одной кнопкой: небольшой остаток закрывает планка-заглушка,
+// большой - стандартные шкафы и планка, лишнее снимается с последнего модуля.
+function fitRow(wi,row){
+  const info=CUR.info.walls.find(x=>x.wi===wi); if(!info) return "";
+  const list=S.kit.walls[wi][row], low=row==="lower", free=Math.round(low?info.freeL:info.freeU), nm=low?"низ":"верх";
+  if(!free || (!low && !list.length)) return "";   // пустой верхний ряд - значит верха на этой стене нет
+  const lastMod=()=>{ for(let q=list.length-1;q>=0;q--){ const d=modDef(list[q].t); if(d && !d.gap) return list[q]; } return null; };
+  if(free<0){
+    // лишнее снимаем с обычных шкафов с конца ряда; технику, пеналы и проёмы не трогаем, уже 300 мм шкаф не делаем
+    let need=-free; const cut=[];
+    for(let q=list.length-1;q>=0&&need>0;q--){ const d=modDef(list[q].t); if(!d||d.gap||d.tall||/oven|dish|fridge|hood|micro/.test(list[q].t)) continue;
+      const min=/fill/.test(list[q].t)?20:300, take=Math.min(need,list[q].w-min); if(take>0){ list[q].w-=take; need-=take; cut.push(take); } }
+    return cut.length ? `${nm}: шкафы ужаты на ${-free-need} мм`+(need>0?`, ещё ${need} мм лишние - уберите модуль`:"") : `${nm}: лишние ${-free} мм - уберите модуль`;
+  }
+  if(free<20){ const m=lastMod(); if(m){ m.w+=free; return `${nm}: последний модуль шире на ${free} мм`; } }
+  let rest=free; const added=[];
+  while(rest>=300){ const w=[600,500,450,400,300].find(x=>x<=rest); list.push({t:low?"l_shelf":"u_shelf",w}); added.push(w); rest-=w; }
+  if(rest>=20) list.push({t:low?"l_fill":"u_fill",w:rest});
+  else if(rest>0) list[list.length-1].w+=rest;
+  return `${nm}: `+[added.length?`шкафы ${added.join(", ")}`:"", rest>=20?`заглушка ${rest}`:""].filter(Boolean).join(" и ");
+}
+function fitAll(){
+  const done=[];
+  S.kit.walls.forEach((w,wi)=>{ ["lower","upper"].forEach(row=>{ if(!CUR.info.walls.some(x=>x.wi===wi)) return; const r=fitRow(wi,row); if(r){ done.push(WALL_NAMES[wi].toLowerCase()+", "+r); calc(); } }); });
+  renderWalls(); calc(); toast(done.length?"Подогнано. "+done.join("; "):"Все ряды уже сходятся со стенами");
+}
 function updateKitchenHints(info){
+  const fa=$("fitAll"); if(fa) fa.classList.toggle("hide",!info.walls.some(w=>Math.round(w.freeL)!==0||Math.round(w.freeU)<0||Math.round(w.freeU)>0&&w.up.length));
   info.walls.forEach(w=>{
     const occL=$("occL"+w.wi), occU=$("occU"+w.wi), fitL=$("fitL"+w.wi), fitU=$("fitU"+w.wi), cn=$("cn"+w.wi);
     if(!occL) return;
@@ -304,27 +331,63 @@ function markFormSel(scroll){
 
 // ================= ОБЩИЙ ИТОГ =================
 let lastClient="", lastParts="";
-function currentResult(){
-  if(S.mode==="kupe"){ const r=genKupe(S.kupe); r.type="kupe"; r.install="install"; return r; }
-  if(S.mode==="kitchen"){ const r=genKitchen(S.kit); r.type="kitchen"; r.install="kinstall"; return r; }
-  const u=S.u, bb=bounds(u.panels), used=[...new Set(u.panels.filter(p=>!MAT(p.mat).virt).map(p=>matName(p.mat)))];
+// Результат одного изделия: mode - вид, st - его параметры (S.kupe, S.kit или S.u)
+function resultFor(mode,st){
+  if(mode==="kupe"){ const r=genKupe(st); r.type="kupe"; r.install="install"; r.st=st; return r; }
+  if(mode==="kitchen"){ const r=genKitchen(st); r.type="kitchen"; r.install="kinstall"; r.st=st; return r; }
+  const u=st, bb=bounds(u.panels), used=[...new Set(u.panels.filter(p=>!MAT(p.mat).virt).map(p=>matName(p.mat)))];
   const nm=(u.title||"").trim() || (u.tpl==="empty" ? "Изделие" : tplName(u.tpl));
-  return {type:"univ", install:"uinstall", parts:u.panels, hw:u.hw, warns:checkParts(u.panels,{overlap:1}),
+  return {type:"univ", install:"uinstall", st:u, parts:u.panels, hw:u.hw, warns:checkParts(u.panels,{overlap:1}),
     title:`${nm} ${bb.W}×${bb.H}×${bb.D}`, info:{bb},
     desc:`${nm}, ${bb.W}×${bb.H}×${bb.D} мм (Ш×В×Г)\nМатериалы: ${used.join(", ")||"-"}\nФурнитура: ${u.hw.filter(h=>h.q>0&&h.id!=="umisc").map(h=>String(h.name||"").toLowerCase()).filter(Boolean).join(", ")||"-"}`};
+}
+function currentResult(){ return resultFor(S.mode, S.mode==="kupe"?S.kupe:S.mode==="kitchen"?S.kit:S.u); }
+const isEmptyRes=r=>!r.parts.some(p=>!MAT(p.mat).virt&&p.a>0&&p.b>0) && !r.hw.some(h=>h.q>0);
+// ---- несколько изделий в одном заказе: S.items - остальные изделия, на экране всегда одно ("текущее") ----
+function curSnap(){ return {mode:S.mode, st:clone(S.mode==="kupe"?S.kupe:S.mode==="kitchen"?S.kit:S.u)}; }
+function loadSnap(it){ if(it.mode==="kupe") S.kupe=it.st; else if(it.mode==="kitchen") S.kit=it.st; else S.u=it.st; }
+const emptyU=()=>({tpl:"empty", prms:tplDefaults(), panels:[], hw:[], manual:true, built:true});
+function itemAdd(){
+  if(isEmptyRes(CUR)){ toast("Сначала посчитайте изделие - пока добавлять нечего"); return; }
+  const snap=curSnap(); S.items.push(snap);
+  if(snap.mode==="kupe") S.kupe=kupeDefaults(); else if(snap.mode==="kitchen") S.kit=kitDefaults();
+  S.u=emptyU(); setMode("univ"); window.scrollTo({top:0,behavior:"smooth"});
+  toast("Изделие добавлено в заказ. Выберите вверху, что считаем дальше: шкаф-купе, кухню или любое изделие");
+}
+function itemEdit(i){
+  const it=S.items[i]; if(!it) return;
+  if(isEmptyRes(CUR)) S.items.splice(i,1); else S.items[i]=curSnap();
+  loadSnap(clone(it)); setMode(it.mode); toast("Изделие открыто для правки");
+}
+function itemDel(i){ const r=CUR.others[i]; confirmBox(`Убрать из заказа "${r?r.title:"изделие"}"?`,"Убрать",()=>{ S.items.splice(i,1); calc(); }); }
+function renderItems(R0){
+  const box=$("itemsList"); if(!box) return;
+  const cur=!isEmptyRes(R0);
+  box.innerHTML=R0.others.map((r,i)=>`<div class="saved"><span>${i+1}. ${esc(r.title)}</span><button class="b2 small" data-iedit="${i}">Изменить</button><button class="bx" data-idel="${i}" title="Убрать из заказа">&times;</button></div>`).join("")+
+    (R0.others.length ? `<div class="saved"><span>${R0.others.length+1}. ${cur?esc(R0.title):"Новое изделие"}<small>сейчас на экране</small></span></div>` : "");
+  $("itemsNote").textContent = R0.others.length ? "Цена, материалы и листы считаются на весь заказ сразу. Эскиз - у изделия, которое на экране." : "В один заказ можно сложить несколько изделий: кухню, шкаф, тумбу. Цена и раскрой будут общими.";
 }
 function calc(){
   const R0=currentResult(); CUR=R0;
   if(R0.type!=="univ") R0.warns=[...new Set(R0.warns.concat(checkParts(R0.parts)))];
-  const cost=costParts(R0.parts,R0.hw); R0.cost=cost;
+  if(!Array.isArray(S.items)) S.items=[];
+  // остальные изделия заказа считаются заново при каждом расчёте - так на них действуют текущие цены
+  const others=S.items.map(it=>resultFor(it.mode,it.st)); R0.others=others;
+  const prods=(isEmptyRes(R0)&&others.length?[]:[R0]).concat(others); R0.prods=prods;
+  const allParts=others.length?[].concat(...prods.map(r=>r.parts)):R0.parts, allHw=[];
+  if(others.length){ const byId={}; prods.forEach(r=>r.hw.forEach(h=>{ if(!(h.q>0)) return; if(h.id&&h.p===undefined){ if(byId[h.id]) byId[h.id].q+=h.q; else allHw.push(byId[h.id]=Object.assign({},h)); } else allHw.push(h); })); }
+  R0.allParts=allParts; R0.allHw=others.length?allHw:R0.hw;
+  R0.orderTitle=prods.length>1?prods.map(r=>r.title).join(" + "):R0.title;
+  renderItems(R0);
+  const cost=costParts(allParts,R0.allHw); R0.cost=cost;
   const rows=cost.rows.filter(r=>r[2]>0);
   S.extras.forEach(x=>{ if(x.q*x.p>0) rows.push([x.name||"Своя позиция", x.q+" шт.", x.q*x.p]); });
   const disc=clamp(+S.disc||0,0,90), prepay=clamp(+S.prepay||0,0,100), days=Math.max(1,+S.days||1);
   // доставка и монтаж: своя сумма для этого заказа или из прайса; у пустого изделия - ноль
-  const mat=rows.reduce((s,r)=>s+r[2],0), installName=hwName(R0.install);
-  const install = mat>0 ? (S.install!=null && S.install!=="" ? Math.max(0,+S.install||0) : (P[R0.install]||0)) : 0;
-  const work=mat*P.work/100, cst=mat+work+install;
-  const markup=(S.instNoMk ? cst-install : cst)*P.markup/100, beforeDisc=cst+markup, discSum=beforeDisc*disc/100;
+  const mat=rows.reduce((s,r)=>s+r[2],0), installName=prods.length>1?"Доставка и монтаж":hwName(R0.install);
+  const install = mat>0 ? (S.install!=null && S.install!=="" ? Math.max(0,+S.install||0) : prods.reduce((s,r)=>s+(P[r.install]||0),0)) : 0;
+  const work=Math.round(mat*P.work/100), cst=mat+work+install;
+  const markup=Math.round((S.instNoMk ? cst-install : cst)*P.markup/100), beforeDisc=cst+markup, discSum=beforeDisc*disc/100;
   const R=Math.max(1,P.round||1);
   const total=Math.ceil((beforeDisc-discSum)/R-1e-9)*R;
   const pre=Math.min(total,Math.ceil(total*prepay/100/R-1e-9)*R);
@@ -355,7 +418,7 @@ function calc(){
 
   renderPartsCard(R0);
   const ex=S.extras.filter(x=>x.name&&x.q).map(x=>`\n- ${x.name}: ${x.q} шт.`).join("");
-  lastClient=`${R0.desc}${S.decor.trim()?"\nЦвет: "+S.decor.trim():""}${ex?"\nДополнительно:"+ex:""}
+  lastClient=`${prods.length>1?prods.map((r,i)=>(i+1)+". "+r.desc).join("\n\n"):R0.desc}${S.decor.trim()?"\nЦвет: "+S.decor.trim():""}${ex?"\nДополнительно:"+ex:""}
 ${install>0?"Доставка и монтаж включены":"Доставка и монтаж в стоимость не входят"}
 
 Стоимость: ${money(total)}${disc?` (со скидкой ${disc}%)`:""}
@@ -370,8 +433,8 @@ ${install>0?"Доставка и монтаж включены":"Доставк�
 
 // ================= ДЕТАЛИ: таблицы и текст =================
 function renderPartsCard(R0){
-  const cl=cutList(R0.parts); R0.cut=cl;
-  let h="", txt=R0.title+"\n";
+  const cl=cutList(R0.allParts||R0.parts); R0.cut=cl;
+  let h="", txt=(R0.orderTitle||R0.title)+"\n";
   if(R0.type==="kitchen"){
     const info=R0.info;
     h+=`<table><tr><th>Стена</th><th>Модули, мм</th></tr>`;
@@ -532,6 +595,21 @@ function drawSketch(){
   const used=[...new Set(CUR.parts.filter(p=>!MAT(p.mat).virt).map(p=>p.mat))];
   $("legend").innerHTML=used.map(m=>`<span><i style="background:${MAT(m).css}"></i>${esc(matName(m))}</span>`).join("")+
     (use3d?`<span>оси: <b style="color:#d33">X</b> <b style="color:#3a3">Y</b> <b style="color:#33d">Z</b></span>`:"");
+  drawMini(use3d);
+}
+// Маленький эскиз для телефона: копия плоского вида. Если открыт 3D - рисуем вид спереди.
+function drawMini(use3d){
+  const mini=$("mini"); if(!mini || !window.matchMedia("(max-width:939px)").matches) return;
+  const sk=$("sketch"), ms=$("miniSvg");
+  if(!mini.classList.contains("off")){
+    if(use3d){
+      const keepV=sk.getAttribute("viewBox"), keepH=sk.innerHTML;
+      if(S.mode==="kitchen") drawKitchenElev(); else drawOrtho("front",null);
+      ms.setAttribute("viewBox",sk.getAttribute("viewBox")); ms.innerHTML=sk.innerHTML;
+      if(keepV) sk.setAttribute("viewBox",keepV); sk.innerHTML=keepH;
+    } else { ms.setAttribute("viewBox",sk.getAttribute("viewBox")||"0 0 100 40"); ms.innerHTML=sk.innerHTML; }
+  }
+  $("miniTitle").textContent=CUR.title; $("miniTotal").textContent=CUR.quote?money(CUR.quote.total):"";
 }
 
 // ================= РЕЖИМЫ И СТРАНИЦЫ =================

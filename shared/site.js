@@ -30,6 +30,8 @@
   ];
 
   var me = window.MEBEL_TOOL || "home";
+  // единый вид сайта: общая палитра из site.css (всегда светлая) и метка инструмента для точечных правок
+  try { document.documentElement.setAttribute("data-theme", "light"); document.documentElement.setAttribute("data-tool", me); } catch (e) {}
   var adapter = null, queued = [];
 
   // --- память ---

@@ -240,7 +240,9 @@ function genKitchen(K){
       if(md.t==="u_lift" && w>1200) warns.push(`${nm}: подъёмный фасад шире 1200 мм - тяжело для механизма.`);
       us+=w;
     });
-    const freeL=l1-lowEnd, freeU=u1-us;
+    // свободное место верхнего ряда - без пеналов, которые стоят дальше последнего верхнего шкафа
+    const tallAhead=talls.reduce((q,[a,e])=>q+Math.max(0,Math.min(e,u1)-Math.max(a,us)),0);
+    const freeL=l1-lowEnd, freeU=us>u1 ? u1-us : u1-us-tallAhead;
     if(freeL<-0.5) warns.push(`${nm}: нижний ряд не помещается, лишние ${fmt(-freeL)} мм.`);
     else if(freeL>=1) warns.push(`${nm}: внизу свободно ${fmt(freeL)} мм - добавьте модуль, проём или заглушку.`);
     if(freeU<-0.5) warns.push(`${nm}: верхний ряд (с обходом пеналов) не помещается, лишние ${fmt(-freeU)} мм.`);

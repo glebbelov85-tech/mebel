@@ -21,7 +21,7 @@ function renderPriceTable(){
         <td>${it.m?`<span class="dot" style="background:${it.m.css}"></span> `:""}<input data-f="name" value="${esc(it.name)}" ${rule?"disabled":""} style="width:${it.m?"calc(100% - 22px)":"100%"}"></td>
         <td>${rule?"":`<input data-f="sku" value="${esc(it.sku||"")}" placeholder="-">`}</td>
         <td>${rule?esc(unitLabel(it.u)):`<select data-f="u">${UNITS.map(u=>`<option value="${u}" ${u===it.u?"selected":""}>${esc(unitLabel(u))}</option>`).join("")}</select>`}</td>
-        <td class="pv"><input type="number" min="0" data-f="v" value="${it.v}"></td>
+        <td class="pv">${it.u==="да/нет"?`<select data-f="v"><option value="1" ${+it.v?"selected":""}>Да</option><option value="0" ${+it.v?"":"selected"}>Нет</option></select>`:`<input type="number" min="0" data-f="v" value="${it.v}">`}</td>
         <td style="white-space:nowrap">${it.m||NEW_MAT[g]?`<button class="bx" data-pm="${it.id}" title="Свойства материала: лист, толщина, цвет">&#9881;</button>`:""}${priceChanged(it)?`<button class="bx" data-pr="${it.id}" title="Вернуть примерную цену ${money(defOf(it.id).v)}">&#8634;</button>`:""}${!it.sys?`<button class="bx" data-pd="${it.id}" title="Удалить">&times;</button>`:""}</td></tr>`;
       if(PX.open===it.id) h+=matPropsRow(it);
     });
@@ -36,6 +36,7 @@ function matPropsRow(it){
     <div><label>Толщина, мм</label><input type="number" data-mf="t" value="${m.t||""}"></div>
     ${m.kind==="sheet"?`<div><label>Лист, длина</label><input type="number" data-mf="sw" value="${m.sw||""}"></div><div><label>Лист, ширина</label><input type="number" data-mf="sh" value="${m.sh||""}"></div>
     <div><label>Кромка</label><select data-mf="edge"><option value="">без кромки</option>${edges.map(e=>`<option value="${e.id}" ${m.edge===e.id?"selected":""}>${esc(e.s||e.name)}</option>`).join("")}</select></div>`:""}
+    ${m.kind==="length"?`<div><label>Длина плиты, мм (0 - по метрам)</label><input type="number" min="0" step="100" data-mf="slab" value="${m.slab||0}"></div>`:""}
     <div><label>Цвет на эскизе</label><input type="color" data-mf="css" value="${m.css||"#cccccc"}"></div>
     <label class="chk"><input type="checkbox" data-mf="facade" ${m.facade?"checked":""}>Годится на фасады</label>
     ${m.kind==="sheet"?`<label class="chk"><input type="checkbox" data-mf="cut" ${m.cut?"checked":""}>Считать распил</label>`:""}`:""}
@@ -160,7 +161,7 @@ function switchCurrency(cur){
         const r=+$("rgRate").value; if(!(r>0)){ toast("Укажите курс"); return; }
         const k=big===to?1/r:r;   // сколько новой валюты за единицу старой
         const items=clone(PRICE).map(it=>{
-          if(it.u==="%") return it;
+          if(it.u==="%" || it.u==="да/нет") return it;
           if(it.id==="round") it.v=MO?MO.roundStep(cur):it.v;
           else { const v=(+it.v||0)*k; it.v=v>=100?Math.round(v):Math.round(v*100)/100; }
           delete it.upd; return it;
