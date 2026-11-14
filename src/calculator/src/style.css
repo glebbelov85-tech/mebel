@@ -253,3 +253,10 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
 .ed-tts input[type=range]{width:90px;vertical-align:middle}
 .ed-tts button{font-size:12px;padding:3px 10px;width:auto}
 .ed-tts .mv-tip{flex-basis:100%;color:#7a7068}
+.gd-nav{margin:0 0 6px;font-size:13px}
+.gd-s{border-top:1px solid #e8e2da;padding-top:6px;margin-top:10px}
+.gd-s h3{margin:4px 0 6px;font-size:15px}
+.gd-s p{margin:4px 0;font-size:14px}
+.gd-s .cands{margin-top:6px}
+.gd-s .cands{display:flex;flex-wrap:wrap;gap:6px}
+.gd-s .cands button{width:auto;margin:0;display:inline-block}

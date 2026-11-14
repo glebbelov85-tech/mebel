@@ -326,6 +326,7 @@ function edNoun(t){ return ED_NOUN.test(t); }
 function edNewBody(t){ if(/^новый расчет/.test(t)) return null; const m=t.match(ED_NEW); if(!m) return null;
   const rest=t.slice(m[0].length).replace(/^[\s,:-]+/,"");
   if(/^(проект|заказ|изделие|заново|новый проект)/.test(m[0].replace(/^нов[а-я]+ /,"")) || /^нов/.test(m[0])) return rest;
+  if(/(по)?(шире|уже|выше|ниже|глубже|больше|меньше|длиннее|короче)( |$)/.test(rest) || !/\d/.test(rest)) return null; // "сделай кухню пошире", "сделай прямую кухню" - правка
   return edNoun(rest) ? rest : null; }
 // фраза начинается с изделия, и это другое изделие или проект ещё не трогали
 function edLooksNew(t){ if(!edNoun(t)) return false;
@@ -368,9 +369,11 @@ function editProject(text){
   const parts = ED_VERB.swap.test(t) ? [t.replace(/,/g," и ")] : clauses;
   const VERB=/^(добав|постав|встав|убер|удал|убрат|сними|замен|поменя|перенес|передвин|подвин|сдела)[а-я]*/;
   let prevVerb="";
-  const one=c=>{ let r=null; if(typeof edMore==="function") r=edMore(c); if(r&&r.length) return r; if(S.mode==="kitchen") r=edKitchen(c); if(!r||!r.length) r=edProps(c); return r&&r.length?r:null; };
+  const one=c0=>{ let r=null; const c=typeof edSyn==="function"?edSyn(c0):c0;
+    if(typeof edCeil==="function"){ r=edCeil(c); if(r) return r; r=edRel(c); if(r&&r.length) return r; r=edKitWords(c); if(r&&r.length) return r; }
+    if(typeof edMore==="function") r=edMore(c); if(r&&r.length) return r; if(S.mode==="kitchen") r=edKitchen(c); if(!r||!r.length) r=edProps(c); if((!r||!r.length)&&typeof edNote==="function") r=edNote(c); return r&&r.length?r:null; };
   for(const c0 of parts){ const c=c0.trim(); let r=null, err=null;
-    try{ r=one(c); }catch(e){ err=e.message; }
+    try{ r=one(c); }catch(e){ err=e.message; if(typeof edAddMissing==="function"){ try{ const a=edAddMissing(typeof edSyn==="function"?edSyn(c):c, err); if(a){ r=a; err=null; } }catch(e2){} } }
     // "добавь мойку и посудомойку": у второй части глагол берём из первой
     if(!r && prevVerb && !VERB.test(c)){ try{ r=one(prevVerb+" "+c); if(r) err=null; }catch(e){ err=err||e.message; } }
     const vm=c.match(VERB); if(vm) prevVerb=vm[0];
@@ -420,7 +423,7 @@ function edInit(){
       <div class="ed-log" id="edLog"></div>
       <div class="vo-live hide" id="edLive"></div>
       <div class="ed-row"><button class="b1 hide" id="edMic" title="Говорить">${MIC_SVG}</button><input id="edIn" placeholder="Опишите проект, правку или вопрос" autocomplete="off"><button class="b1" id="edGo">OK</button></div>
-      <div class="ed-tools"><button class="b2 vo-sm" id="edUndo">Отменить правку</button><button class="b2 vo-sm" id="edNew" title="Большое поле: диктовать долго, шаблоны, выжимка">Подробное описание</button><button class="b2 vo-sm" id="edTpl">Сохранить как шаблон</button><button class="b2 vo-sm" id="edShow">Показать клиенту</button><details><summary>Что можно сказать</summary><div class="ed-help" id="edHelp"></div></details></div>
+      <div class="ed-tools"><button class="b2 vo-sm" id="edUndo">Отменить правку</button><button class="b1 vo-sm" id="edGuideBtn">Как говорить</button><button class="b2 vo-sm" id="edNew" title="Большое поле: диктовать долго, шаблоны, выжимка">Подробное описание</button><button class="b2 vo-sm" id="edTpl">Сохранить как шаблон</button><button class="b2 vo-sm" id="edShow">Показать клиенту</button><details><summary>Что можно сказать</summary><div class="ed-help" id="edHelp"></div></details></div>
     </div>`;
   document.body.appendChild(box);
   const log=$("edLog"), inp=$("edIn"), live=$("edLive"), mic=$("edMic");
@@ -440,15 +443,16 @@ function edInit(){
     if(r.ok){ if(window.innerWidth<940){ const sk=$("sketch"); if(sk) sk.scrollIntoView({behavior:"smooth",block:"start"}); } }
   };
   $("edVoiceSet").onclick=()=>{ let b=$("edTts"); if(!b){ b=document.createElement("div"); b.id="edTts"; b.className="ed-tts"; $("edVoiceSet").closest(".ed-top").insertAdjacentElement("afterend",b); } else if(!b.hidden){ b.hidden=true; return; } b.hidden=false; if(window.MebelVoice) MebelVoice.settings(b); };
-  const hint=()=>{ if(!ED.log.length) log.innerHTML=`<div class="ed-info">Говорите или пишите:<br>• новый проект - "угловая кухня, стены 3 и 2 метра, посудомойка 60"<br>• правки - "добавь ящик", "убери ручки", "двери зеркало"<br>• вопросы и переходы - "сколько стоит проект", "открой прайс"</div>`; };
+  const hint=()=>{ if(!ED.log.length) log.innerHTML=`<div class="ed-info">Говорите или пишите:<br>• новый проект - "угловая кухня, стены 3 и 2 метра, посудомойка 60"<br>• правки - "добавь ящик", "убери ручки", "двери зеркало"<br>• вопросы и переходы - "сколько стоит проект", "открой прайс"<br>Говорите своими словами. Примеры и советы - кнопка "Как говорить".</div>`; };
   hint();
   // кнопка "Голосом" вверху и в демо: открыть помощника и сразу слушать
-  window.edOpen=()=>{ show(true); if(ED.eng&&!ED.on) ED.eng.start(); else inp.focus(); };
+  window.edOpen=noMic=>{ show(true); if(!noMic&&ED.eng&&!ED.on) ED.eng.start(); else inp.focus(); };
   $("edPill").onclick=()=>show(true);
   $("edX").onclick=()=>show(false);
   $("edGo").onclick=()=>{ run(inp.value); inp.value=""; inp.focus(); };
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); run(inp.value); inp.value=""; } });
   $("edUndo").onclick=()=>run("отмена");
+  $("edGuideBtn").onclick=()=>edGuide();
   $("edNew").onclick=()=>{ if(ED.eng) ED.eng.stop(); openVoice(); };
   $("edShow").onclick=()=>{ if(typeof clientShow==="function") clientShow(true); };
   $("edTpl").onclick=()=>openModal("Сохранить как шаблон",`<p class="note" style="margin-top:0">Шаблон - копия текущего изделия. Его можно открыть в "Подробное описание" или голосом: "открой шаблон ...".</p>
