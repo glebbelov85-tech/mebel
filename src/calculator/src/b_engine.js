@@ -72,12 +72,13 @@ function costParts(parts,hw){
   parts.forEach(p=>{
     const m=MAT(p.mat); if(m.virt || !(p.a>0&&p.b>0)) return;
     const id=MATS[p.mat]?p.mat:"ldsp16";
-    const r=by[id]||(by[id]={area:0,len:0,n:0,items:[]});
+    const r=by[id]||(by[id]={area:0,len:0,n:0,items:[],lens:[]});
+    if(m.kind==="length") r.lens.push(Math.max(p.a,p.b));
     if(m.kind==="sheet") r.items.push({w:Math.max(p.a,p.b),h:Math.min(p.a,p.b),rot:!(m.t>4)});   // плиты толще 4 мм - с рисунком, деталь не поворачивается
     r.area+=p.a*p.b/1e6; r.len+=Math.max(p.a,p.b)/1000; r.n++;
     if(m.kind==="sheet" && m.edge && p.edge) edges[m.edge]=(edges[m.edge]||0)+edgeLen(p)/1000;
   });
-  const rows=[], sheets={}, nest={}; let sheetsCut=0;
+  const rows=[], sheets={}, nest={}, slabs={}; let sheetsCut=0;
   Object.keys(by).sort((a,b)=>order.indexOf(a)-order.indexOf(b)).forEach(k=>{
     const m=MATS[k], v=by[k];
     if(m.kind==="sheet"){
@@ -91,13 +92,18 @@ function costParts(parts,hw){
       sheets[k]=s; if(m.cut) sheetsCut+=s;
       rows.push([`${m.name} (${v.area.toFixed(2)} м²${note})`, s+" л.", s*P[k]]);
     }else if(m.kind==="area"){ const a=Math.round(v.area*100)/100; rows.push([m.name, a.toFixed(2)+" м²", Math.round(a*P[k])]); }   // как в общем формате: площадь до сотых
-    else if(m.kind==="length"){ const L=Math.ceil(v.len*10-1e-9)/10; rows.push([m.name, L+" п.м.", L*P[k]]); }
+    else if(m.kind==="length"){
+      // столешница с длиной плиты - целыми плитами, иначе по метрам
+      const len=Math.round(v.len*100)/100;
+      if(m.slab>0 && MO && MO.packLengths){ const n=MO.packLengths(v.lens,m.slab,4), L=Math.round(n*m.slab/10)/100; slabs[k]=n; rows.push([`${m.name} (${len} п.м., плит по ${m.slab/1000} м: ${n})`, L+" п.м.", Math.round(L*P[k])]); }
+      else rows.push([m.name, len+" п.м.", Math.round(len*P[k])]);
+    }
   });
   let edgeM=0;
   Object.keys(edges).forEach(id=>{ const mm=Math.ceil(edges[id]*1.1); edgeM+=mm; rows.push([hwName(id), mm+" м", mm*(P[id]||0)]); });
   if(sheetsCut) rows.push([hwName("cut"), sheetsCut+" л.", sheetsCut*P.cut]);
   (hw||[]).forEach(h=>{ if(h.q>0) rows.push([h.name, r1(h.q)+" "+(h.u||hwUnit(h.id)), h.q*hwPrice(h)]); });
-  return {rows, by, sheets, edgeM, nest};
+  return {rows, by, sheets, edgeM, nest, slabs};
 }
 // Список на распил: одинаковые детали складываются
 function cutList(parts){

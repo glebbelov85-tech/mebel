@@ -718,6 +718,21 @@
     return { sheets: best, unplaced: unplaced, area: r2(area / 1e6), usedPct: full ? Math.round(area / full * 100) : 0 };
   }
 
+  // Сколько плит длиной slab нужно на отрезки lens (столешницы): отрезки раскладываются по плитам, длинные - из нескольких плит.
+  function packLengths(lens, slab, kerf) {
+    slab = num(slab); kerf = Math.max(0, num(kerf, 4));
+    if (!(slab > 0)) return 0;
+    var rest = [], count = 0;
+    arr(lens).forEach(function (l) { l = num(l); if (!(l > 0)) return; while (l > slab) { count++; l -= slab; } if (l > 0) rest.push(l); });
+    rest.sort(function (a, b) { return b - a; });
+    var bins = [];
+    rest.forEach(function (l) {
+      for (var i = 0; i < bins.length; i++) if (bins[i] >= l) { bins[i] -= l + kerf; return; }
+      bins.push(slab - l - kerf);
+    });
+    return count + bins.length;
+  }
+
   // ---------- Расход материалов ----------
 
   function bom(order) {
@@ -731,6 +746,7 @@
       var q = Math.max(1, num(part.qty, 1)) * Math.max(1, num(product.qty, 1));
       var m = mats[mat.id] || (mats[mat.id] = { id: mat.id, name: mat.name, kind: mat.kind, price: num(mat.price), count: 0, area: 0, length: 0 });
       var area = part.a * part.b / 1e6 * q, len = Math.max(part.a, part.b) / 1000 * q;
+      if (mat.kind === "length" && mat.slab > 0) { m.lens = m.lens || []; for (var qi = 0; qi < q; qi++) m.lens.push(Math.max(part.a, part.b)); }
       m.count += q; m.area += area; m.length += len;
       var share = pb(product.id).materials;
       share[mat.id] = (share[mat.id] || 0) + (mat.kind === "length" ? len : area);
@@ -769,7 +785,12 @@
         } else m.sheets = Math.ceil(m.area / (sh.w * sh.h / 1e6 * use) - 1e-9);
         m.qty = m.sheets; m.unit = "лист";
         if (src.cut) sheetsCut += m.sheets;
-      } else if (m.kind === "length") { m.qty = m.length; m.unit = "п.м."; }
+      } else if (m.kind === "length") {
+        // материал с длиной плиты (slab): в цену идут целые плиты
+        if (src.slab > 0 && m.lens) { m.slabs = packLengths(m.lens, src.slab, prod.kerf); m.slab = src.slab; m.qty = r2(m.slabs * src.slab / 1000); delete m.lens; }
+        else m.qty = m.length;
+        m.unit = "п.м.";
+      }
       else { m.qty = m.area; m.unit = "м2"; }
       m.sum = r0(m.qty * m.price);
     });
@@ -818,7 +839,7 @@
   // lines - подробные строки для мастера (себестоимость), clientLines - строки для клиента (КП, договор).
   function quote(order) {
     var pr = order.pricing || defaultPricing(), b = bom(order), lines = [];
-    b.materials.forEach(function (m) { if (m.sum > 0) lines.push({ group: "material", ref: m.id, name: m.name + (m.kind === "sheet" ? " (" + m.area + " м2)" : ""), qty: m.qty, unit: m.unit, price: m.price, sum: m.sum }); });
+    b.materials.forEach(function (m) { if (m.sum > 0) lines.push({ group: "material", ref: m.id, name: m.name + (m.kind === "sheet" ? " (" + m.area + " м2)" : m.slabs ? " (" + m.length + " п.м., плит по " + m.slab / 1000 + " м: " + m.slabs + ")" : ""), qty: m.qty, unit: m.unit, price: m.price, sum: m.sum }); });
     b.edges.forEach(function (x) { if (x.sum > 0) lines.push({ group: "edge", ref: x.id, name: x.name, qty: x.qty, unit: x.unit, price: x.price, sum: x.sum }); });
     if (b.cutting.sum > 0) lines.push({ group: "cutting", name: "Распил и кромление", qty: b.cutting.qty, unit: "лист", price: b.cutting.price, sum: b.cutting.sum });
     b.hardware.forEach(function (h) { if (h.sum > 0) lines.push({ group: "hardware", ref: h.item || undefined, name: h.name, qty: h.qty, unit: h.unit, price: h.price, sum: h.sum }); });
@@ -1440,7 +1461,7 @@
     create: create, newProduct: newProduct, newModule: newModule, newPart: newPart, normalize: normalize, touch: touch, uid: uid, clone: clone,
     resolveRef: resolveRef, getMaterial: getMaterial, getEdge: getEdge, getHardware: getHardware,
     partDims: partDims, partBox: partBox, partWorldBox: partWorldBox, placeBox: placeBox, productBounds: productBounds,
-    nestSheets: nestSheets, eachPart: eachPart, listParts: listParts, eachHardware: eachHardware, findPart: findPart, assignMarks: assignMarks,
+    nestSheets: nestSheets, packLengths: packLengths, eachPart: eachPart, listParts: listParts, eachHardware: eachHardware, findPart: findPart, assignMarks: assignMarks,
     partGrain: partGrain, partEdges: partEdges, partEdgeLength: partEdgeLength, legacyEdges: legacyEdges,
     cutList: cutList, facadeList: facadeList, bom: bom, quote: quote, recalc: recalc, balance: balance,
     stageName: stageName, setStage: setStage, nextDue: nextDue,

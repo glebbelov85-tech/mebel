@@ -207,6 +207,14 @@ const test = (name, fn) => Promise.resolve().then(fn).then(() => { n++; console.
     const m = M.bom(o).materials.find(x => x.id === "ldsp16");
     assert.ok(m.sheets >= Math.ceil(m.area / 5.796) && m.nest.unplaced === 0);
     assert.strictEqual(M.create().pricing.sheetMode, "nest");
+    // столешница плитами по 3 м: 3300 - две плиты, 1800 + 1100 - одна, 2000 + 1800 - две
+    assert.strictEqual(M.packLengths([3300], 3000), 2);
+    assert.strictEqual(M.packLengths([1800, 1100], 3000), 1);
+    assert.strictEqual(M.packLengths([2000, 1800], 3000), 2);
+    const k = JSON.parse(ex("kuhnya.mebel.json")), was = M.bom(k).materials.find(x => x.kind === "length");
+    k.catalog.materials[was.id].slab = 3000;
+    const now = M.bom(k).materials.find(x => x.id === was.id);
+    assert.ok(now.slabs >= 1 && now.qty === now.slabs * 3 && now.qty >= was.qty);
   });
 
   console.log(process.exitCode ? "\nЕСТЬ ОШИБКИ" : "\nВсе проверки прошли: " + n);

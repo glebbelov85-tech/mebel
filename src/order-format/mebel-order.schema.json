@@ -90,6 +90,7 @@
         "code": { "type": "string", "description": "Артикул поставщика" },
         "supplier": { "type": "string" },
         "price": { "$ref": "#/$defs/money", "description": "За лист, м2 или п.м. - по kind" },
+        "slab": { "type": "number", "minimum": 0, "description": "Длина плиты, мм - для материала, который считается по длине, но покупается целыми плитами (столешница). Нет или 0 - по метрам" },
         "usagePct": { "type": "number", "description": "Своё использование листа для этого материала, %" },
         "cut": { "type": "boolean", "description": "Брать плату за распил и кромление" },
         "color": { "type": "string", "description": "Цвет для эскиза и 3D, #rrggbb" },

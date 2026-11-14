@@ -185,6 +185,7 @@ function toOrder(){
   const cat={materials:{},edges:{},hardware:{}};
   const useMat=id=>{ const m=MATS[id], it=PI[id]; if(!m||m.virt||cat.materials[id]) return;
     cat.materials[id]={name:it.name, group:m.kind==="sheet"?(m.t<=4?"dvp":"ldsp"):m.kind==="length"?"top":(m.t<=6?"glass":"mdf"), kind:m.kind, t:m.t, price:+it.v||0, color:m.css};
+    if(m.kind==="length" && m.slab>0) cat.materials[id].slab=+m.slab;
     if(m.kind==="sheet"){ cat.materials[id].sheet={w:m.sw,h:m.sh}; cat.materials[id].grain=m.t>4; if(m.cut) cat.materials[id].cut=true; if(m.usage) cat.materials[id].usagePct=m.usage; if(m.edge) useEdge(m.edge); }
   };
   const useEdge=id=>{ const it=PI[id]; if(it && !cat.edges[id]) cat.edges[id]={name:it.name, t:id==="edge2"?2:0.4, w:19, price:+it.v||0}; };

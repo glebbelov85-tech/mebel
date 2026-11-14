@@ -581,6 +581,7 @@ function buildOrder(S) {
   S.kitchen.cur = S.kupe.cur = order.currency;   // генераторам изделий - для цен фурнитуры
   Object.keys(EXTRA_MATS).forEach(id => { order.catalog.materials[id] = Object.assign({}, EXTRA_MATS[id], { price: cp(S, EXTRA_MATS[id].price, RUB[id]) }); });
   PRICE_OVR = S.prices && typeof S.prices === "object" ? S.prices : {};
+  order.catalog.materials.top38.slab = 3000;   // столешница ЛДСП покупается плитами по 3 м
   ["materials", "edges", "hardware"].forEach(g => Object.keys(order.catalog[g]).forEach(id => { order.catalog[g][id].price = pz(id, order.catalog[g][id].price); }));
   order.pricing.workPct = pz("workPct", order.pricing.workPct); order.pricing.cutPerSheet = pz("cutPerSheet", order.pricing.cutPerSheet);
   if (PRICE_OVR.sheetMode === "usage") order.pricing.sheetMode = "usage";

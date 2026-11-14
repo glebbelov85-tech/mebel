@@ -36,6 +36,7 @@ function matPropsRow(it){
     <div><label>Толщина, мм</label><input type="number" data-mf="t" value="${m.t||""}"></div>
     ${m.kind==="sheet"?`<div><label>Лист, длина</label><input type="number" data-mf="sw" value="${m.sw||""}"></div><div><label>Лист, ширина</label><input type="number" data-mf="sh" value="${m.sh||""}"></div>
     <div><label>Кромка</label><select data-mf="edge"><option value="">без кромки</option>${edges.map(e=>`<option value="${e.id}" ${m.edge===e.id?"selected":""}>${esc(e.s||e.name)}</option>`).join("")}</select></div>`:""}
+    ${m.kind==="length"?`<div><label>Длина плиты, мм (0 - по метрам)</label><input type="number" min="0" step="100" data-mf="slab" value="${m.slab||0}"></div>`:""}
     <div><label>Цвет на эскизе</label><input type="color" data-mf="css" value="${m.css||"#cccccc"}"></div>
     <label class="chk"><input type="checkbox" data-mf="facade" ${m.facade?"checked":""}>Годится на фасады</label>
     ${m.kind==="sheet"?`<label class="chk"><input type="checkbox" data-mf="cut" ${m.cut?"checked":""}>Считать распил</label>`:""}`:""}

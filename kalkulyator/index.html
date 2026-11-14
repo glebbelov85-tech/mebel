@@ -1253,6 +1253,21 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
     return { sheets: best, unplaced: unplaced, area: r2(area / 1e6), usedPct: full ? Math.round(area / full * 100) : 0 };
   }
 
+  // Сколько плит длиной slab нужно на отрезки lens (столешницы): отрезки раскладываются по плитам, длинные - из нескольких плит.
+  function packLengths(lens, slab, kerf) {
+    slab = num(slab); kerf = Math.max(0, num(kerf, 4));
+    if (!(slab > 0)) return 0;
+    var rest = [], count = 0;
+    arr(lens).forEach(function (l) { l = num(l); if (!(l > 0)) return; while (l > slab) { count++; l -= slab; } if (l > 0) rest.push(l); });
+    rest.sort(function (a, b) { return b - a; });
+    var bins = [];
+    rest.forEach(function (l) {
+      for (var i = 0; i < bins.length; i++) if (bins[i] >= l) { bins[i] -= l + kerf; return; }
+      bins.push(slab - l - kerf);
+    });
+    return count + bins.length;
+  }
+
   // ---------- Расход материалов ----------
 
   function bom(order) {
@@ -1266,6 +1281,7 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
       var q = Math.max(1, num(part.qty, 1)) * Math.max(1, num(product.qty, 1));
       var m = mats[mat.id] || (mats[mat.id] = { id: mat.id, name: mat.name, kind: mat.kind, price: num(mat.price), count: 0, area: 0, length: 0 });
       var area = part.a * part.b / 1e6 * q, len = Math.max(part.a, part.b) / 1000 * q;
+      if (mat.kind === "length" && mat.slab > 0) { m.lens = m.lens || []; for (var qi = 0; qi < q; qi++) m.lens.push(Math.max(part.a, part.b)); }
       m.count += q; m.area += area; m.length += len;
       var share = pb(product.id).materials;
       share[mat.id] = (share[mat.id] || 0) + (mat.kind === "length" ? len : area);
@@ -1304,7 +1320,12 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
         } else m.sheets = Math.ceil(m.area / (sh.w * sh.h / 1e6 * use) - 1e-9);
         m.qty = m.sheets; m.unit = "лист";
         if (src.cut) sheetsCut += m.sheets;
-      } else if (m.kind === "length") { m.qty = m.length; m.unit = "п.м."; }
+      } else if (m.kind === "length") {
+        // материал с длиной плиты (slab): в цену идут целые плиты
+        if (src.slab > 0 && m.lens) { m.slabs = packLengths(m.lens, src.slab, prod.kerf); m.slab = src.slab; m.qty = r2(m.slabs * src.slab / 1000); delete m.lens; }
+        else m.qty = m.length;
+        m.unit = "п.м.";
+      }
       else { m.qty = m.area; m.unit = "м2"; }
       m.sum = r0(m.qty * m.price);
     });
@@ -1353,7 +1374,7 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
   // lines - подробные строки для мастера (себестоимость), clientLines - строки для клиента (КП, договор).
   function quote(order) {
     var pr = order.pricing || defaultPricing(), b = bom(order), lines = [];
-    b.materials.forEach(function (m) { if (m.sum > 0) lines.push({ group: "material", ref: m.id, name: m.name + (m.kind === "sheet" ? " (" + m.area + " м2)" : ""), qty: m.qty, unit: m.unit, price: m.price, sum: m.sum }); });
+    b.materials.forEach(function (m) { if (m.sum > 0) lines.push({ group: "material", ref: m.id, name: m.name + (m.kind === "sheet" ? " (" + m.area + " м2)" : m.slabs ? " (" + m.length + " п.м., плит по " + m.slab / 1000 + " м: " + m.slabs + ")" : ""), qty: m.qty, unit: m.unit, price: m.price, sum: m.sum }); });
     b.edges.forEach(function (x) { if (x.sum > 0) lines.push({ group: "edge", ref: x.id, name: x.name, qty: x.qty, unit: x.unit, price: x.price, sum: x.sum }); });
     if (b.cutting.sum > 0) lines.push({ group: "cutting", name: "Распил и кромление", qty: b.cutting.qty, unit: "лист", price: b.cutting.price, sum: b.cutting.sum });
     b.hardware.forEach(function (h) { if (h.sum > 0) lines.push({ group: "hardware", ref: h.item || undefined, name: h.name, qty: h.qty, unit: h.unit, price: h.price, sum: h.sum }); });
@@ -1975,7 +1996,7 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
     create: create, newProduct: newProduct, newModule: newModule, newPart: newPart, normalize: normalize, touch: touch, uid: uid, clone: clone,
     resolveRef: resolveRef, getMaterial: getMaterial, getEdge: getEdge, getHardware: getHardware,
     partDims: partDims, partBox: partBox, partWorldBox: partWorldBox, placeBox: placeBox, productBounds: productBounds,
-    nestSheets: nestSheets, eachPart: eachPart, listParts: listParts, eachHardware: eachHardware, findPart: findPart, assignMarks: assignMarks,
+    nestSheets: nestSheets, packLengths: packLengths, eachPart: eachPart, listParts: listParts, eachHardware: eachHardware, findPart: findPart, assignMarks: assignMarks,
     partGrain: partGrain, partEdges: partEdges, partEdgeLength: partEdgeLength, legacyEdges: legacyEdges,
     cutList: cutList, facadeList: facadeList, bom: bom, quote: quote, recalc: recalc, balance: balance,
     stageName: stageName, setStage: setStage, nextDue: nextDue,
@@ -2034,7 +2055,7 @@ const PRICE_DEF = [
   {id:"mirror",  g:"Стекло и зеркало", name:"Зеркало серебро 4 мм, м²", s:"Зеркало", u:"м²", v:15000, m:{kind:"area",t:4,css:"#b9d3df",facade:1}},
   {id:"mirror_t",g:"Стекло и зеркало", name:"Зеркало тонированное (бронза, графит), м²", s:"Зеркало тонир.", u:"м²", v:19000, m:{kind:"area",t:4,css:"#9a8b78",facade:1}},
   {id:"glass",   g:"Стекло и зеркало", name:"Стекло лакобель 4 мм, м²", s:"Лакобель", u:"м²", v:22000, m:{kind:"area",t:4,css:"#3d4a52",facade:1}},
-  {id:"top38",      g:"Столешницы", name:"Столешница ЛДСП 38 мм, п.м.", s:"Столешница 38", u:"п.м.", v:12000, m:{kind:"length",t:38,css:"#8a6a4a"}},
+  {id:"top38",      g:"Столешницы", name:"Столешница ЛДСП 38 мм, п.м.", s:"Столешница 38", u:"п.м.", v:12000, m:{kind:"length",t:38,css:"#8a6a4a",slab:3000}},
   {id:"top_compact",g:"Столешницы", name:"Столешница компакт-плита 12 мм, п.м.", s:"Столешница компакт", u:"п.м.", v:45000, m:{kind:"length",t:12,css:"#4a4a4a"}},
   {id:"top_stone",  g:"Столешницы", name:"Столешница искусственный камень, п.м.", s:"Столешница камень", u:"п.м.", v:90000, m:{kind:"length",t:38,css:"#cfcac2"}},
   {id:"apron",   g:"Столешницы", name:"Стеновая панель (фартук), п.м.", s:"Стеновая панель", u:"п.м.", v:10000},
@@ -2121,7 +2142,7 @@ function loadPrice(cur){
     const ids=new Set(st.items.map(x=>x.id));
     PRICE=st.items.filter(x=>x&&x.id);
     // новые стандартные позиции (после обновления программы) добавляются в конец своей группы
-    def.forEach(d=>{ if(!ids.has(d.id)) PRICE.push(d); else { const it=PRICE.find(x=>x.id===d.id); it.sys=1; if(d.m && !it.m) it.m=d.m; if(!it.s && d.s) it.s=d.s; if(d.g==="Правила расчёта"){ it.name=d.name; it.u=d.u; } } });
+    def.forEach(d=>{ if(!ids.has(d.id)) PRICE.push(d); else { const it=PRICE.find(x=>x.id===d.id); it.sys=1; if(d.m && !it.m) it.m=d.m; if(d.m && d.m.slab && it.m && it.m.slab===undefined) it.m.slab=d.m.slab; if(!it.s && d.s) it.s=d.s; if(d.g==="Правила расчёта"){ it.name=d.name; it.u=d.u; } } });
     PRICE.forEach(it=>{ if(it.u==="₸") it.u="¤"; });   // до 2026-11: единица "₸" = сумма
   }else{
     PRICE=def;
@@ -2220,12 +2241,13 @@ function costParts(parts,hw){
   parts.forEach(p=>{
     const m=MAT(p.mat); if(m.virt || !(p.a>0&&p.b>0)) return;
     const id=MATS[p.mat]?p.mat:"ldsp16";
-    const r=by[id]||(by[id]={area:0,len:0,n:0,items:[]});
+    const r=by[id]||(by[id]={area:0,len:0,n:0,items:[],lens:[]});
+    if(m.kind==="length") r.lens.push(Math.max(p.a,p.b));
     if(m.kind==="sheet") r.items.push({w:Math.max(p.a,p.b),h:Math.min(p.a,p.b),rot:!(m.t>4)});   // плиты толще 4 мм - с рисунком, деталь не поворачивается
     r.area+=p.a*p.b/1e6; r.len+=Math.max(p.a,p.b)/1000; r.n++;
     if(m.kind==="sheet" && m.edge && p.edge) edges[m.edge]=(edges[m.edge]||0)+edgeLen(p)/1000;
   });
-  const rows=[], sheets={}, nest={}; let sheetsCut=0;
+  const rows=[], sheets={}, nest={}, slabs={}; let sheetsCut=0;
   Object.keys(by).sort((a,b)=>order.indexOf(a)-order.indexOf(b)).forEach(k=>{
     const m=MATS[k], v=by[k];
     if(m.kind==="sheet"){
@@ -2239,13 +2261,18 @@ function costParts(parts,hw){
       sheets[k]=s; if(m.cut) sheetsCut+=s;
       rows.push([`${m.name} (${v.area.toFixed(2)} м²${note})`, s+" л.", s*P[k]]);
     }else if(m.kind==="area"){ const a=Math.round(v.area*100)/100; rows.push([m.name, a.toFixed(2)+" м²", Math.round(a*P[k])]); }   // как в общем формате: площадь до сотых
-    else if(m.kind==="length"){ const L=Math.ceil(v.len*10-1e-9)/10; rows.push([m.name, L+" п.м.", L*P[k]]); }
+    else if(m.kind==="length"){
+      // столешница с длиной плиты - целыми плитами, иначе по метрам
+      const len=Math.round(v.len*100)/100;
+      if(m.slab>0 && MO && MO.packLengths){ const n=MO.packLengths(v.lens,m.slab,4), L=Math.round(n*m.slab/10)/100; slabs[k]=n; rows.push([`${m.name} (${len} п.м., плит по ${m.slab/1000} м: ${n})`, L+" п.м.", Math.round(L*P[k])]); }
+      else rows.push([m.name, len+" п.м.", Math.round(len*P[k])]);
+    }
   });
   let edgeM=0;
   Object.keys(edges).forEach(id=>{ const mm=Math.ceil(edges[id]*1.1); edgeM+=mm; rows.push([hwName(id), mm+" м", mm*(P[id]||0)]); });
   if(sheetsCut) rows.push([hwName("cut"), sheetsCut+" л.", sheetsCut*P.cut]);
   (hw||[]).forEach(h=>{ if(h.q>0) rows.push([h.name, r1(h.q)+" "+(h.u||hwUnit(h.id)), h.q*hwPrice(h)]); });
-  return {rows, by, sheets, edgeM, nest};
+  return {rows, by, sheets, edgeM, nest, slabs};
 }
 // Список на распил: одинаковые детали складываются
 function cutList(parts){
@@ -3522,6 +3549,7 @@ function matPropsRow(it){
     <div><label>Толщина, мм</label><input type="number" data-mf="t" value="${m.t||""}"></div>
     ${m.kind==="sheet"?`<div><label>Лист, длина</label><input type="number" data-mf="sw" value="${m.sw||""}"></div><div><label>Лист, ширина</label><input type="number" data-mf="sh" value="${m.sh||""}"></div>
     <div><label>Кромка</label><select data-mf="edge"><option value="">без кромки</option>${edges.map(e=>`<option value="${e.id}" ${m.edge===e.id?"selected":""}>${esc(e.s||e.name)}</option>`).join("")}</select></div>`:""}
+    ${m.kind==="length"?`<div><label>Длина плиты, мм (0 - по метрам)</label><input type="number" min="0" step="100" data-mf="slab" value="${m.slab||0}"></div>`:""}
     <div><label>Цвет на эскизе</label><input type="color" data-mf="css" value="${m.css||"#cccccc"}"></div>
     <label class="chk"><input type="checkbox" data-mf="facade" ${m.facade?"checked":""}>Годится на фасады</label>
     ${m.kind==="sheet"?`<label class="chk"><input type="checkbox" data-mf="cut" ${m.cut?"checked":""}>Считать распил</label>`:""}`:""}
@@ -4060,6 +4088,7 @@ function toOrder(){
   const cat={materials:{},edges:{},hardware:{}};
   const useMat=id=>{ const m=MATS[id], it=PI[id]; if(!m||m.virt||cat.materials[id]) return;
     cat.materials[id]={name:it.name, group:m.kind==="sheet"?(m.t<=4?"dvp":"ldsp"):m.kind==="length"?"top":(m.t<=6?"glass":"mdf"), kind:m.kind, t:m.t, price:+it.v||0, color:m.css};
+    if(m.kind==="length" && m.slab>0) cat.materials[id].slab=+m.slab;
     if(m.kind==="sheet"){ cat.materials[id].sheet={w:m.sw,h:m.sh}; cat.materials[id].grain=m.t>4; if(m.cut) cat.materials[id].cut=true; if(m.usage) cat.materials[id].usagePct=m.usage; if(m.edge) useEdge(m.edge); }
   };
   const useEdge=id=>{ const it=PI[id]; if(it && !cat.edges[id]) cat.edges[id]={name:it.name, t:id==="edge2"?2:0.4, w:19, price:+it.v||0}; };
