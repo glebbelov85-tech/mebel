@@ -214,7 +214,7 @@ function toOrder(){
     products:[{id:"pr1", type:R0.type, name:R0.title, qty:1, size:{w:bb.W,h:bb.H,d:bb.D}, finish:fin, params:clone(R0.type==="kupe"?S.kupe:R0.type==="kitchen"?S.kit:{tpl:S.u.tpl,prms:S.u.prms[S.u.tpl]}),
       generator:{id:"calc."+R0.type,version:"2"}, modules:[], parts, hardware, describe:R0.desc.split("\n")}],
     catalog:cat, extras,
-    pricing:{workPct:P.work, markupPct:P.markup, discountPct:q.disc, prepayPct:q.prepay, roundTo:P.round||1, sheetUsagePct:P.usage, edgeReservePct:10, cutPerSheet:P.cut, ...(q.instNoMk&&q.install>0?{markupServices:false}:{})},
+    pricing:{workPct:P.work, markupPct:P.markup, discountPct:q.disc, prepayPct:q.prepay, roundTo:P.round||1, sheetUsagePct:P.usage, ...(P.nest?{sheetMode:"nest"}:{}), edgeReservePct:10, cutPerSheet:P.cut, ...(q.instNoMk&&q.install>0?{markupServices:false}:{})},
     quote:{calcAt:now, currency:CURCODE, lines, materials:Math.round(q.mat), work:Math.round(q.work), services:Math.round(q.install), cost:Math.round(q.cost), markup:Math.round(q.markup),
       clientLines:[{kind:"product",ref:"pr1",name:R0.title,qty:1,unit:"шт",sum:sub}], subtotal:sub, discountPct:q.disc, discountSum:sub-total, total, prepayPct:q.prepay, prepaySum:q.pre, profit:Math.round(total-q.cost)},
     terms:{days:q.days, daysKind:q.daysKind, warrantyMonths:12}, notes:S.decor?("Цвет: "+S.decor):"",

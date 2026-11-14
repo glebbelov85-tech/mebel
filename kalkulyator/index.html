@@ -807,7 +807,7 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
       discountPct: 0,       // скидка клиенту, %
       prepayPct: 50,        // предоплата, %
       roundTo: 1000,        // округлять итог вверх до, в валюте заказа
-      sheetUsagePct: 80,    // использование листа, % (остальное - отходы)
+      sheetUsagePct: 80,    // использование листа, % (остальное - отходы); при sheetMode "nest" - только для деталей больше листа
       edgeReservePct: 10,   // запас кромки, %
       cutPerSheet: 3000     // распил и кромление, за лист
     };
@@ -864,7 +864,7 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
       products: [],
       catalog: defaultCatalog(cur),
       extras: [],
-      pricing: defaultPricing(cur),
+      pricing: Object.assign(defaultPricing(cur), { sheetMode: "nest" }), // новые заказы: листы раскладкой; старые без этого поля считаются как раньше
       production: defaultProduction(),
       terms: { days: 30, daysKind: "work", warrantyMonths: 12 },
       timeline: [{ stage: "lead", done: t.slice(0, 10) }],
@@ -1176,6 +1176,83 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
     return out;
   }
 
+  // ---------- Раскладка деталей на листы ----------
+
+  // Сколько листов нужно на самом деле: детали раскладываются на лист сквозными резами (как на форматном станке),
+  // с пропилом и обрезкой края. items: [{ w, h, rot }] - w вдоль длины листа (вдоль рисунка), rot - можно повернуть.
+  // Перебирает несколько порядков и правил, берёт лучший. Результат не зависит от порядка деталей.
+  // Возвращает { sheets, unplaced (не помещаются в лист), area (м2 деталей), usedPct (заполнение листов) }.
+  var NEST_SPLITS = [
+    function (W, H, w, h) { return (W - w) < (H - h); },
+    function (W, H, w, h) { return (W - w) >= (H - h); },
+    function () { return true; },
+    function () { return false; },
+    function (W, H, w, h) { return w * (H - h) <= h * (W - w); },
+    function (W, H, w, h) { return w * (H - h) > h * (W - w); }
+  ];
+  var NEST_SCORES = [
+    function (W, H, w, h) { return W * H - w * h; },
+    function (W, H, w, h) { return Math.min(W - w, H - h); },
+    function (W, H, w, h) { return Math.max(W - w, H - h); }
+  ];
+  var NEST_ORDERS = [
+    function (a, b) { return b.w * b.h - a.w * a.h; },
+    function (a, b) { return Math.max(b.w, b.h) - Math.max(a.w, a.h) || Math.min(b.w, b.h) - Math.min(a.w, a.h); },
+    function (a, b) { return Math.min(b.w, b.h) - Math.min(a.w, a.h) || Math.max(b.w, b.h) - Math.max(a.w, a.h); },
+    function (a, b) { return (b.w + b.h) - (a.w + a.h); },
+    function (a, b) { return b.h - a.h || b.w - a.w; },
+    function (a, b) { return b.w - a.w || b.h - a.h; }
+  ];
+  function nestOnce(seq, W, H, kerf, score, split, limit) {
+    var sheets = [];
+    for (var i = 0; i < seq.length; i++) {
+      var it = seq[i], best = null, bs = 0, si, fi, f, sc;
+      for (si = 0; si < sheets.length; si++) for (fi = 0; fi < sheets[si].length; fi++) {
+        f = sheets[si][fi];
+        if (it.w <= f.w && it.h <= f.h) { sc = score(f.w, f.h, it.w, it.h); if (!best || sc < bs) { best = { s: si, f: fi, w: it.w, h: it.h }; bs = sc; } }
+        if (it.rot && it.w !== it.h && it.h <= f.w && it.w <= f.h) { sc = score(f.w, f.h, it.h, it.w); if (!best || sc < bs) { best = { s: si, f: fi, w: it.h, h: it.w }; bs = sc; } }
+      }
+      if (!best) {
+        if (sheets.length + 1 >= limit) return limit;
+        sheets.push([{ w: W, h: H }]);
+        best = it.w <= W && it.h <= H ? { s: sheets.length - 1, f: 0, w: it.w, h: it.h } : { s: sheets.length - 1, f: 0, w: it.h, h: it.w };
+      }
+      var free = sheets[best.s]; f = free[best.f]; free.splice(best.f, 1);
+      var dw = f.w - best.w - kerf, dh = f.h - best.h - kerf;
+      if (split(f.w, f.h, best.w, best.h)) {
+        if (dw > 0) free.push({ w: dw, h: best.h });
+        if (dh > 0) free.push({ w: f.w, h: dh });
+      } else {
+        if (dh > 0) free.push({ w: best.w, h: dh });
+        if (dw > 0) free.push({ w: dw, h: f.h });
+      }
+    }
+    return sheets.length;
+  }
+  function nestSheets(items, sheet, opt) {
+    opt = opt || {};
+    var kerf = Math.max(0, num(opt.kerf, 4)), trim = Math.max(0, num(opt.trim, 10));
+    var W = num(sheet && sheet.w, 2800) - 2 * trim, H = num(sheet && sheet.h, 2070) - 2 * trim;
+    var fit = [], unplaced = [], area = 0;
+    arr(items).forEach(function (it) {
+      var w = num(it.w), h = num(it.h);
+      if (!(w > 0 && h > 0)) return;
+      var x = { w: w, h: h, rot: !!it.rot };
+      if ((w <= W && h <= H) || (x.rot && h <= W && w <= H)) { fit.push(x); area += w * h; } else unplaced.push(x);
+    });
+    fit.sort(function (a, b) { return b.w - a.w || b.h - a.h || (a.rot ? 1 : 0) - (b.rot ? 1 : 0); });
+    var lower = Math.ceil(area / (W * H) - 1e-9), best = fit.length ? fit.length + 1 : 0;
+    for (var o = 0; o < NEST_ORDERS.length && best > lower; o++) {
+      var seq = fit.slice().sort(NEST_ORDERS[o]);
+      for (var k = 0; k < NEST_SPLITS.length && best > lower; k++) for (var c = 0; c < NEST_SCORES.length && best > lower; c++) {
+        var n = nestOnce(seq, W, H, kerf, NEST_SCORES[c], NEST_SPLITS[k], best);
+        if (n < best) best = n;
+      }
+    }
+    var full = best * num(sheet && sheet.w, 2800) * num(sheet && sheet.h, 2070);
+    return { sheets: best, unplaced: unplaced, area: r2(area / 1e6), usedPct: full ? Math.round(area / full * 100) : 0 };
+  }
+
   // ---------- Расход материалов ----------
 
   function bom(order) {
@@ -1201,6 +1278,16 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
         var es = pb(product.id).edges; es[id] = (es[id] || 0) + el[id] / 1000 * q;
       }
     });
+    // pricing.sheetMode "nest" - листы считаются раскладкой деталей, иначе по площади и проценту использования
+    var nestItems = null;
+    if (pr.sheetMode === "nest") {
+      nestItems = {};
+      cutList(order, { kinds: ["sheet"] }).forEach(function (r) {
+        var list = nestItems[r.material.id] || (nestItems[r.material.id] = []);
+        for (var i = 0; i < r.qty; i++) list.push({ w: r.length, h: r.width, rot: r.canRotate });
+      });
+    }
+    var prod = order.production || defaultProduction();
     var sheetsCut = 0;
     Object.keys(mats).forEach(function (id) {
       var m = mats[id], src = order.catalog.materials[id];
@@ -1208,7 +1295,13 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
       if (m.kind === "sheet") {
         var sh = src.sheet || { w: 2800, h: 2070 };
         var use = Math.min(100, Math.max(30, num(src.usagePct, num(pr.sheetUsagePct, 80)))) / 100;
-        m.sheets = Math.ceil(m.area / (sh.w * sh.h / 1e6 * use) - 1e-9);
+        if (nestItems && nestItems[id]) {
+          var ns = nestSheets(nestItems[id], sh, { kerf: prod.kerf, trim: prod.sheetTrim });
+          // детали больше листа раскладкой не посчитать - на них лист берётся по площади
+          var over = ns.unplaced.reduce(function (a, x) { return a + x.w * x.h / 1e6; }, 0);
+          m.sheets = ns.sheets + (over > 0 ? Math.ceil(over / (sh.w * sh.h / 1e6 * use) - 1e-9) : 0);
+          m.nest = { usedPct: ns.usedPct, unplaced: ns.unplaced.length };
+        } else m.sheets = Math.ceil(m.area / (sh.w * sh.h / 1e6 * use) - 1e-9);
         m.qty = m.sheets; m.unit = "лист";
         if (src.cut) sheetsCut += m.sheets;
       } else if (m.kind === "length") { m.qty = m.length; m.unit = "п.м."; }
@@ -1882,7 +1975,7 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
     create: create, newProduct: newProduct, newModule: newModule, newPart: newPart, normalize: normalize, touch: touch, uid: uid, clone: clone,
     resolveRef: resolveRef, getMaterial: getMaterial, getEdge: getEdge, getHardware: getHardware,
     partDims: partDims, partBox: partBox, partWorldBox: partWorldBox, placeBox: placeBox, productBounds: productBounds,
-    eachPart: eachPart, listParts: listParts, eachHardware: eachHardware, findPart: findPart, assignMarks: assignMarks,
+    nestSheets: nestSheets, eachPart: eachPart, listParts: listParts, eachHardware: eachHardware, findPart: findPart, assignMarks: assignMarks,
     partGrain: partGrain, partEdges: partEdges, partEdgeLength: partEdgeLength, legacyEdges: legacyEdges,
     cutList: cutList, facadeList: facadeList, bom: bom, quote: quote, recalc: recalc, balance: balance,
     stageName: stageName, setStage: setStage, nextDue: nextDue,
@@ -1979,7 +2072,8 @@ const PRICE_DEF = [
   {id:"uinstall",g:"Услуги", name:"Доставка и сборка прочих изделий", s:"Доставка и сборка", u:"¤", v:10000},
   {id:"work",   g:"Правила расчёта", name:"Сборка, % от материалов", u:"%", v:15},
   {id:"markup", g:"Правила расчёта", name:"Наценка, %", u:"%", v:30},
-  {id:"usage",  g:"Правила расчёта", name:"Использование листа, % (остальное - отходы)", u:"%", v:80},
+  {id:"nest",   g:"Правила расчёта", name:"Листы считать по раскрою (детали раскладываются на лист)", u:"да/нет", v:1},
+  {id:"usage",  g:"Правила расчёта", name:"Использование листа, % - если листы считаются не по раскрою", u:"%", v:80},
   {id:"round",  g:"Правила расчёта", name:"Округлять итог до", u:"¤", v:1000},
   {id:"pm",     g:"Правила расчёта", name:"Цена кухни за погонный метр - для сравнения (0 - не показывать)", u:"¤", v:0}
 ];
@@ -2004,7 +2098,7 @@ const PRICE_RUB = {ldsp16:4200, ldsp16f:5200, ldsp10:3800, dvp:700, mdf:5000, md
   prof_eco:2500, prof_std:3500, prof_prem:6000, misc:1200, cut:1200, cutout:800, topjoin:1500, install:4000, kinstall:10000, uinstall:2500, round:100, pm:0};
 let PRICE_META = {};   // о прайсе: валюта, откуда цены (поставщик), дата
 function starterV(d,cur){
-  if(d.u==="%") return d.v;
+  if(d.u==="%" || d.u==="да/нет") return d.v;
   if(d.id==="round") return MO ? MO.roundStep(cur) : d.v;
   if(!MO || cur==="KZT") return d.v;
   return MO.starterPrice(d.v,cur,PRICE_RUB[d.id]);
@@ -2126,25 +2220,32 @@ function costParts(parts,hw){
   parts.forEach(p=>{
     const m=MAT(p.mat); if(m.virt || !(p.a>0&&p.b>0)) return;
     const id=MATS[p.mat]?p.mat:"ldsp16";
-    const r=by[id]||(by[id]={area:0,len:0,n:0});
+    const r=by[id]||(by[id]={area:0,len:0,n:0,items:[]});
+    if(m.kind==="sheet") r.items.push({w:Math.max(p.a,p.b),h:Math.min(p.a,p.b),rot:!(m.t>4)});   // плиты толще 4 мм - с рисунком, деталь не поворачивается
     r.area+=p.a*p.b/1e6; r.len+=Math.max(p.a,p.b)/1000; r.n++;
     if(m.kind==="sheet" && m.edge && p.edge) edges[m.edge]=(edges[m.edge]||0)+edgeLen(p)/1000;
   });
-  const rows=[], sheets={}; let sheetsCut=0;
+  const rows=[], sheets={}, nest={}; let sheetsCut=0;
   Object.keys(by).sort((a,b)=>order.indexOf(a)-order.indexOf(b)).forEach(k=>{
     const m=MATS[k], v=by[k];
     if(m.kind==="sheet"){
       const u=m.usage?clamp(m.usage/100,0.5,0.98):useK();
-      const s=Math.ceil(v.area/(m.sw*m.sh/1e6*u)-1e-9); sheets[k]=s; if(m.cut) sheetsCut+=s;
-      rows.push([`${m.name} (${v.area.toFixed(2)} м²)`, s+" л.", s*P[k]]);
-    }else if(m.kind==="area") rows.push([m.name, v.area.toFixed(2)+" м²", v.area*P[k]]);
+      // листы: по раскрою (детали раскладываются на лист, как в общем формате заказа) или по площади и проценту
+      let s=Math.ceil(v.area/(m.sw*m.sh/1e6*u)-1e-9), note="";
+      if(P.nest && MO && MO.nestSheets){
+        const ns=MO.nestSheets(v.items,{w:m.sw,h:m.sh},{kerf:4,trim:10}), over=ns.unplaced.reduce((a,x)=>a+x.w*x.h/1e6,0);
+        s=ns.sheets+(over>0?Math.ceil(over/(m.sw*m.sh/1e6*u)-1e-9):0); note=`, по раскрою, лист занят на ${ns.usedPct}%`; nest[k]=ns;
+      }
+      sheets[k]=s; if(m.cut) sheetsCut+=s;
+      rows.push([`${m.name} (${v.area.toFixed(2)} м²${note})`, s+" л.", s*P[k]]);
+    }else if(m.kind==="area"){ const a=Math.round(v.area*100)/100; rows.push([m.name, a.toFixed(2)+" м²", Math.round(a*P[k])]); }   // как в общем формате: площадь до сотых
     else if(m.kind==="length"){ const L=Math.ceil(v.len*10-1e-9)/10; rows.push([m.name, L+" п.м.", L*P[k]]); }
   });
   let edgeM=0;
   Object.keys(edges).forEach(id=>{ const mm=Math.ceil(edges[id]*1.1); edgeM+=mm; rows.push([hwName(id), mm+" м", mm*(P[id]||0)]); });
   if(sheetsCut) rows.push([hwName("cut"), sheetsCut+" л.", sheetsCut*P.cut]);
   (hw||[]).forEach(h=>{ if(h.q>0) rows.push([h.name, r1(h.q)+" "+(h.u||hwUnit(h.id)), h.q*hwPrice(h)]); });
-  return {rows, by, sheets, edgeM};
+  return {rows, by, sheets, edgeM, nest};
 }
 // Список на распил: одинаковые детали складываются
 function cutList(parts){
@@ -3069,8 +3170,8 @@ function calc(){
   // доставка и монтаж: своя сумма для этого заказа или из прайса; у пустого изделия - ноль
   const mat=rows.reduce((s,r)=>s+r[2],0), installName=hwName(R0.install);
   const install = mat>0 ? (S.install!=null && S.install!=="" ? Math.max(0,+S.install||0) : (P[R0.install]||0)) : 0;
-  const work=mat*P.work/100, cst=mat+work+install;
-  const markup=(S.instNoMk ? cst-install : cst)*P.markup/100, beforeDisc=cst+markup, discSum=beforeDisc*disc/100;
+  const work=Math.round(mat*P.work/100), cst=mat+work+install;
+  const markup=Math.round((S.instNoMk ? cst-install : cst)*P.markup/100), beforeDisc=cst+markup, discSum=beforeDisc*disc/100;
   const R=Math.max(1,P.round||1);
   const total=Math.ceil((beforeDisc-discSum)/R-1e-9)*R;
   const pre=Math.min(total,Math.ceil(total*prepay/100/R-1e-9)*R);
@@ -3406,7 +3507,7 @@ function renderPriceTable(){
         <td>${it.m?`<span class="dot" style="background:${it.m.css}"></span> `:""}<input data-f="name" value="${esc(it.name)}" ${rule?"disabled":""} style="width:${it.m?"calc(100% - 22px)":"100%"}"></td>
         <td>${rule?"":`<input data-f="sku" value="${esc(it.sku||"")}" placeholder="-">`}</td>
         <td>${rule?esc(unitLabel(it.u)):`<select data-f="u">${UNITS.map(u=>`<option value="${u}" ${u===it.u?"selected":""}>${esc(unitLabel(u))}</option>`).join("")}</select>`}</td>
-        <td class="pv"><input type="number" min="0" data-f="v" value="${it.v}"></td>
+        <td class="pv">${it.u==="да/нет"?`<select data-f="v"><option value="1" ${+it.v?"selected":""}>Да</option><option value="0" ${+it.v?"":"selected"}>Нет</option></select>`:`<input type="number" min="0" data-f="v" value="${it.v}">`}</td>
         <td style="white-space:nowrap">${it.m||NEW_MAT[g]?`<button class="bx" data-pm="${it.id}" title="Свойства материала: лист, толщина, цвет">&#9881;</button>`:""}${priceChanged(it)?`<button class="bx" data-pr="${it.id}" title="Вернуть примерную цену ${money(defOf(it.id).v)}">&#8634;</button>`:""}${!it.sys?`<button class="bx" data-pd="${it.id}" title="Удалить">&times;</button>`:""}</td></tr>`;
       if(PX.open===it.id) h+=matPropsRow(it);
     });
@@ -3545,7 +3646,7 @@ function switchCurrency(cur){
         const r=+$("rgRate").value; if(!(r>0)){ toast("Укажите курс"); return; }
         const k=big===to?1/r:r;   // сколько новой валюты за единицу старой
         const items=clone(PRICE).map(it=>{
-          if(it.u==="%") return it;
+          if(it.u==="%" || it.u==="да/нет") return it;
           if(it.id==="round") it.v=MO?MO.roundStep(cur):it.v;
           else { const v=(+it.v||0)*k; it.v=v>=100?Math.round(v):Math.round(v*100)/100; }
           delete it.upd; return it;
@@ -3988,7 +4089,7 @@ function toOrder(){
     products:[{id:"pr1", type:R0.type, name:R0.title, qty:1, size:{w:bb.W,h:bb.H,d:bb.D}, finish:fin, params:clone(R0.type==="kupe"?S.kupe:R0.type==="kitchen"?S.kit:{tpl:S.u.tpl,prms:S.u.prms[S.u.tpl]}),
       generator:{id:"calc."+R0.type,version:"2"}, modules:[], parts, hardware, describe:R0.desc.split("\n")}],
     catalog:cat, extras,
-    pricing:{workPct:P.work, markupPct:P.markup, discountPct:q.disc, prepayPct:q.prepay, roundTo:P.round||1, sheetUsagePct:P.usage, edgeReservePct:10, cutPerSheet:P.cut, ...(q.instNoMk&&q.install>0?{markupServices:false}:{})},
+    pricing:{workPct:P.work, markupPct:P.markup, discountPct:q.disc, prepayPct:q.prepay, roundTo:P.round||1, sheetUsagePct:P.usage, ...(P.nest?{sheetMode:"nest"}:{}), edgeReservePct:10, cutPerSheet:P.cut, ...(q.instNoMk&&q.install>0?{markupServices:false}:{})},
     quote:{calcAt:now, currency:CURCODE, lines, materials:Math.round(q.mat), work:Math.round(q.work), services:Math.round(q.install), cost:Math.round(q.cost), markup:Math.round(q.markup),
       clientLines:[{kind:"product",ref:"pr1",name:R0.title,qty:1,unit:"шт",sum:sub}], subtotal:sub, discountPct:q.disc, discountSum:sub-total, total, prepayPct:q.prepay, prepaySum:q.pre, profit:Math.round(total-q.cost)},
     terms:{days:q.days, daysKind:q.daysKind, warrantyMonths:12}, notes:S.decor?("Цвет: "+S.decor):"",

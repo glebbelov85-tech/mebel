@@ -323,8 +323,8 @@ function calc(){
   // доставка и монтаж: своя сумма для этого заказа или из прайса; у пустого изделия - ноль
   const mat=rows.reduce((s,r)=>s+r[2],0), installName=hwName(R0.install);
   const install = mat>0 ? (S.install!=null && S.install!=="" ? Math.max(0,+S.install||0) : (P[R0.install]||0)) : 0;
-  const work=mat*P.work/100, cst=mat+work+install;
-  const markup=(S.instNoMk ? cst-install : cst)*P.markup/100, beforeDisc=cst+markup, discSum=beforeDisc*disc/100;
+  const work=Math.round(mat*P.work/100), cst=mat+work+install;
+  const markup=Math.round((S.instNoMk ? cst-install : cst)*P.markup/100), beforeDisc=cst+markup, discSum=beforeDisc*disc/100;
   const R=Math.max(1,P.round||1);
   const total=Math.ceil((beforeDisc-discSum)/R-1e-9)*R;
   const pre=Math.min(total,Math.ceil(total*prepay/100/R-1e-9)*R);

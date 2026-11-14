@@ -84,7 +84,8 @@ const PRICE_DEF = [
   {id:"uinstall",g:"Услуги", name:"Доставка и сборка прочих изделий", s:"Доставка и сборка", u:"¤", v:10000},
   {id:"work",   g:"Правила расчёта", name:"Сборка, % от материалов", u:"%", v:15},
   {id:"markup", g:"Правила расчёта", name:"Наценка, %", u:"%", v:30},
-  {id:"usage",  g:"Правила расчёта", name:"Использование листа, % (остальное - отходы)", u:"%", v:80},
+  {id:"nest",   g:"Правила расчёта", name:"Листы считать по раскрою (детали раскладываются на лист)", u:"да/нет", v:1},
+  {id:"usage",  g:"Правила расчёта", name:"Использование листа, % - если листы считаются не по раскрою", u:"%", v:80},
   {id:"round",  g:"Правила расчёта", name:"Округлять итог до", u:"¤", v:1000},
   {id:"pm",     g:"Правила расчёта", name:"Цена кухни за погонный метр - для сравнения (0 - не показывать)", u:"¤", v:0}
 ];
@@ -109,7 +110,7 @@ const PRICE_RUB = {ldsp16:4200, ldsp16f:5200, ldsp10:3800, dvp:700, mdf:5000, md
   prof_eco:2500, prof_std:3500, prof_prem:6000, misc:1200, cut:1200, cutout:800, topjoin:1500, install:4000, kinstall:10000, uinstall:2500, round:100, pm:0};
 let PRICE_META = {};   // о прайсе: валюта, откуда цены (поставщик), дата
 function starterV(d,cur){
-  if(d.u==="%") return d.v;
+  if(d.u==="%" || d.u==="да/нет") return d.v;
   if(d.id==="round") return MO ? MO.roundStep(cur) : d.v;
   if(!MO || cur==="KZT") return d.v;
   return MO.starterPrice(d.v,cur,PRICE_RUB[d.id]);

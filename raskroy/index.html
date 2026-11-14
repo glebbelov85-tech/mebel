@@ -520,7 +520,7 @@ textarea{min-height:220px;font-family:var(--mono);font-size:13px;resize:vertical
       discountPct: 0,       // скидка клиенту, %
       prepayPct: 50,        // предоплата, %
       roundTo: 1000,        // округлять итог вверх до, в валюте заказа
-      sheetUsagePct: 80,    // использование листа, % (остальное - отходы)
+      sheetUsagePct: 80,    // использование листа, % (остальное - отходы); при sheetMode "nest" - только для деталей больше листа
       edgeReservePct: 10,   // запас кромки, %
       cutPerSheet: 3000     // распил и кромление, за лист
     };
@@ -577,7 +577,7 @@ textarea{min-height:220px;font-family:var(--mono);font-size:13px;resize:vertical
       products: [],
       catalog: defaultCatalog(cur),
       extras: [],
-      pricing: defaultPricing(cur),
+      pricing: Object.assign(defaultPricing(cur), { sheetMode: "nest" }), // новые заказы: листы раскладкой; старые без этого поля считаются как раньше
       production: defaultProduction(),
       terms: { days: 30, daysKind: "work", warrantyMonths: 12 },
       timeline: [{ stage: "lead", done: t.slice(0, 10) }],
@@ -889,6 +889,83 @@ textarea{min-height:220px;font-family:var(--mono);font-size:13px;resize:vertical
     return out;
   }
 
+  // ---------- Раскладка деталей на листы ----------
+
+  // Сколько листов нужно на самом деле: детали раскладываются на лист сквозными резами (как на форматном станке),
+  // с пропилом и обрезкой края. items: [{ w, h, rot }] - w вдоль длины листа (вдоль рисунка), rot - можно повернуть.
+  // Перебирает несколько порядков и правил, берёт лучший. Результат не зависит от порядка деталей.
+  // Возвращает { sheets, unplaced (не помещаются в лист), area (м2 деталей), usedPct (заполнение листов) }.
+  var NEST_SPLITS = [
+    function (W, H, w, h) { return (W - w) < (H - h); },
+    function (W, H, w, h) { return (W - w) >= (H - h); },
+    function () { return true; },
+    function () { return false; },
+    function (W, H, w, h) { return w * (H - h) <= h * (W - w); },
+    function (W, H, w, h) { return w * (H - h) > h * (W - w); }
+  ];
+  var NEST_SCORES = [
+    function (W, H, w, h) { return W * H - w * h; },
+    function (W, H, w, h) { return Math.min(W - w, H - h); },
+    function (W, H, w, h) { return Math.max(W - w, H - h); }
+  ];
+  var NEST_ORDERS = [
+    function (a, b) { return b.w * b.h - a.w * a.h; },
+    function (a, b) { return Math.max(b.w, b.h) - Math.max(a.w, a.h) || Math.min(b.w, b.h) - Math.min(a.w, a.h); },
+    function (a, b) { return Math.min(b.w, b.h) - Math.min(a.w, a.h) || Math.max(b.w, b.h) - Math.max(a.w, a.h); },
+    function (a, b) { return (b.w + b.h) - (a.w + a.h); },
+    function (a, b) { return b.h - a.h || b.w - a.w; },
+    function (a, b) { return b.w - a.w || b.h - a.h; }
+  ];
+  function nestOnce(seq, W, H, kerf, score, split, limit) {
+    var sheets = [];
+    for (var i = 0; i < seq.length; i++) {
+      var it = seq[i], best = null, bs = 0, si, fi, f, sc;
+      for (si = 0; si < sheets.length; si++) for (fi = 0; fi < sheets[si].length; fi++) {
+        f = sheets[si][fi];
+        if (it.w <= f.w && it.h <= f.h) { sc = score(f.w, f.h, it.w, it.h); if (!best || sc < bs) { best = { s: si, f: fi, w: it.w, h: it.h }; bs = sc; } }
+        if (it.rot && it.w !== it.h && it.h <= f.w && it.w <= f.h) { sc = score(f.w, f.h, it.h, it.w); if (!best || sc < bs) { best = { s: si, f: fi, w: it.h, h: it.w }; bs = sc; } }
+      }
+      if (!best) {
+        if (sheets.length + 1 >= limit) return limit;
+        sheets.push([{ w: W, h: H }]);
+        best = it.w <= W && it.h <= H ? { s: sheets.length - 1, f: 0, w: it.w, h: it.h } : { s: sheets.length - 1, f: 0, w: it.h, h: it.w };
+      }
+      var free = sheets[best.s]; f = free[best.f]; free.splice(best.f, 1);
+      var dw = f.w - best.w - kerf, dh = f.h - best.h - kerf;
+      if (split(f.w, f.h, best.w, best.h)) {
+        if (dw > 0) free.push({ w: dw, h: best.h });
+        if (dh > 0) free.push({ w: f.w, h: dh });
+      } else {
+        if (dh > 0) free.push({ w: best.w, h: dh });
+        if (dw > 0) free.push({ w: dw, h: f.h });
+      }
+    }
+    return sheets.length;
+  }
+  function nestSheets(items, sheet, opt) {
+    opt = opt || {};
+    var kerf = Math.max(0, num(opt.kerf, 4)), trim = Math.max(0, num(opt.trim, 10));
+    var W = num(sheet && sheet.w, 2800) - 2 * trim, H = num(sheet && sheet.h, 2070) - 2 * trim;
+    var fit = [], unplaced = [], area = 0;
+    arr(items).forEach(function (it) {
+      var w = num(it.w), h = num(it.h);
+      if (!(w > 0 && h > 0)) return;
+      var x = { w: w, h: h, rot: !!it.rot };
+      if ((w <= W && h <= H) || (x.rot && h <= W && w <= H)) { fit.push(x); area += w * h; } else unplaced.push(x);
+    });
+    fit.sort(function (a, b) { return b.w - a.w || b.h - a.h || (a.rot ? 1 : 0) - (b.rot ? 1 : 0); });
+    var lower = Math.ceil(area / (W * H) - 1e-9), best = fit.length ? fit.length + 1 : 0;
+    for (var o = 0; o < NEST_ORDERS.length && best > lower; o++) {
+      var seq = fit.slice().sort(NEST_ORDERS[o]);
+      for (var k = 0; k < NEST_SPLITS.length && best > lower; k++) for (var c = 0; c < NEST_SCORES.length && best > lower; c++) {
+        var n = nestOnce(seq, W, H, kerf, NEST_SCORES[c], NEST_SPLITS[k], best);
+        if (n < best) best = n;
+      }
+    }
+    var full = best * num(sheet && sheet.w, 2800) * num(sheet && sheet.h, 2070);
+    return { sheets: best, unplaced: unplaced, area: r2(area / 1e6), usedPct: full ? Math.round(area / full * 100) : 0 };
+  }
+
   // ---------- Расход материалов ----------
 
   function bom(order) {
@@ -914,6 +991,16 @@ textarea{min-height:220px;font-family:var(--mono);font-size:13px;resize:vertical
         var es = pb(product.id).edges; es[id] = (es[id] || 0) + el[id] / 1000 * q;
       }
     });
+    // pricing.sheetMode "nest" - листы считаются раскладкой деталей, иначе по площади и проценту использования
+    var nestItems = null;
+    if (pr.sheetMode === "nest") {
+      nestItems = {};
+      cutList(order, { kinds: ["sheet"] }).forEach(function (r) {
+        var list = nestItems[r.material.id] || (nestItems[r.material.id] = []);
+        for (var i = 0; i < r.qty; i++) list.push({ w: r.length, h: r.width, rot: r.canRotate });
+      });
+    }
+    var prod = order.production || defaultProduction();
     var sheetsCut = 0;
     Object.keys(mats).forEach(function (id) {
       var m = mats[id], src = order.catalog.materials[id];
@@ -921,7 +1008,13 @@ textarea{min-height:220px;font-family:var(--mono);font-size:13px;resize:vertical
       if (m.kind === "sheet") {
         var sh = src.sheet || { w: 2800, h: 2070 };
         var use = Math.min(100, Math.max(30, num(src.usagePct, num(pr.sheetUsagePct, 80)))) / 100;
-        m.sheets = Math.ceil(m.area / (sh.w * sh.h / 1e6 * use) - 1e-9);
+        if (nestItems && nestItems[id]) {
+          var ns = nestSheets(nestItems[id], sh, { kerf: prod.kerf, trim: prod.sheetTrim });
+          // детали больше листа раскладкой не посчитать - на них лист берётся по площади
+          var over = ns.unplaced.reduce(function (a, x) { return a + x.w * x.h / 1e6; }, 0);
+          m.sheets = ns.sheets + (over > 0 ? Math.ceil(over / (sh.w * sh.h / 1e6 * use) - 1e-9) : 0);
+          m.nest = { usedPct: ns.usedPct, unplaced: ns.unplaced.length };
+        } else m.sheets = Math.ceil(m.area / (sh.w * sh.h / 1e6 * use) - 1e-9);
         m.qty = m.sheets; m.unit = "лист";
         if (src.cut) sheetsCut += m.sheets;
       } else if (m.kind === "length") { m.qty = m.length; m.unit = "п.м."; }
@@ -1595,7 +1688,7 @@ textarea{min-height:220px;font-family:var(--mono);font-size:13px;resize:vertical
     create: create, newProduct: newProduct, newModule: newModule, newPart: newPart, normalize: normalize, touch: touch, uid: uid, clone: clone,
     resolveRef: resolveRef, getMaterial: getMaterial, getEdge: getEdge, getHardware: getHardware,
     partDims: partDims, partBox: partBox, partWorldBox: partWorldBox, placeBox: placeBox, productBounds: productBounds,
-    eachPart: eachPart, listParts: listParts, eachHardware: eachHardware, findPart: findPart, assignMarks: assignMarks,
+    nestSheets: nestSheets, eachPart: eachPart, listParts: listParts, eachHardware: eachHardware, findPart: findPart, assignMarks: assignMarks,
     partGrain: partGrain, partEdges: partEdges, partEdgeLength: partEdgeLength, legacyEdges: legacyEdges,
     cutList: cutList, facadeList: facadeList, bom: bom, quote: quote, recalc: recalc, balance: balance,
     stageName: stageName, setStage: setStage, nextDue: nextDue,

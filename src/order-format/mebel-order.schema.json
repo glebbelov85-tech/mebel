@@ -220,6 +220,7 @@
         "discountPct": { "type": "number", "minimum": 0, "maximum": 90 },
         "prepayPct": { "type": "number", "minimum": 0, "maximum": 100 },
         "roundTo": { "type": "number", "minimum": 1, "description": "Итог округляется вверх до этой суммы" },
+        "sheetMode": { "enum": ["nest", "usage"], "description": "Как считать листы: nest - раскладкой деталей на лист, usage - по площади и проценту использования (по умолчанию, если поля нет)" },
         "sheetUsagePct": { "type": "number", "minimum": 30, "maximum": 100, "description": "Использование листа, %" },
         "edgeReservePct": { "type": "number", "minimum": 0, "description": "Запас кромки, %" },
         "cutPerSheet": { "$ref": "#/$defs/money", "description": "Распил и кромление за лист" }
