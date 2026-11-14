@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Карта раскроя</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Идея: рабочий стол раскройщика. Слева направо по вкладкам: детали - материалы - карты - этикетки - выгрузка.
+   Сводка всегда сверху. Лист на карте - главный объект, всё остальное спокойное. */
+:root{
+  --bg:#eef0ec; --panel:#ffffff; --ink:#1c2420; --muted:#66706a; --line:#d5dbd4;
+  --accent:#17695a; --accent-ink:#ffffff; --accent-soft:#dcebe6;
+  --edge:#e0561f; --warn:#a85a00; --warn-soft:#fbeeda; --good:#1f7a3d;
+  --sheet:#c9cfc8; --pl:86%; --off:#e7f1e4; --waste:#dfe2de;
+  --display:"Golos Text",system-ui,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#141917; --panel:#1d2421; --ink:#e8ede9; --muted:#96a19a; --line:#333d38;
+    --accent:#4fb39e; --accent-ink:#0c1512; --accent-soft:#23362f;
+    --edge:#ff8a4f; --warn:#f0b35a; --warn-soft:#3a2e1a; --good:#6cc98a;
+    --sheet:#3a443f; --pl:30%; --off:#22332a; --waste:#2a302d;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#141917; --panel:#1d2421; --ink:#e8ede9; --muted:#96a19a; --line:#333d38;
+  --accent:#4fb39e; --accent-ink:#0c1512; --accent-soft:#23362f;
+  --edge:#ff8a4f; --warn:#f0b35a; --warn-soft:#3a2e1a; --good:#6cc98a;
+  --sheet:#3a443f; --pl:30%; --off:#22332a; --waste:#2a302d;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--display);font-size:15px;line-height:1.4}
+.wrap{max-width:1280px;margin:0 auto;padding:16px 16px 90px;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;justify-content:space-between}
+h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-.01em}
+h2{font-size:16px;margin:0;font-weight:600;text-wrap:balance}
+h3{font-size:13px;margin:0;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.order{display:flex;gap:8px;flex-wrap:wrap}
+.order input{width:200px}
+input,select,textarea,button{font:inherit;color:inherit}
+input,select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 8px;width:100%;min-width:0}
+input[type=checkbox]{width:18px;height:18px;flex:none;accent-color:var(--accent)}
+input[type=number]{font-family:var(--mono);font-size:14px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:8px 12px;font-weight:500}
+button:hover{border-color:var(--accent)}
+button.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.ghost{border-color:transparent;background:transparent;padding:6px 8px;color:var(--muted)}
+button.ghost:hover{color:var(--ink);border-color:var(--line)}
+button.on{background:var(--accent-soft);border-color:var(--accent)}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.sum div{background:var(--panel);padding:10px 12px}
+.sum b{display:block;font-family:var(--mono);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.sum span{font-size:12px;color:var(--muted)}
+.sum .hot b{color:var(--accent)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;padding:10px 14px;white-space:nowrap;color:var(--muted)}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--accent);background:none;font-weight:600}
+.tabs i{font-style:normal;font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:4px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar .sp{flex:1}
+.note{color:var(--muted);font-size:13px;margin:0;max-width:70ch}
+.warn{background:var(--warn-soft);color:var(--warn);border-radius:6px;padding:9px 12px;font-size:14px}
+.warn b{font-weight:600}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+th{font-size:12px;font-weight:500;color:var(--muted);text-align:left;padding:4px 6px;white-space:nowrap}
+td{padding:3px 4px;vertical-align:middle}
+td.n,th.n{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+#ptable td.idx{font-family:var(--mono);color:var(--muted);text-align:right;padding-right:8px}
+#ptable input,#ptable select{padding:6px}
+#ptable .w-name{min-width:170px} #ptable .w-num{width:84px} #ptable .w-q{width:60px} #ptable .w-mat{min-width:130px} #ptable .w-gr{min-width:118px}
+.ew{display:block;cursor:pointer}
+.ew .body{fill:var(--bg);stroke:var(--line)}
+.ew .s{stroke:var(--line);stroke-width:2}
+.ew .s.e1{stroke:var(--edge);stroke-width:2.5}
+.ew .s.e2{stroke:var(--edge);stroke-width:6}
+.ew .hit{stroke:transparent;stroke-width:14}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.f label,.lbl{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12.5px;border:1px solid var(--line);border-radius:99px;padding:3px 10px;background:var(--panel);font-variant-numeric:tabular-nums}
+.chip b{font-family:var(--mono);font-weight:600}
+.chip.good{color:var(--good);border-color:currentColor}
+.sheets{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:14px}
+.sh{display:flex;flex-direction:column;gap:6px}
+.sh-h{display:flex;justify-content:space-between;gap:8px;font-size:13px;align-items:baseline}
+.sh-h b{font-size:15px}
+.sh-h span{color:var(--muted);font-family:var(--mono);font-size:12.5px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:26px;vertical-align:middle;margin-right:5px}
+.pick{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:10px 16px;display:none;gap:12px;align-items:center;flex-wrap:wrap;box-shadow:0 -6px 20px rgba(0,0,0,.12);z-index:5}
+.pick.on{display:flex}
+.pick .big{font-family:var(--mono);font-size:22px;font-weight:600}
+.pick .sp{flex:1;min-width:180px}
+.labels{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.lab{border:1px dashed var(--line);border-radius:4px;padding:8px 10px;display:grid;grid-template-columns:1fr auto;gap:2px 8px;background:var(--panel);break-inside:avoid}
+.lab .no{font-family:var(--mono);font-size:22px;font-weight:600;line-height:1}
+.lab .sz{font-family:var(--mono);font-size:15px;font-weight:600}
+.lab small{color:var(--muted);font-size:11.5px;grid-column:1/-1}
+.lab .nm{grid-column:1;font-size:13px;font-weight:500}
+.lab svg{grid-column:2;grid-row:1/4;align-self:center}
+.exp{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.exp .card p{margin:0}
+.modal{position:fixed;inset:0;background:rgba(10,15,12,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+.modal.on{display:flex}
+.modal .card{width:min(760px,100%);max-height:90%;overflow:auto}
+textarea{min-height:220px;font-family:var(--mono);font-size:13px;resize:vertical}
+#toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90vw}
+#toast.on{opacity:1}
+.hide{display:none!important}
+.busy{opacity:.55}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+<style id="mapcss"></style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Карта раскроя</h1>
+      <p class="note">Раскладка деталей на листы под форматно-раскроечный станок: сквозные резы, пропил, текстура, кромка, остатки.</p>
+    </div>
+    <div class="order">
+      <input id="o_name" placeholder="Заказ (например, шкаф в прихожую)" aria-label="Название заказа">
+      <input id="o_client" placeholder="Клиент" aria-label="Клиент">
+    </div>
+  </header>
+
+  <div class="sum" id="sum"></div>
+  <div id="warns"></div>
+
+  <nav class="tabs" id="tabs">
+    <button data-t="parts">1. Детали<i id="c_parts"></i></button>
+    <button data-t="mats">2. Материалы и настройки</button>
+    <button data-t="maps">3. Карты<i id="c_maps"></i></button>
+    <button data-t="labels">4. Этикетки</button>
+    <button data-t="export">5. Печать и выгрузка</button>
+  </nav>
+
+  <section id="t_parts" class="card">
+    <div class="bar">
+      <button class="pri" id="p_add">+ Деталь</button>
+      <button id="p_import">Вставить список</button>
+      <button id="p_demo">Пример: шкаф</button>
+      <span class="sp"></span>
+      <button class="ghost" id="p_clear">Очистить всё</button>
+    </div>
+    <div id="lockbar"></div>
+    <div class="scroll"><table id="ptable"></table></div>
+    <p class="note">Длина - размер вдоль текстуры. Кромка: нажимайте на стороны прямоугольника (верх и низ - длинные стороны, лево и право - короткие). Одно нажатие - тонкая 0.4 мм, второе - толстая 2 мм, третье - убрать. Нажатие в середину меняет все четыре стороны сразу.</p>
+  </section>
+
+  <section id="t_mats" class="hide">
+    <div class="grid2">
+      <div class="card">
+        <h2>Материалы и листы</h2>
+        <div id="mats"></div>
+        <div class="bar"><button id="m_add">+ Материал</button></div>
+      </div>
+      <div class="card">
+        <h2>Настройки распила</h2>
+        <div class="f">
+          <label>Пропил пилы, мм<input type="number" id="s_kerf" min="0" step="0.1"></label>
+          <label>Обрезка края листа, мм<input type="number" id="s_trim" min="0"></label>
+          <label>Первые резы
+            <select id="s_strips"><option value="auto">Как выгоднее</option><option value="along">Вдоль листа (полосы по длине)</option><option value="across">Поперёк листа</option></select>
+          </label>
+        </div>
+        <label class="chk"><input type="checkbox" id="s_sub">Уменьшать заготовку на толщину кромки 2 мм</label>
+        <label class="chk"><input type="checkbox" id="s_stock">Сначала пускать в дело остатки со склада</label>
+        <h3>Деловой остаток - кусок не меньше</h3>
+        <div class="f">
+          <label>Длина, мм<input type="number" id="s_offL" min="0"></label>
+          <label>Ширина, мм<input type="number" id="s_offW" min="0"></label>
+        </div>
+        <h3>Цены, ₸ (необязательно)</h3>
+        <div class="f">
+          <label>Распил, за метр реза<input type="number" id="s_cutp" min="0"></label>
+          <label>Кромка 0.4 мм, за метр<input type="number" id="s_e1p" min="0"></label>
+          <label>Кромка 2 мм, за метр<input type="number" id="s_e2p" min="0"></label>
+        </div>
+        <p class="note">Пропил - ширина реза пилы, обычно 3.2-4.4 мм. Обрезка края - сколько снимают с каждой стороны нового листа, чтобы убрать сколы.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="t_maps" class="hide">
+    <div class="card">
+      <div class="bar">
+        <button id="v_cuts">Порядок резов</button>
+        <button id="v_saw">Режим распила</button>
+        <span class="sp"></span>
+        <span class="chip" id="doneChip"></span>
+        <button class="ghost" id="v_reset">Сбросить отметки</button>
+      </div>
+      <div class="legend">
+        <span><i style="border-top:2px solid var(--edge)"></i>кромка 0.4</span>
+        <span><i style="border-top:5px solid var(--edge)"></i>кромка 2 мм</span>
+        <span><i style="height:12px;background:var(--off);border:1px dashed var(--good)"></i>деловой остаток</span>
+        <span><i style="height:12px;background:var(--waste)"></i>отход</span>
+        <span>На карте - размеры пиления. Нажмите на деталь, чтобы увидеть её данные.</span>
+      </div>
+    </div>
+    <div id="maps" style="display:flex;flex-direction:column;gap:14px;margin-top:14px"></div>
+  </section>
+
+  <section id="t_labels" class="hide card">
+    <div class="bar">
+      <p class="note">Одна этикетка на каждую деталь: номер, название, размер, кромка по сторонам и номер листа. Сборщик находит деталь по номеру.</p>
+      <span class="sp"></span>
+      <button class="pri" id="l_print">Скачать этикетки для печати</button>
+    </div>
+    <div class="labels" id="labels"></div>
+  </section>
+
+  <section id="t_export" class="hide">
+    <div class="exp">
+      <div class="card"><h2>Карты на печать</h2><p class="note">Файл со сводкой, списком деталей и картами - по одному листу на страницу А4. Откройте его и нажмите "Печать".</p><div class="bar"><button class="pri" id="x_print">Скачать карты (HTML)</button></div></div>
+      <div class="card"><h2>Бланк для цеха распила</h2><p class="note">Таблица деталей: размеры пиления, количество, текстура, кромка по каждой стороне. Открывается в Excel.</p><div class="bar"><button class="pri" id="x_csv">Скачать CSV</button><button id="x_text">Скопировать текстом</button></div></div>
+      <div class="card"><h2>Проект</h2><p class="note">Сохраните заказ в файл, чтобы открыть его на другом устройстве или передать в другие инструменты.</p><div class="bar"><button id="x_json">Скачать проект (JSON)</button><button id="x_load">Открыть проект</button></div></div>
+      <div class="card"><h2>Склад остатков</h2><p class="note">Когда заказ распилен: использованные остатки списываются, новые деловые остатки записываются на склад. Раскрой при этом фиксируется.</p><div class="bar"><button id="x_stock">Заказ распилен - обновить склад</button></div><div id="stockList" class="note"></div></div>
+    </div>
+  </section>
+</div>
+
+<div class="pick" id="pick"></div>
+<div class="modal" id="modal"><div class="card">
+  <h2 id="md_title"></h2><p class="note" id="md_note"></p>
+  <label class="lbl" id="md_filebox">Выбрать файл заказа или проекта<input type="file" id="md_file" accept=".json,.txt,.csv,application/json,text/plain"></label>
+  <textarea id="md_text" spellcheck="false"></textarea>
+  <div class="bar"><button class="pri" id="md_ok"></button><button id="md_copy">Скопировать</button><span class="sp"></span><button class="ghost" id="md_close">Закрыть</button></div>
+</div></div>
+<div id="toast" role="status"></div>
+
+<script>
+/*ORDER*/
+</script>
+<script>
+/*ENGINE*/
+</script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = n => Math.round(n).toLocaleString("ru-RU");
+const f1 = n => (Math.round(n*10)/10).toLocaleString("ru-RU");
+const mm = n => String(Math.round(n*10)/10);
+
+// Стили карты - общие для экрана и для файла на печать
+const MAP_CSS = `
+svg.sheet{display:block;width:100%;height:auto;font-family:"JetBrains Mono",ui-monospace,Consolas,monospace;border-radius:4px}
+.s-bg{fill:var(--sheet)} .s-in{fill:var(--waste)}
+.off{fill:var(--waste)} .off.use{fill:var(--off);stroke:var(--good);stroke-width:3;stroke-dasharray:18 12}
+.offt{fill:var(--muted);text-anchor:middle;dominant-baseline:central}
+.part rect{stroke:var(--ink);stroke-width:2.5;cursor:pointer}
+.part text{fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.part .pn{font-weight:600}
+.part.sel rect{stroke:var(--accent);stroke-width:12}
+.part.done rect{fill:var(--waste)!important} .part.done text{opacity:.45}
+.part .tick{display:none;stroke:var(--good);stroke-width:14;fill:none;stroke-linecap:round;pointer-events:none}
+.part.done .tick{display:block}
+.eb{stroke:var(--edge);pointer-events:none} .eb.e1{stroke-width:5} .eb.e2{stroke-width:13}
+.cut{stroke:var(--ink);opacity:.0}
+.cutn{display:none;pointer-events:none}
+.cutn circle{fill:var(--ink)} .cutn text{fill:var(--panel);text-anchor:middle;dominant-baseline:central;font-weight:600}
+.show-cuts .cutn{display:block} .show-cuts .cut{opacity:.9;stroke-dasharray:24 10}
+.grain{fill:var(--muted)}
+`;
+$("mapcss").textContent = MAP_CSS;
+
+// ---------- Данные ----------
+const GRAIN = {along:"Вдоль длины", across:"Поперёк длины", any:"Любая"};
+const ENAME = {0:"-", 1:"0.4", 2:"2"};
+const DEF_SET = {kerf:4, trim:10, strips:"auto", sub:true, stock:true, offL:400, offW:150, cutp:0, e1p:0, e2p:0};
+const DEF_MATS = () => [
+  {id:"m1", name:"ЛДСП 16", L:2800, W:2070, grain:true, price:0, offcuts:[]},
+  {id:"m2", name:"ДВП 3", L:2750, W:1700, grain:false, price:0, offcuts:[]}
+];
+const E = (l1=0,l2=0,w1=0,w2=0) => ({l1,l2,w1,w2});
+function demoParts(){
+  const P = (name,L,W,qty,mat,e,grain="along") => ({id:uid(), name, L, W, qty, mat, grain, e});
+  return [
+    P("Боковина",2000,481,2,"m1",E(2,0,1,1)),
+    P("Крыша",768,481,1,"m1",E(2,0,0,0)),
+    P("Дно",768,481,1,"m1",E(2,0,0,0)),
+    P("Полка",768,461,4,"m1",E(2,0,0,0)),
+    P("Цоколь",768,80,1,"m1",E(1,0,0,0)),
+    P("Дверь",1997,397,2,"m1",E(2,2,2,2)),
+    P("Фасад ящика",797,177,2,"m1",E(2,2,2,2),"across"),
+    P("Ящик: бок",400,120,4,"m1",E(1,0,0,0)),
+    P("Ящик: перед и зад",678,120,4,"m1",E(1,0,0,0)),
+    P("Задняя стенка",1920,796,1,"m2",E(),"any"),
+    P("Дно ящика",710,400,2,"m2",E(),"any")
+  ];
+}
+let _uid = 0;
+function uid(){ return "p" + Date.now().toString(36) + (++_uid).toString(36); }
+
+let S = {order:{name:"", client:""}, parts:[], mats:DEF_MATS(), set:Object.assign({}, DEF_SET), done:{}, locked:null, tab:"parts", demo:true};
+let R = [];           // результаты по материалам
+let ui = {cuts:false, saw:false, sel:null};
+
+function load(){
+  try{
+    const raw = localStorage.getItem("raskroy_v1");
+    if(raw){ const s = JSON.parse(raw); if(s && Array.isArray(s.parts)){ S = Object.assign(S, s); S.set = Object.assign({}, DEF_SET, s.set); return; } }
+  }catch(e){}
+  S.parts = demoParts(); S.order.name = "Шкаф распашной 800x2000x500 (пример)";
+}
+function save(){ try{ localStorage.setItem("raskroy_v1", JSON.stringify(S)); }catch(e){} }
+const matById = id => S.mats.find(m => m.id === id) || S.mats[0];
+const partNo = p => S.parts.indexOf(p) + 1;
+
+// ---------- Расчёт ----------
+let timer = null;
+function changed(now){
+  S.demo = false; save();
+  if(S.locked) return;
+  clearTimeout(timer);
+  $("sum").classList.add("busy");
+  timer = setTimeout(compute, now ? 0 : 350);
+}
+function engineOpt(){
+  const s = S.set;
+  return {kerf:+s.kerf||0, trim:+s.trim||0, minOffL:+s.offL||0, minOffW:+s.offW||0, strips:s.strips,
+    subtractEdge:!!s.sub, edgeTypes:{0:{t:0},1:{t:0.4},2:{t:2}}, timeMs:900, maxTries:4000};
+}
+function validParts(){ return S.parts.filter(p => p.L > 0 && p.W > 0 && p.qty > 0); }
+function compute(){
+  if(S.locked){ R = S.locked; renderAll(); return; }
+  const opt = engineOpt(), vp = validParts();
+  R = [];
+  S.mats.forEach(m => {
+    const ps = vp.filter(p => matById(p.mat) === m).map(p => ({id:p.id, L:+p.L, W:+p.W, qty:Math.floor(+p.qty), grain:p.grain, e:p.e}));
+    if(!ps.length) return;
+    const mat = {id:m.id, name:m.name, L:+m.L, W:+m.W, grain:!!m.grain, price:+m.price||0, offcuts:S.set.stock ? m.offcuts.map(o => ({L:+o.L, W:+o.W, qty:+o.qty})) : []};
+    const r = RK.optimize(ps, mat, opt);
+    let n = 1;
+    r.sheets.forEach(sh => { sh.from = n; n += sh.count; sh.to = n - 1; });
+    R.push(r);
+  });
+  renderAll();
+}
+function edgeMeters(){
+  const m = {1:0, 2:0};
+  validParts().forEach(p => {
+    const add = (k, len) => { if(p.e[k]) m[p.e[k]] += len * p.qty / 1000; };
+    add("l1", p.L); add("l2", p.L); add("w1", p.W); add("w2", p.W);
+  });
+  return m;
+}
+function totals(){
+  const t = {sheets:0, off:0, stock:0, part:0, useful:0, cutLen:0, cutN:0, cost:0, unplaced:0, pieces:0};
+  R.forEach(r => {
+    t.sheets += r.totals.sheets; t.off += r.totals.offcutsUsed; t.stock += r.totals.stockArea; t.part += r.totals.partArea;
+    t.useful += r.totals.usefulArea; t.cutLen += r.totals.cutLen; t.cutN += r.totals.cutN; t.unplaced += r.unplaced.length;
+    t.cost += r.totals.sheets * (r.mat.price || 0);
+    r.sheets.forEach(s => t.pieces += s.placed.length * s.count);
+  });
+  t.edge = edgeMeters();
+  t.cost += t.cutLen/1000 * (+S.set.cutp||0) + t.edge[1]*1.1*(+S.set.e1p||0) + t.edge[2]*1.1*(+S.set.e2p||0);
+  return t;
+}
+
+// ---------- Отрисовка ----------
+function renderAll(){
+  $("sum").classList.remove("busy");
+  renderSum(); renderWarns(); renderMaps(); renderLabels(); renderStock(); renderLock();
+}
+function renderSum(){
+  const t = totals();
+  const used = t.stock ? t.part/t.stock*100 : 0, waste = t.stock ? (t.stock - t.part - t.useful)/t.stock*100 : 0;
+  const cells = [
+    ["hot", t.sheets + (t.off ? " + " + t.off : ""), t.off ? "листов + остатков со склада" : "листов нужно"],
+    ["", f1(used) + "%", "площади ушло в детали"],
+    ["", f1(waste) + "%", "отходы (без деловых остатков)"],
+    ["", f1(t.cutLen/1000) + " м", t.cutN + " резов"],
+    ["", f1((t.edge[1]+t.edge[2])*1.1) + " м", "кромки с запасом 10%"]
+  ];
+  if(t.cost > 0) cells.push(["", fmt(t.cost) + " ₸", "материал, распил, кромка"]);
+  $("sum").innerHTML = cells.map(c => `<div class="${c[0]}"><b>${c[1]}</b><span>${c[2]}</span></div>`).join("");
+  $("c_parts").textContent = S.parts.reduce((s,p) => s + (+p.qty||0), 0) || "";
+  $("c_maps").textContent = R.reduce((s,r) => s + r.sheets.reduce((a,b) => a + b.count, 0), 0) || "";
+}
+function renderWarns(){
+  const w = [];
+  if(S.demo) w.push("Сейчас открыт <b>пример</b>. Нажмите \"Очистить всё\" и добавьте свои детали или вставьте список из калькулятора.");
+  R.forEach(r => {
+    const ids = [...new Set(r.unplaced.map(u => u.pid))];
+    ids.forEach(id => { const p = S.parts.find(x => x.id === id); if(p) w.push(`<b>Деталь №${partNo(p)} "${esc(p.name)}" ${p.L}x${p.W}</b> не помещается на лист ${r.mat.L}x${r.mat.W} (${esc(r.mat.name)}). Проверьте размер, направление текстуры или размер листа.`); });
+  });
+  S.parts.forEach(p => { if(!(p.L > 0 && p.W > 0 && p.qty > 0)) w.push(`Деталь №${partNo(p)} "${esc(p.name)}": заполните длину, ширину и количество - пока она не участвует в раскрое.`); });
+  $("warns").innerHTML = w.map(x => `<div class="warn" style="margin-bottom:6px">${x}</div>`).join("");
+}
+function renderLock(){
+  $("lockbar").innerHTML = S.locked ? `<div class="warn">Заказ распилен, раскрой зафиксирован и склад обновлён. Изменения деталей не пересчитываются. <button id="unlock">Разблокировать и пересчитать</button> <button id="neworder">Начать новый заказ</button></div>` : "";
+  if(S.locked){
+    $("unlock").onclick = () => { S.locked = null; changed(true); };
+    $("neworder").onclick = () => { S.locked = null; S.parts = []; S.done = {}; S.order = {name:"", client:""}; syncOrder(); renderParts(); changed(true); };
+  }
+}
+
+function edgeWidget(p, size){
+  const w = size || 58, h = Math.round(w*0.62), a = 6;
+  const c = k => "s e" + (p.e[k]||0);
+  return `<svg class="ew" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="Кромка">
+    <rect class="body" data-side="all" x="${a}" y="${a}" width="${w-2*a}" height="${h-2*a}"></rect>
+    <line class="${c("l1")}" x1="${a}" y1="${a}" x2="${w-a}" y2="${a}"></line><line class="${c("l2")}" x1="${a}" y1="${h-a}" x2="${w-a}" y2="${h-a}"></line>
+    <line class="${c("w1")}" x1="${a}" y1="${a}" x2="${a}" y2="${h-a}"></line><line class="${c("w2")}" x1="${w-a}" y1="${a}" x2="${w-a}" y2="${h-a}"></line>
+    <line class="hit" data-side="l1" x1="${a}" y1="${a}" x2="${w-a}" y2="${a}"></line><line class="hit" data-side="l2" x1="${a}" y1="${h-a}" x2="${w-a}" y2="${h-a}"></line>
+    <line class="hit" data-side="w1" x1="${a}" y1="${a}" x2="${a}" y2="${h-a}"></line><line class="hit" data-side="w2" x1="${w-a}" y1="${a}" x2="${w-a}" y2="${h-a}"></line></svg>`;
+}
+function renderParts(){
+  const mo = id => S.mats.map(m => `<option value="${m.id}" ${m.id===id?"selected":""}>${esc(m.name)}</option>`).join("");
+  const go = g => Object.keys(GRAIN).map(k => `<option value="${k}" ${k===g?"selected":""}>${GRAIN[k]}</option>`).join("");
+  let h = `<thead><tr><th class="n">№</th><th>Название</th><th>Длина, мм</th><th>Ширина, мм</th><th>Кол-во</th><th>Материал</th><th>Текстура</th><th>Кромка</th><th></th></tr></thead><tbody>`;
+  S.parts.forEach((p,i) => {
+    h += `<tr data-id="${p.id}"><td class="idx">${i+1}</td>
+      <td><input class="w-name" data-f="name" value="${esc(p.name)}" aria-label="Название"></td>
+      <td><input class="w-num" data-f="L" type="number" min="0" value="${p.L||""}" aria-label="Длина"></td>
+      <td><input class="w-num" data-f="W" type="number" min="0" value="${p.W||""}" aria-label="Ширина"></td>
+      <td><input class="w-q" data-f="qty" type="number" min="0" value="${p.qty||""}" aria-label="Количество"></td>
+      <td><select class="w-mat" data-f="mat" aria-label="Материал">${mo(p.mat)}</select></td>
+      <td><select class="w-gr" data-f="grain" aria-label="Текстура">${go(p.grain)}</select></td>
+      <td>${edgeWidget(p)}</td>
+      <td style="white-space:nowrap"><button class="ghost" data-a="dup" title="Копия">⧉</button><button class="ghost" data-a="del" title="Удалить">✕</button></td></tr>`;
+  });
+  if(!S.parts.length) h += `<tr><td colspan="9"><p class="note" style="padding:14px 4px">Деталей пока нет. Добавьте вручную или вставьте список из калькулятора, Excel или программы проектирования.</p></td></tr>`;
+  $("ptable").innerHTML = h + "</tbody>";
+}
+$("ptable").addEventListener("input", e => {
+  const tr = e.target.closest("tr[data-id]"), f = e.target.dataset.f; if(!tr || !f) return;
+  const p = S.parts.find(x => x.id === tr.dataset.id); if(!p) return;
+  p[f] = (f === "L" || f === "W" || f === "qty") ? +e.target.value : e.target.value;
+  changed();
+});
+$("ptable").addEventListener("click", e => {
+  const tr = e.target.closest("tr[data-id]"); if(!tr) return;
+  const i = S.parts.findIndex(x => x.id === tr.dataset.id), p = S.parts[i];
+  const side = e.target.dataset.side, a = e.target.dataset.a;
+  if(side){
+    if(side === "all"){ const v = (Math.max(p.e.l1,p.e.l2,p.e.w1,p.e.w2) + 1) % 3; p.e = E(v,v,v,v); }
+    else p.e[side] = ((p.e[side]||0) + 1) % 3;
+    e.target.closest("td").innerHTML = edgeWidget(p); changed();
+  } else if(a === "del"){ S.parts.splice(i,1); renderParts(); changed(); }
+  else if(a === "dup"){ S.parts.splice(i+1, 0, Object.assign({}, p, {id:uid(), e:Object.assign({}, p.e)})); renderParts(); changed(); }
+});
+$("p_add").onclick = () => {
+  S.parts.push({id:uid(), name:"Деталь", L:0, W:0, qty:1, mat:S.mats[0].id, grain:"along", e:E()});
+  renderParts(); changed();
+  const inp = $("ptable").querySelector("tbody tr:last-child input[data-f=L]"); if(inp) inp.focus();
+};
+$("p_demo").onclick = () => { S.parts = demoParts(); S.mats.length < 2 && (S.mats = DEF_MATS()); S.parts.forEach(p => { if(!S.mats.find(m => m.id === p.mat)) p.mat = S.mats[0].id; }); S.done = {}; renderParts(); changed(true); S.demo = true; };
+$("p_clear").onclick = () => { S.parts = []; S.done = {}; S.locked = null; renderParts(); changed(true); };
+
+// Материалы
+function renderMats(){
+  $("mats").innerHTML = S.mats.map((m,i) => `<div data-m="${m.id}" style="border-top:${i?"1px solid var(--line)":"0"};padding:${i?12:0}px 0 12px;display:flex;flex-direction:column;gap:8px">
+    <div class="f" style="grid-template-columns:2fr 1fr 1fr 1fr">
+      <label>Название и декор<input data-f="name" value="${esc(m.name)}"></label>
+      <label>Длина листа<input data-f="L" type="number" value="${m.L}"></label>
+      <label>Ширина листа<input data-f="W" type="number" value="${m.W}"></label>
+      <label>Цена листа, ₸<input data-f="price" type="number" value="${m.price||""}"></label>
+    </div>
+    <div class="bar"><label class="chk"><input type="checkbox" data-f="grain" ${m.grain?"checked":""}>Есть текстура (рисунок вдоль длины листа)</label><span class="sp"></span>
+      ${S.mats.length > 1 ? `<button class="ghost" data-a="mdel">Удалить материал</button>` : ""}</div>
+    <div class="lbl">Остатки на складе (длина x ширина, штук)</div>
+    ${m.offcuts.map((o,j) => `<div class="bar" data-o="${j}"><input style="width:90px" type="number" data-of="L" value="${o.L}" aria-label="Длина остатка"><span>x</span><input style="width:90px" type="number" data-of="W" value="${o.W}" aria-label="Ширина остатка"><input style="width:64px" type="number" data-of="qty" value="${o.qty}" aria-label="Штук"><span class="note">шт.</span><button class="ghost" data-a="odel" title="Удалить">✕</button></div>`).join("")}
+    <div class="bar"><button data-a="oadd">+ Остаток</button></div>
+  </div>`).join("");
+}
+$("mats").addEventListener("input", e => {
+  const box = e.target.closest("[data-m]"); if(!box) return;
+  const m = S.mats.find(x => x.id === box.dataset.m), f = e.target.dataset.f, of = e.target.dataset.of;
+  if(f) m[f] = f === "grain" ? e.target.checked : f === "name" ? e.target.value : +e.target.value;
+  if(of) m.offcuts[+e.target.closest("[data-o]").dataset.o][of] = +e.target.value;
+  if(f === "name") renderParts();
+  changed();
+});
+$("mats").addEventListener("click", e => {
+  const a = e.target.dataset.a, box = e.target.closest("[data-m]"); if(!a || !box) return;
+  const m = S.mats.find(x => x.id === box.dataset.m);
+  if(a === "oadd") m.offcuts.push({L:1000, W:500, qty:1});
+  if(a === "odel") m.offcuts.splice(+e.target.closest("[data-o]").dataset.o, 1);
+  if(a === "mdel"){ S.mats = S.mats.filter(x => x !== m); S.parts.forEach(p => { if(p.mat === m.id) p.mat = S.mats[0].id; }); renderParts(); }
+  renderMats(); changed();
+});
+$("m_add").onclick = () => { S.mats.push({id:"m" + Date.now().toString(36), name:"ЛДСП 16 (новый декор)", L:2800, W:2070, grain:true, price:0, offcuts:[]}); renderMats(); renderParts(); changed(); };
+const SET_F = {s_kerf:"kerf", s_trim:"trim", s_strips:"strips", s_sub:"sub", s_stock:"stock", s_offL:"offL", s_offW:"offW", s_cutp:"cutp", s_e1p:"e1p", s_e2p:"e2p"};
+function renderSet(){ for(const id in SET_F){ const el = $(id), v = S.set[SET_F[id]]; if(el.type === "checkbox") el.checked = !!v; else el.value = v || (el.tagName === "SELECT" ? v : (v === 0 ? "" : v)); } $("s_kerf").value = S.set.kerf; $("s_trim").value = S.set.trim; }
+for(const id in SET_F) $(id).addEventListener("input", e => { const el = e.target; S.set[SET_F[id]] = el.type === "checkbox" ? el.checked : el.tagName === "SELECT" ? el.value : +el.value; changed(); });
+
+// ---------- Карта листа ----------
+function fitText(cx, cy, w, h, lines, cls, maxF){
+  const rot = h > w * 1.25, aw = rot ? h : w, ah = rot ? w : h;
+  // варианты от подробного к короткому: 3 строки, 2 строки, одна строка "№ и размер", только номер
+  const vars = [lines];
+  if(lines.length > 2) vars.push(lines.slice(0, 2));
+  if(lines.length > 1) vars.push([lines[0] + " " + lines[1]], [lines[0]]);
+  let ls, f = 0;
+  for(const v of vars){
+    const mc = Math.max(...v.map(l => l.length));
+    ls = v; f = Math.min(maxF || 64, aw * 0.9 / (mc * 0.62), ah * 0.86 / (v.length * 1.2));
+    if(f >= 34) break;
+  }
+  if(f < 12) return "";
+  const lh = f * 1.2, y0 = -(ls.length - 1) * lh / 2;
+  return `<g transform="translate(${cx} ${cy})${rot ? " rotate(-90)" : ""}">` + ls.map((l,i) => `<text class="${i === 0 ? cls : ""}" y="${y0 + i*lh}" font-size="${(i === 0 ? f : f*0.82).toFixed(1)}">${esc(l)}</text>`).join("") + `</g>`;
+}
+function hue(pid){ const i = S.parts.findIndex(p => p.id === pid); return (i * 47 + 28) % 360; }
+function sheetSVG(r, sh){
+  const {L, W} = sh.stock, t = sh.trim, pad = 8;
+  let s = `<svg class="sheet" viewBox="${-pad} ${-pad} ${L+2*pad} ${W+2*pad}" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<rect class="s-bg" x="0" y="0" width="${L}" height="${W}"></rect><rect class="s-in" x="${t}" y="${t}" width="${L-2*t}" height="${W-2*t}"></rect>`;
+  sh.offcuts.forEach(o => {
+    s += `<rect class="off${o.useful ? " use" : ""}" x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}"></rect>`;
+    if(o.useful) s += fitText(o.x + o.w/2, o.y + o.h/2, o.w, o.h, [Math.floor(o.w) + "x" + Math.floor(o.h)], "offt", 44).replace(/<text class="offt"/g, '<text class="offt"').replace(/<text class=""/g, '<text class="offt"');
+  });
+  sh.placed.forEach(p => {
+    const src = S.parts.find(x => x.id === p.part.pid) || {name:"", e:E()}, no = partNo(src) || "?";
+    const key = p.part.pid + ":" + p.part.n;
+    s += `<g class="part${S.done[key] ? " done" : ""}${ui.sel === p.part.pid ? " sel" : ""}" data-pid="${p.part.pid}" data-key="${key}">`;
+    s += `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" style="fill:hsl(${hue(p.part.pid)} 45% var(--pl))"></rect>`;
+    // кромка: l1/l2 - стороны вдоль длины детали, w1/w2 - торцы
+    const e = src.e, d = 11, sides = p.rotated
+      ? {l1:[p.x+d,p.y,p.x+d,p.y+p.h], l2:[p.x+p.w-d,p.y,p.x+p.w-d,p.y+p.h], w1:[p.x,p.y+d,p.x+p.w,p.y+d], w2:[p.x,p.y+p.h-d,p.x+p.w,p.y+p.h-d]}
+      : {l1:[p.x,p.y+d,p.x+p.w,p.y+d], l2:[p.x,p.y+p.h-d,p.x+p.w,p.y+p.h-d], w1:[p.x+d,p.y,p.x+d,p.y+p.h], w2:[p.x+p.w-d,p.y,p.x+p.w-d,p.y+p.h]};
+    for(const k in sides) if(e[k]){ const q = sides[k]; s += `<line class="eb e${e[k]}" x1="${q[0]}" y1="${q[1]}" x2="${q[2]}" y2="${q[3]}"></line>`; }
+    s += fitText(p.x + p.w/2, p.y + p.h/2, p.w - 30, p.h - 30, ["№" + no, mm(p.w) + "x" + mm(p.h), src.name.slice(0, 18)], "pn");
+    const c = Math.min(p.w, p.h) * 0.22;
+    s += `<path class="tick" d="M${p.x+p.w/2-c} ${p.y+p.h/2} l${c*0.7} ${c*0.7} l${c*1.3} ${-c*1.4}"></path></g>`;
+  });
+  const k = Math.max(+r_kerf(), 3);
+  sh.cuts.forEach((c, i) => {
+    const o = c.trim ? 0 : r_kerf()/2;
+    const x1 = c.dir === "H" ? c.x : c.x + o, y1 = c.dir === "H" ? c.y + o : c.y, x2 = c.dir === "H" ? c.x + c.len : x1, y2 = c.dir === "H" ? y1 : c.y + c.len;
+    s += `<line class="cut" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${k}"></line>`;
+    s += `<g class="cutn" transform="translate(${(x1+x2)/2} ${(y1+y2)/2})"><circle r="30"></circle><text font-size="32">${i+1}</text></g>`;
+  });
+  if(r.mat.grain) s += `<text class="grain" x="${L-t-12}" y="${W-t-14}" font-size="34" text-anchor="end">текстура ⟷</text>`;
+  return s + "</svg>";
+}
+function r_kerf(){ return +S.set.kerf || 0; }
+function sheetTitle(sh){ return (sh.count > 1 ? `Листы ${sh.from}-${sh.to}` : `Лист ${sh.from}`) + (sh.stock.offcut ? " (остаток со склада)" : ""); }
+function renderMaps(){
+  let h = "";
+  R.forEach((r, ri) => {
+    const t = r.totals, useful = r.sheets.reduce((a,s) => a + s.offcuts.filter(o => o.useful).length * s.count, 0);
+    h += `<div class="card"><div class="bar"><h2>${esc(r.mat.name)}</h2><span class="note">лист ${r.mat.L}x${r.mat.W}${r.mat.grain ? ", с текстурой" : ", без текстуры"}</span></div>
+      <div class="chips"><span class="chip">листов <b>${t.sheets}</b></span>${t.offcutsUsed ? `<span class="chip good">остатков со склада <b>${t.offcutsUsed}</b></span>` : ""}
+      <span class="chip">в детали <b>${f1(t.used*100)}%</b></span><span class="chip">отходы <b>${f1(t.waste*100)}%</b></span>
+      <span class="chip">резов <b>${t.cutN}</b>, <b>${f1(t.cutLen/1000)}</b> м</span>${useful ? `<span class="chip good">деловых остатков <b>${useful}</b></span>` : ""}</div>
+      <div class="sheets">`;
+    r.sheets.forEach((sh, si) => {
+      h += `<div class="sh" data-r="${ri}" data-s="${si}"><div class="sh-h"><b>${sheetTitle(sh)}${sh.count > 1 ? ` - одинаковые, ${sh.count} шт.` : ""}</b><span>${sh.stock.L}x${sh.stock.W} · ${f1(sh.used*100)}% · ${sh.placed.length} дет.</span></div>${sheetSVG(r, sh)}</div>`;
+    });
+    h += `</div></div>`;
+  });
+  if(!R.length) h = `<div class="card"><p class="note">Добавьте детали на вкладке "Детали" - карты появятся здесь.</p></div>`;
+  const box = $("maps"); box.innerHTML = h; box.classList.toggle("show-cuts", ui.cuts);
+  let tot = 0, dn = 0;
+  R.forEach(r => r.sheets.forEach(s => s.placed.forEach(p => { tot++; if(S.done[p.part.pid + ":" + p.part.n]) dn++; })));
+  $("doneChip").innerHTML = `выпилено <b>${dn}</b> из <b>${tot}</b>`;
+}
+$("maps").addEventListener("click", e => {
+  const g = e.target.closest(".part"); if(!g){ return; }
+  const key = g.dataset.key, pid = g.dataset.pid;
+  if(ui.saw){ if(S.done[key]) delete S.done[key]; else S.done[key] = true; save(); renderMaps(); return; }
+  ui.sel = ui.sel === pid ? null : pid; renderMaps(); renderPick(key);
+});
+function edgeText(p){
+  const n = {l1:"длинная 1", l2:"длинная 2", w1:"торец 1", w2:"торец 2"}, a = [];
+  for(const k in n) if(p.e[k]) a.push(n[k] + " - " + ENAME[p.e[k]] + " мм");
+  return a.length ? a.join(", ") : "без кромки";
+}
+function renderPick(key){
+  const p = S.parts.find(x => x.id === ui.sel), box = $("pick");
+  if(!p){ box.classList.remove("on"); return; }
+  const cs = RK.cutSize(p, engineOpt().edgeTypes, S.set.sub), where = [];
+  R.forEach(r => r.sheets.forEach(s => { const c = s.placed.filter(q => q.part.pid === p.id).length; if(c) where.push(sheetTitle(s).replace(/ \(.*/, "") + ": " + c * s.count + " шт."); }));
+  box.innerHTML = `<span class="big">№${partNo(p)}</span>${edgeWidget(p, 70)}
+    <div class="sp"><b>${esc(p.name)}</b> · ${esc(matById(p.mat).name)} · ${p.qty} шт.<br><span class="note">Готовый размер ${p.L}x${p.W}, пилить ${mm(cs.L)}x${mm(cs.W)}. Кромка: ${edgeText(p)}. ${where.join("; ")}${p.note ? " Примечание: " + esc(p.note) : ""}</span></div>
+    <button id="pk_done">${S.done[key] ? "Снять отметку" : "Эта деталь выпилена"}</button><button class="ghost" id="pk_x">Закрыть</button>`;
+  box.classList.add("on");
+  $("pk_done").onclick = () => { if(S.done[key]) delete S.done[key]; else S.done[key] = true; save(); renderMaps(); renderPick(key); };
+  $("pk_x").onclick = () => { ui.sel = null; box.classList.remove("on"); renderMaps(); };
+}
+$("v_cuts").onclick = e => { ui.cuts = !ui.cuts; e.target.classList.toggle("on", ui.cuts); $("maps").classList.toggle("show-cuts", ui.cuts); };
+$("v_saw").onclick = e => { ui.saw = !ui.saw; e.target.classList.toggle("on", ui.saw); ui.sel = null; $("pick").classList.remove("on"); renderMaps(); toast(ui.saw ? "Режим распила: нажатие на деталь отмечает её выпиленной" : "Режим распила выключен"); };
+$("v_reset").onclick = () => { S.done = {}; save(); renderMaps(); };
+
+// ---------- Этикетки ----------
+function labelList(){
+  const out = [];
+  R.forEach(r => r.sheets.forEach(sh => sh.placed.forEach(pl => {
+    const p = S.parts.find(x => x.id === pl.part.pid); if(!p) return;
+    for(let c = 0; c < sh.count; c++) out.push({p, r, sheet: sh.from + c, pl});
+  })));
+  out.sort((a,b) => partNo(a.p) - partNo(b.p) || a.sheet - b.sheet);
+  return out;
+}
+function labelsHTML(){
+  const et = engineOpt().edgeTypes;
+  return labelList().map(l => { const cs = RK.cutSize(l.p, et, S.set.sub); return `<div class="lab">
+    <span class="no">№${partNo(l.p)}</span>${edgeWidget(l.p, 62)}
+    <span class="nm">${esc(l.p.name)}</span>
+    <span class="sz">${l.p.L} x ${l.p.W}</span>
+    <small>${esc(l.r.mat.name)} · лист ${l.sheet} · пилить ${mm(cs.L)}x${mm(cs.W)}</small>
+    <small>${esc(edgeText(l.p))}${l.p.mark ? " · марка " + esc(l.p.mark) : ""}</small>${l.p.note ? `<small>${esc(l.p.note)}</small>` : ""}
+    ${S.order.name || S.order.client ? `<small>${esc([S.order.name, S.order.client].filter(Boolean).join(" · "))}</small>` : ""}</div>`; }).join("");
+}
+function renderLabels(){ $("labels").innerHTML = labelsHTML() || `<p class="note">Этикетки появятся после раскроя.</p>`; }
+
+// ---------- Печать и выгрузка ----------
+const PRINT_CSS = `:root{--bg:#fff;--panel:#fff;--ink:#111;--muted:#555;--line:#bbb;--accent:#17695a;--edge:#d4480f;--good:#1f7a3d;--sheet:#bdbdbd;--pl:90%;--off:#eef6ea;--waste:#e3e3e3}
+*{box-sizing:border-box}body{font-family:system-ui,"Segoe UI",Roboto,Arial,sans-serif;font-size:12px;color:#111;margin:0;padding:10mm}
+h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;margin:0}p{margin:2px 0}
+table{border-collapse:collapse;width:100%;margin-top:6px}th,td{border:1px solid #bbb;padding:3px 6px;text-align:left;font-size:11px}td.n{text-align:right;font-family:Consolas,monospace}
+.pg{page-break-after:always;break-after:page}.pg:last-child{page-break-after:auto}
+.hd{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+.tb{position:sticky;top:0;background:#fff;padding:8px 0;margin-bottom:8px;border-bottom:1px solid #bbb}.tb button{font-size:15px;padding:8px 16px}
+.labels{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm}
+.lab{border:1px dashed #999;padding:2.5mm 3mm;display:grid;grid-template-columns:1fr auto;gap:1px 6px;break-inside:avoid;page-break-inside:avoid}
+.lab .no{font-family:Consolas,monospace;font-size:20px;font-weight:700;line-height:1}.lab .sz{font-family:Consolas,monospace;font-size:14px;font-weight:700}
+.lab small{color:#444;font-size:9.5px;grid-column:1/-1}.lab .nm{grid-column:1;font-size:12px}.lab svg{grid-column:2;grid-row:1/4;align-self:center}
+.ew .body{fill:#f4f4f4;stroke:#999}.ew .s{stroke:#bbb;stroke-width:1.5}.ew .s.e1{stroke:var(--edge);stroke-width:2.5}.ew .s.e2{stroke:var(--edge);stroke-width:6}.ew .hit{stroke:none}
+@page{size:A4 landscape;margin:8mm}
+@media print{body{padding:0}.tb{display:none}svg.sheet{max-height:150mm;width:auto;max-width:100%}}`;
+function docShell(title, body, portrait){
+  return `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>${esc(title)}</title><style>${PRINT_CSS}${MAP_CSS}${portrait ? "@page{size:A4 portrait;margin:8mm}" : ""}</style></head><body>
+<div class="tb"><button onclick="window.print()">Печать</button></div>${body}</body></html>`;
+}
+function orderLine(){ return [S.order.name || "Заказ без названия", S.order.client, new Date().toLocaleDateString("ru-RU")].filter(Boolean).join(" · "); }
+function partsTable(filter){
+  const et = engineOpt().edgeTypes;
+  let h = `<table><tr><th>№</th><th>Название</th><th>Материал</th><th>Готовый размер</th><th>Пилить</th><th>Кол-во</th><th>Текстура</th><th>Кромка</th></tr>`;
+  S.parts.forEach(p => { const q = filter ? filter(p) : p.qty; if(!q) return; const cs = RK.cutSize(p, et, S.set.sub);
+    h += `<tr><td class="n">${partNo(p)}</td><td>${esc(p.name)}</td><td>${esc(matById(p.mat).name)}</td><td class="n">${p.L} x ${p.W}</td><td class="n">${mm(cs.L)} x ${mm(cs.W)}</td><td class="n">${q}</td><td>${GRAIN[p.grain]}</td><td>${esc(edgeText(p))}</td></tr>`; });
+  return h + "</table>";
+}
+function mapsDoc(){
+  const t = totals();
+  let b = `<div class="pg"><h1>Карта раскроя</h1><p>${esc(orderLine())}</p>
+    <p>Листов: <b>${t.sheets}</b>${t.off ? `, остатков со склада: <b>${t.off}</b>` : ""}. Резов: ${t.cutN}, ${f1(t.cutLen/1000)} м. Кромка 0.4 мм: ${f1(t.edge[1]*1.1)} м, кромка 2 мм: ${f1(t.edge[2]*1.1)} м (с запасом 10%).</p>
+    <p>Пропил ${S.set.kerf} мм, обрезка края листа ${S.set.trim} мм. На картах указаны размеры пиления${S.set.sub ? " (уже за вычетом кромки 2 мм)" : ""}. Оранжевая линия у края детали - кромка: тонкая 0.4 мм, толстая 2 мм.</p>
+    ${R.map(r => `<p><b>${esc(r.mat.name)}</b>, лист ${r.mat.L}x${r.mat.W}: ${r.totals.sheets} шт.${r.totals.offcutsUsed ? " + остатков " + r.totals.offcutsUsed : ""}, в детали ${f1(r.totals.used*100)}%, отходы ${f1(r.totals.waste*100)}%</p>`).join("")}
+    ${partsTable()}</div>`;
+  const was = ui.sel; ui.sel = null;
+  R.forEach(r => r.sheets.forEach(sh => {
+    const offs = sh.offcuts.filter(o => o.useful).map(o => Math.floor(o.w) + "x" + Math.floor(o.h));
+    b += `<div class="pg"><div class="hd"><h2>${esc(r.mat.name)} - ${sheetTitle(sh)}${sh.count > 1 ? ` (пилить ${sh.count} одинаковых)` : ""}</h2><span>${esc(orderLine())} · ${sh.stock.L}x${sh.stock.W} · заполнение ${f1(sh.used*100)}%</span></div>
+      <div class="show-cuts">${sheetSVG(r, sh)}</div>
+      <p>Цифры в кружках - порядок резов. ${offs.length ? "Деловые остатки: " + offs.join(", ") + "." : ""}</p></div>`;
+  }));
+  ui.sel = was;
+  return docShell("Карта раскроя - " + (S.order.name || "заказ"), b);
+}
+function labelsDoc(){ return docShell("Этикетки - " + (S.order.name || "заказ"), `<div class="labels">${labelsHTML()}</div>`, true); }
+function csv(){
+  const et = engineOpt().edgeTypes, q = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const rows = [["№","Наименование","Материал","Длина пиления","Ширина пиления","Кол-во","Текстура","Кромка длинная 1","Кромка длинная 2","Кромка торец 1","Кромка торец 2","Готовая длина","Готовая ширина"]];
+  validParts().forEach(p => { const cs = RK.cutSize(p, et, S.set.sub);
+    rows.push([partNo(p), p.name, matById(p.mat).name, mm(cs.L), mm(cs.W), p.qty, GRAIN[p.grain], ENAME[p.e.l1], ENAME[p.e.l2], ENAME[p.e.w1], ENAME[p.e.w2], p.L, p.W]); });
+  return "﻿" + rows.map(r => r.map(q).join(";")).join("\r\n");
+}
+function shopText(){
+  const et = engineOpt().edgeTypes, t = totals();
+  let s = `Заказ на распил: ${orderLine()}\n`;
+  R.forEach(r => {
+    s += `\n${r.mat.name}, лист ${r.mat.L}x${r.mat.W} - ${r.totals.sheets} шт.\n`;
+    validParts().filter(p => matById(p.mat).id === r.mat.id).forEach(p => { const cs = RK.cutSize(p, et, S.set.sub);
+      s += `${partNo(p)}. ${p.name}: ${mm(cs.L)}x${mm(cs.W)} - ${p.qty} шт.${r.mat.grain ? ", текстура: " + GRAIN[p.grain].toLowerCase() : ""}, кромка: ${edgeText(p)}\n`; });
+  });
+  s += `\nКромка 0.4 мм: ${f1(t.edge[1]*1.1)} м, кромка 2 мм: ${f1(t.edge[2]*1.1)} м. Размеры - под пилу${S.set.sub ? ", кромка 2 мм уже вычтена" : ""}.`;
+  return s;
+}
+function projectJSON(){
+  return JSON.stringify({format:"mebel-raskroy", version:1, order:S.order, materials:S.mats, settings:S.set,
+    parts:S.parts.map((p,i) => ({no:i+1, name:p.name, length:p.L, width:p.W, qty:p.qty, material:p.mat, grain:p.grain, edge:p.e}))}, null, 2);
+}
+
+let DL = null;
+try{ if(window.claude && window.claude.use) window.claude.use("downloads").then(d => { DL = d; }).catch(() => {}); }catch(e){}
+async function saveFile(name, data){
+  if(DL){
+    try{ await DL.save({filename:name, data}); toast("Файл сохранён: " + name); return; }
+    catch(e){ if(e && e.code === "declined") return; }
+  }
+  let framed = true; try{ framed = window.top !== window; }catch(e){}
+  if(!framed){
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data])); a.download = name; document.body.appendChild(a); a.click(); a.remove(); return;
+  }
+  openModal({title:name, note:"Сохранить файл здесь не получилось. Скопируйте текст и вставьте его в файл с таким именем.", text:data});
+}
+async function copyText(t){
+  try{ await navigator.clipboard.writeText(t); toast("Скопировано"); }
+  catch(e){ openModal({title:"Скопируйте текст", note:"Выделите всё и скопируйте.", text:t}); }
+}
+const fileBase = () => (S.order.name || "raskroy").replace(/[^\wа-яА-ЯёЁ\- ]+/g, "").trim().replace(/\s+/g, "-").slice(0, 40) || "raskroy";
+$("x_print").onclick = () => saveFile("karty-" + fileBase() + ".html", mapsDoc());
+$("l_print").onclick = () => saveFile("etiketki-" + fileBase() + ".html", labelsDoc());
+$("x_csv").onclick = () => saveFile("raspil-" + fileBase() + ".csv", csv());
+$("x_text").onclick = () => copyText(shopText());
+$("x_json").onclick = () => saveFile("proekt-" + fileBase() + ".json", projectJSON());
+$("x_load").onclick = () => openImport();
+
+// Склад
+function renderStock(){
+  const a = [];
+  S.mats.forEach(m => m.offcuts.forEach(o => { if(o.qty > 0) a.push(`${esc(m.name)}: ${o.L}x${o.W} - ${o.qty} шт.`); }));
+  $("stockList").innerHTML = a.length ? "На складе: " + a.join("; ") : "Склад остатков пуст.";
+  $("x_stock").disabled = !!S.locked || !R.length;
+}
+$("x_stock").onclick = () => {
+  R.forEach(r => {
+    const m = S.mats.find(x => x.id === r.mat.id); if(!m) return;
+    r.sheets.forEach(sh => {
+      if(sh.stock.offcut){ const o = m.offcuts.find(o => +o.L === sh.stock.L && +o.W === sh.stock.W && o.qty > 0); if(o) o.qty -= Math.min(o.qty, sh.count); }
+      sh.offcuts.filter(o => o.useful).forEach(o => {
+        const L = Math.floor(Math.max(o.w, o.h)), W = Math.floor(Math.min(o.w, o.h));
+        // у материала с текстурой остаток хранится как лежит: длина вдоль текстуры
+        const oL = m.grain ? Math.floor(o.w) : L, oW = m.grain ? Math.floor(o.h) : W;
+        const ex = m.offcuts.find(q => +q.L === oL && +q.W === oW);
+        if(ex) ex.qty += sh.count; else m.offcuts.push({L:oL, W:oW, qty:sh.count});
+      });
+    });
+    m.offcuts = m.offcuts.filter(o => o.qty > 0);
+  });
+  S.locked = JSON.parse(JSON.stringify(R)); save(); renderMats(); renderAll();
+  toast("Склад обновлён, раскрой зафиксирован");
+};
+
+// ---------- Импорт ----------
+function findMat(name){
+  const n = String(name || "").toLowerCase().trim(); if(!n) return S.mats[0].id;
+  const key = {ldsp16:"лдсп", ldsp16f:"лдсп", dvp:"двп"}[n];
+  let m = S.mats.find(x => x.id === name) || S.mats.find(x => x.name.toLowerCase() === n) || S.mats.find(x => x.name.toLowerCase().includes(key || n) || n.includes(x.name.toLowerCase()));
+  if(!m && /двп|хдф|hdf/.test(n)) m = S.mats.find(x => /двп|хдф/i.test(x.name));
+  if(!m && /лдсп/.test(n) && !/фасад/.test(n)) m = S.mats.find(x => /лдсп/i.test(x.name));
+  if(!m){ m = {id:"m" + Date.now().toString(36) + S.mats.length, name:String(name).trim().slice(0, 40), L:2800, W:2070, grain:!/двп|хдф|мдф|бел/i.test(n), price:0, offcuts:[]}; S.mats.push(m); }
+  return m.id;
+}
+function edgeFrom(v){
+  if(v && typeof v === "object") return E(+v.l1||0, +v.l2||0, +v.w1||0, +v.w2||0);
+  const s = String(v == null ? "" : v).toLowerCase();
+  const n = /все|4/.test(s) ? 4 : /3/.test(s) ? 3 : /2/.test(s) ? 2 : /1/.test(s) ? 1 : 0;
+  return [E(), E(1), E(1,1), E(1,1,1), E(1,1,1,1)][n];
+}
+function parseImport(text){
+  const out = [], skipped = [];
+  const push = (name, L, W, qty, mat, grain, e) => { if(L > 0 && W > 0) out.push({id:uid(), name:String(name || "Деталь").trim().slice(0, 60) || "Деталь", L:Math.round(L), W:Math.round(W), qty:Math.max(1, Math.round(qty) || 1), mat:findMat(mat), grain:grain || "along", e:e || E()}); };
+  const t = text.trim();
+  if(t[0] === "{" || t[0] === "["){
+    const j = JSON.parse(t);
+    if(j.format === "mebel-raskroy"){ return {project:j}; }
+    if(j && !Array.isArray(j) && Array.isArray(j.products) && window.MebelOrder){
+      // общий формат заказа проекта: берём готовый список на распил
+      const o = MebelOrder.parse(j).order, mats = [], parts = [];
+      MebelOrder.cutList(o, {group:true}).forEach(c => {
+        const mn = (c.material.name + (c.material.decor ? ", " + c.material.decor : "")).slice(0, 60);
+        let m = mats.find(x => x.name === mn);
+        if(!m){ m = {id:"m" + (mats.length + 1), name:mn, L:c.material.sheet.w, W:c.material.sheet.h, grain:!!c.material.grain, price:0, offcuts:[]}; mats.push(m); }
+        const ev = e => !e ? 0 : e.t >= 1 ? 2 : 1, ed = c.edges || {};
+        parts.push({id:uid(), mark:c.mark, name:c.name + (c.module ? " (" + c.module.name + ")" : ""), L:c.length, W:c.width, qty:c.qty, mat:m.id,
+          grain:c.canRotate || c.grain === "any" ? "any" : "along", e:E(ev(ed.L1), ev(ed.L2), ev(ed.W1), ev(ed.W2)), note:c.note || ""});
+      });
+      return {order:{o, mats, parts}};
+    }
+    const u = j.u || (j.state && j.state.u);
+    const arr = Array.isArray(j) ? j : j.parts || j.panels || j.details || (u && u.panels) || [];
+    const sheetKeys = {ldsp16:"ЛДСП 16", ldsp16f:"ЛДСП 16", dvp:"ДВП 3"};
+    arr.forEach(p => {
+      if(p.o && p.mat && !Array.isArray(j) || (p.o && "a" in p)){
+        // деталь из калькулятора: у фронтальных деталей текстура идёт по высоте (b)
+        if(!sheetKeys[p.mat]){ skipped.push(p.name); return; }
+        const L = p.o === "Z" ? p.b : p.a, W = p.o === "Z" ? p.a : p.b, big = Math.max(L, W) === L;
+        let e = edgeFrom(p.edge); if(!big && (p.edge === 1 || p.edge === 2)) e = p.edge === 1 ? E(0,0,1,0) : E(0,0,1,1);
+        if(!big && p.edge === 3) e = E(1,0,1,1);
+        push(p.name, L, W, 1, sheetKeys[p.mat], p.mat === "dvp" ? "any" : "along", e);
+      } else {
+        push(p.name || p.title, +(p.length || p.L || p.l || p.a), +(p.width || p.W || p.w || p.b), +(p.qty || p.q || p.count || 1), p.material || p.mat, p.grain, p.edge != null ? edgeFrom(p.edge) : null);
+      }
+    });
+  } else {
+    t.split(/\r?\n/).forEach(line => {
+      line = line.trim(); if(!line) return;
+      if(/[\t;]/.test(line)){
+        const cells = line.split(/[\t;]/).map(c => c.trim()), nums = [], strs = [];
+        cells.forEach(c => { const v = +c.replace(",", ".").replace(/\s/g, ""); if(c !== "" && isFinite(v)) nums.push(v); else if(c) strs.push(c); });
+        if(nums.length >= 2 && nums[0] > 0){ const hasNo = nums.length >= 4 && nums[0] < 1000 && Number.isInteger(nums[0]) && nums[1] > 20; const n = hasNo ? nums.slice(1) : nums; push(strs[0], n[0], n[1], n[2] || 1, strs[1]); }
+        return;
+      }
+      const m = line.match(/(\d+(?:[.,]\d+)?)\s*[x×хХX*]\s*(\d+(?:[.,]\d+)?)/); if(!m) return;
+      const a = +m[1].replace(",", "."), b = +m[2].replace(",", ".");
+      const rest = line.slice(m.index + m[0].length), q = rest.match(/(\d+)\s*шт/) || rest.match(/[-–x×х*]\s*(\d+)/) || rest.match(/(\d+)/);
+      let head = line.slice(0, m.index).replace(/^\s*\d+[.)]\s*/, "").replace(/[:\-–\s]+$/, ""), mat = "", name = head;
+      const pm = head.match(/^(.*)\(([^)]+)\)\s*$/);
+      if(pm){ name = pm[1].trim(); mat = pm[2]; }
+      else if(/лдсп|двп|мдф|хдф/i.test(head)){ mat = head; name = "Деталь"; }
+      if(/зеркал|лакобель|стекл|столешниц|мдф/i.test(mat)){ skipped.push(head); return; }
+      const em = rest.match(/кромка:?\s*([^)]+)/i);
+      push(name, Math.max(a, b), Math.min(a, b), q ? +q[1] : 1, mat, /двп|хдф/i.test(mat) ? "any" : "along", em ? edgeFrom(em[1]) : null);
+    });
+  }
+  return {parts:out, skipped};
+}
+function openImport(){
+  openModal({title:"Вставить список деталей", ok:"Добавить детали",
+    file:true, note:"Подходит: файл заказа из калькулятора (.mebel.json), список на распил текстом (\"ЛДСП 16: 2000x500 - 2 шт.\"), строки из Excel (название, длина, ширина, количество, материал) или сохранённый проект.",
+    text:"", onOk:applyImport});
+}
+// Разбирает текст или заказ и кладёт детали в проект. Возвращает true, если что-то открыто.
+// Вызывается из окна "Вставить" и с сайта, когда заказ передан из другого инструмента.
+function applyImport(text){
+    {
+      let r; try{ r = parseImport(text); }catch(e){ toast("Не получилось прочитать: проверьте, что текст скопирован целиком"); return false; }
+      if(r.order){ const {o, mats, parts} = r.order;
+        if(!parts.length){ toast("В заказе нет деталей из листовых материалов"); return false; }
+        // склад остатков и цены листов сохраняем для материалов с тем же названием
+        mats.forEach(m => { const old = S.mats.find(x => x.name === m.name); if(old){ m.offcuts = old.offcuts; m.price = old.price; } });
+        S.mats = mats; S.parts = parts; S.done = {}; S.locked = null;
+        S.order = {name:[o.number, o.title].filter(Boolean).join(" "), client:(o.client && o.client.name) || ""};
+        const pr = o.production || {};
+        if(pr.kerf != null) S.set.kerf = pr.kerf; if(pr.sheetTrim != null) S.set.trim = pr.sheetTrim; if(pr.subtractEdge != null) S.set.sub = !!pr.subtractEdge;
+        syncOrder(); renderSet(); renderMats(); renderParts(); changed(true); setTab("maps"); toast("Заказ открыт, деталей: " + parts.reduce((a,p) => a + p.qty, 0)); return true; }
+      if(r.project){ const j = r.project; S.order = j.order || S.order; S.mats = j.materials || S.mats; S.set = Object.assign({}, DEF_SET, j.settings);
+        S.parts = (j.parts || []).map(p => ({id:uid(), name:p.name, L:+p.length, W:+p.width, qty:+p.qty, mat:p.material, grain:p.grain || "along", e:edgeFrom(p.edge)}));
+        S.done = {}; S.locked = null; syncOrder(); renderSet(); renderMats(); renderParts(); changed(true); toast("Проект открыт"); return true; }
+      if(!r.parts.length){ toast("Не нашёл деталей. Нужны строки с размерами вида 2000x500"); return false; }
+      if(S.demo) S.parts = [];
+      S.parts.push(...r.parts); renderMats(); renderParts(); changed(true);
+      toast("Добавлено деталей: " + r.parts.length + (r.skipped.length ? ". Пропущено (не листовой материал): " + r.skipped.length : ""));
+      return true;
+    }
+}
+$("p_import").onclick = openImport;
+
+// ---------- Окно, вкладки, мелочи ----------
+let mdOk = null;
+function openModal(o){
+  $("md_title").textContent = o.title; $("md_note").textContent = o.note || ""; $("md_text").value = o.text || "";
+  $("md_ok").textContent = o.ok || ""; $("md_ok").classList.toggle("hide", !o.onOk); $("md_copy").classList.toggle("hide", !!o.onOk);
+  $("md_filebox").classList.toggle("hide", !o.file); $("md_file").value = "";
+  mdOk = o.onOk || null; $("modal").classList.add("on"); $("md_text").focus(); if(!o.onOk) $("md_text").select();
+}
+$("md_ok").onclick = () => { if(mdOk && mdOk($("md_text").value) !== false) $("modal").classList.remove("on"); };
+$("md_copy").onclick = () => { $("md_text").select(); copyText($("md_text").value); };
+$("md_file").onchange = e => { const f = e.target.files[0]; if(!f) return; const rd = new FileReader(); rd.onload = () => { $("md_text").value = rd.result; $("md_ok").click(); }; rd.readAsText(f); };
+$("md_close").onclick = () => $("modal").classList.remove("on");
+$("modal").addEventListener("click", e => { if(e.target === $("modal")) $("modal").classList.remove("on"); });
+let toastT;
+function toast(t){ const e = $("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove("on"), 2600); }
+function setTab(t){
+  S.tab = t;
+  ["parts","mats","maps","labels","export"].forEach(k => $("t_" + k).classList.toggle("hide", k !== t));
+  $("tabs").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  if(t !== "maps"){ $("pick").classList.remove("on"); }
+}
+$("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if(b){ setTab(b.dataset.t); save(); } });
+function syncOrder(){ $("o_name").value = S.order.name || ""; $("o_client").value = S.order.client || ""; }
+$("o_name").oninput = e => { S.order.name = e.target.value; save(); renderLabels(); };
+$("o_client").oninput = e => { S.order.client = e.target.value; save(); renderLabels(); };
+
+load(); syncOrder(); renderSet(); renderMats(); renderParts(); setTab(S.tab || "parts"); compute();
+</script>
+</body>
+</html>

@@ -1,0 +1,990 @@
+{
+  "format": "mebel-order",
+  "version": "1.0",
+  "id": "o_example_kupe",
+  "number": "2026-014",
+  "title": "Шкаф-купе в спальню",
+  "createdAt": "2026-11-02T05:30:00.000Z",
+  "updatedAt": "2026-11-10T09:00:00.000Z",
+  "currency": "KZT",
+  "units": "mm",
+  "stage": "production",
+  "client": {
+    "name": "Айгуль Сериккызы",
+    "phone": "+7 701 555 12 34",
+    "address": "г. Алматы, ул. Абая 10, кв. 25",
+    "note": "Звонить после 18:00"
+  },
+  "products": [
+    {
+      "id": "pr1",
+      "type": "kupe",
+      "name": "Шкаф-купе",
+      "qty": 1,
+      "size": {
+        "w": 2400,
+        "h": 2600,
+        "d": 600
+      },
+      "finish": {
+        "corpus": "ldsp16",
+        "back": "dvp3",
+        "edge": "pvc04",
+        "doorMirror": "mirror4",
+        "doorPanel": "ldsp16"
+      },
+      "params": {
+        "type": "korp",
+        "W": 2400,
+        "H": 2600,
+        "D": 600,
+        "sections": 3,
+        "doors": 3,
+        "profile": "std"
+      },
+      "modules": [
+        {
+          "id": "m1",
+          "kind": "section",
+          "name": "Секция 1 - полки",
+          "pos": {
+            "x": 16,
+            "y": 96,
+            "z": 3
+          },
+          "rot": 0,
+          "size": {
+            "w": 778,
+            "h": 2488,
+            "d": 497
+          },
+          "params": {},
+          "parts": [
+            {
+              "id": "p10",
+              "name": "Полка 1",
+              "role": "shelf",
+              "mat": "@corpus",
+              "o": "Y",
+              "x": 0,
+              "y": 400,
+              "z": 0,
+              "a": 778,
+              "b": 497,
+              "edges": {
+                "front": "@edge"
+              },
+              "mark": "1.1-01"
+            },
+            {
+              "id": "p11",
+              "name": "Полка 2",
+              "role": "shelf",
+              "mat": "@corpus",
+              "o": "Y",
+              "x": 0,
+              "y": 800,
+              "z": 0,
+              "a": 778,
+              "b": 497,
+              "edges": {
+                "front": "@edge"
+              },
+              "mark": "1.1-02"
+            },
+            {
+              "id": "p12",
+              "name": "Полка 3",
+              "role": "shelf",
+              "mat": "@corpus",
+              "o": "Y",
+              "x": 0,
+              "y": 1200,
+              "z": 0,
+              "a": 778,
+              "b": 497,
+              "edges": {
+                "front": "@edge"
+              },
+              "mark": "1.1-03"
+            },
+            {
+              "id": "p13",
+              "name": "Полка 4",
+              "role": "shelf",
+              "mat": "@corpus",
+              "o": "Y",
+              "x": 0,
+              "y": 1600,
+              "z": 0,
+              "a": 778,
+              "b": 497,
+              "edges": {
+                "front": "@edge"
+              },
+              "mark": "1.1-04"
+            },
+            {
+              "id": "p14",
+              "name": "Полка 5",
+              "role": "shelf",
+              "mat": "@corpus",
+              "o": "Y",
+              "x": 0,
+              "y": 2000,
+              "z": 0,
+              "a": 778,
+              "b": 497,
+              "edges": {
+                "front": "@edge"
+              },
+              "mark": "1.1-05"
+            }
+          ],
+          "hardware": [
+            {
+              "name": "Полкодержатели",
+              "qty": 20,
+              "unit": "шт",
+              "price": 30
+            }
+          ]
+        },
+        {
+          "id": "m2",
+          "kind": "section",
+          "name": "Секция 2 - штанга",
+          "pos": {
+            "x": 810,
+            "y": 96,
+            "z": 3
+          },
+          "rot": 0,
+          "size": {
+            "w": 780,
+            "h": 2488,
+            "d": 497
+          },
+          "params": {},
+          "parts": [
+            {
+              "id": "p15",
+              "name": "Полка 1",
+              "role": "shelf",
+              "mat": "@corpus",
+              "o": "Y",
+              "x": 0,
+              "y": 400,
+              "z": 0,
+              "a": 780,
+              "b": 497,
+              "edges": {
+                "front": "@edge"
+              },
+              "mark": "1.2-01"
+            },
+            {
+              "id": "p16",
+              "name": "Полка 2",
+              "role": "shelf",
+              "mat": "@corpus",
+              "o": "Y",
+              "x": 0,
+              "y": 2000,
+              "z": 0,
+              "a": 780,
+              "b": 497,
+              "edges": {
+                "front": "@edge"
+              },
+              "mark": "1.2-02"
+            }
+          ],
+          "hardware": [
+            {
+              "item": "rod",
+              "qty": 0.78
+            },
+            {
+              "name": "Полкодержатели",
+              "qty": 8,
+              "unit": "шт",
+              "price": 30
+            }
+          ]
+        },
+        {
+          "id": "m3",
+          "kind": "section",
+          "name": "Секция 3 - штанга",
+          "pos": {
+            "x": 1606,
+            "y": 96,
+            "z": 3
+          },
+          "rot": 0,
+          "size": {
+            "w": 778,
+            "h": 2488,
+            "d": 497
+          },
+          "params": {},
+          "parts": [
+            {
+              "id": "p17",
+              "name": "Полка 1",
+              "role": "shelf",
+              "mat": "@corpus",
+              "o": "Y",
+              "x": 0,
+              "y": 300,
+              "z": 0,
+              "a": 778,
+              "b": 497,
+              "edges": {
+                "front": "@edge"
+              },
+              "mark": "1.3-01"
+            },
+            {
+              "id": "p18",
+              "name": "Полка 2",
+              "role": "shelf",
+              "mat": "@corpus",
+              "o": "Y",
+              "x": 0,
+              "y": 2000,
+              "z": 0,
+              "a": 778,
+              "b": 497,
+              "edges": {
+                "front": "@edge"
+              },
+              "mark": "1.3-02"
+            }
+          ],
+          "hardware": [
+            {
+              "item": "rod",
+              "qty": 0.78
+            },
+            {
+              "name": "Полкодержатели",
+              "qty": 8,
+              "unit": "шт",
+              "price": 30
+            }
+          ]
+        },
+        {
+          "id": "m4",
+          "kind": "slide-door",
+          "name": "Дверь 1 - зеркало",
+          "pos": {
+            "x": 16,
+            "y": 116,
+            "z": 520
+          },
+          "rot": 0,
+          "size": {
+            "w": 806,
+            "h": 2448,
+            "d": 30
+          },
+          "params": {
+            "profile": "std",
+            "fill": "@doorMirror"
+          },
+          "parts": [
+            {
+              "id": "p19",
+              "name": "Наполнение двери",
+              "role": "facade",
+              "mat": "@doorMirror",
+              "o": "Z",
+              "x": 18,
+              "y": 24,
+              "z": 0,
+              "a": 770,
+              "b": 2400,
+              "facade": {
+                "open": "slide"
+              },
+              "mark": "1.4-01"
+            }
+          ],
+          "hardware": [
+            {
+              "item": "prof-std",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "id": "m5",
+          "kind": "slide-door",
+          "name": "Дверь 2 - ЛДСП",
+          "pos": {
+            "x": 797,
+            "y": 116,
+            "z": 555
+          },
+          "rot": 0,
+          "size": {
+            "w": 806,
+            "h": 2448,
+            "d": 30
+          },
+          "params": {
+            "profile": "std",
+            "fill": "@doorPanel"
+          },
+          "parts": [
+            {
+              "id": "p20",
+              "name": "Наполнение двери",
+              "role": "facade",
+              "mat": "@doorPanel",
+              "o": "Z",
+              "x": 18,
+              "y": 24,
+              "z": 0,
+              "a": 770,
+              "b": 2400,
+              "facade": {
+                "open": "slide"
+              },
+              "grain": "b",
+              "mark": "1.5-01"
+            }
+          ],
+          "hardware": [
+            {
+              "item": "prof-std",
+              "qty": 1
+            }
+          ]
+        },
+        {
+          "id": "m6",
+          "kind": "slide-door",
+          "name": "Дверь 3 - зеркало",
+          "pos": {
+            "x": 1578,
+            "y": 116,
+            "z": 520
+          },
+          "rot": 0,
+          "size": {
+            "w": 806,
+            "h": 2448,
+            "d": 30
+          },
+          "params": {
+            "profile": "std",
+            "fill": "@doorMirror"
+          },
+          "parts": [
+            {
+              "id": "p21",
+              "name": "Наполнение двери",
+              "role": "facade",
+              "mat": "@doorMirror",
+              "o": "Z",
+              "x": 18,
+              "y": 24,
+              "z": 0,
+              "a": 770,
+              "b": 2400,
+              "facade": {
+                "open": "slide"
+              },
+              "mark": "1.6-01"
+            }
+          ],
+          "hardware": [
+            {
+              "item": "prof-std",
+              "qty": 1
+            }
+          ]
+        }
+      ],
+      "parts": [
+        {
+          "id": "p1",
+          "name": "Боковина левая",
+          "role": "side",
+          "mat": "@corpus",
+          "o": "X",
+          "x": 0,
+          "y": 0,
+          "z": 3,
+          "a": 2600,
+          "b": 597,
+          "edges": {
+            "front": "@edge"
+          },
+          "grain": "a",
+          "note": "Вырез под розетку 80x80 на высоте 300 мм от пола",
+          "mark": "1-01"
+        },
+        {
+          "id": "p2",
+          "name": "Боковина правая",
+          "role": "side",
+          "mat": "@corpus",
+          "o": "X",
+          "x": 2384,
+          "y": 0,
+          "z": 3,
+          "a": 2600,
+          "b": 597,
+          "edges": {
+            "front": "@edge"
+          },
+          "grain": "a",
+          "mark": "1-02"
+        },
+        {
+          "id": "p3",
+          "name": "Крыша",
+          "role": "top",
+          "mat": "@corpus",
+          "o": "Y",
+          "x": 16,
+          "y": 2584,
+          "z": 3,
+          "a": 2368,
+          "b": 597,
+          "edges": {
+            "front": "@edge"
+          },
+          "mark": "1-03"
+        },
+        {
+          "id": "p4",
+          "name": "Дно",
+          "role": "bottom",
+          "mat": "@corpus",
+          "o": "Y",
+          "x": 16,
+          "y": 80,
+          "z": 3,
+          "a": 2368,
+          "b": 597,
+          "edges": {
+            "front": "@edge"
+          },
+          "mark": "1-04"
+        },
+        {
+          "id": "p5",
+          "name": "Цоколь",
+          "role": "plinth",
+          "mat": "@corpus",
+          "o": "Z",
+          "x": 16,
+          "y": 0,
+          "z": 584,
+          "a": 2368,
+          "b": 80,
+          "mark": "1-05"
+        },
+        {
+          "id": "p6",
+          "name": "Перегородка 1",
+          "role": "partition",
+          "mat": "@corpus",
+          "o": "X",
+          "x": 794,
+          "y": 96,
+          "z": 3,
+          "a": 2488,
+          "b": 497,
+          "edges": {
+            "front": "@edge"
+          },
+          "mark": "1-06"
+        },
+        {
+          "id": "p7",
+          "name": "Перегородка 2",
+          "role": "partition",
+          "mat": "@corpus",
+          "o": "X",
+          "x": 1590,
+          "y": 96,
+          "z": 3,
+          "a": 2488,
+          "b": 497,
+          "edges": {
+            "front": "@edge"
+          },
+          "mark": "1-07"
+        },
+        {
+          "id": "p8",
+          "name": "Задняя стенка левая",
+          "role": "back",
+          "mat": "@back",
+          "o": "Z",
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "a": 1200,
+          "b": 2600,
+          "mark": "1-08"
+        },
+        {
+          "id": "p9",
+          "name": "Задняя стенка правая",
+          "role": "back",
+          "mat": "@back",
+          "o": "Z",
+          "x": 1200,
+          "y": 0,
+          "z": 0,
+          "a": 1200,
+          "b": 2600,
+          "mark": "1-09"
+        }
+      ],
+      "hardware": [
+        {
+          "item": "fasteners",
+          "name": "Крепёж и опоры",
+          "qty": 1,
+          "price": 6000
+        }
+      ],
+      "generator": {
+        "id": "example-kupe",
+        "version": 1
+      }
+    }
+  ],
+  "catalog": {
+    "materials": {
+      "ldsp16": {
+        "name": "ЛДСП 16 мм",
+        "group": "ldsp",
+        "kind": "sheet",
+        "t": 16,
+        "sheet": {
+          "w": 2800,
+          "h": 2070
+        },
+        "grain": true,
+        "price": 22000,
+        "cut": true,
+        "color": "#e9d3b5",
+        "decor": "Дуб Сонома"
+      },
+      "dvp3": {
+        "name": "ДВП 3 мм",
+        "group": "dvp",
+        "kind": "sheet",
+        "t": 3,
+        "sheet": {
+          "w": 2750,
+          "h": 1700
+        },
+        "grain": false,
+        "price": 5500,
+        "usagePct": 90,
+        "color": "#c9b8a3"
+      },
+      "mdf18-film": {
+        "name": "Фасад МДФ плёнка",
+        "group": "mdf",
+        "kind": "area",
+        "t": 18,
+        "price": 22000,
+        "color": "#f3ede4"
+      },
+      "mdf18-plastic": {
+        "name": "Фасад МДФ пластик",
+        "group": "mdf",
+        "kind": "area",
+        "t": 18,
+        "price": 30000,
+        "color": "#e8e4dc"
+      },
+      "mdf18-enamel": {
+        "name": "Фасад МДФ эмаль",
+        "group": "mdf",
+        "kind": "area",
+        "t": 18,
+        "price": 38000,
+        "color": "#fafafa"
+      },
+      "mirror4": {
+        "name": "Зеркало 4 мм",
+        "group": "glass",
+        "kind": "area",
+        "t": 4,
+        "price": 15000,
+        "color": "#b9d3df"
+      },
+      "lacobel4": {
+        "name": "Стекло лакобель 4 мм",
+        "group": "glass",
+        "kind": "area",
+        "t": 4,
+        "price": 22000,
+        "color": "#3d4a52"
+      },
+      "top38": {
+        "name": "Столешница ЛДСП 38 мм",
+        "group": "top",
+        "kind": "length",
+        "t": 38,
+        "price": 12000,
+        "color": "#8a6a4a"
+      }
+    },
+    "edges": {
+      "pvc04": {
+        "name": "Кромка ПВХ 0.4 мм, Дуб Сонома",
+        "t": 0.4,
+        "w": 19,
+        "price": 150,
+        "color": "#e9d3b5"
+      },
+      "pvc2": {
+        "name": "Кромка ПВХ 2 мм",
+        "t": 2,
+        "w": 19,
+        "price": 350,
+        "color": "#e9d3b5"
+      }
+    },
+    "hardware": {
+      "handle": {
+        "name": "Ручка",
+        "unit": "шт",
+        "price": 1500
+      },
+      "hinge": {
+        "name": "Петля с доводчиком",
+        "unit": "шт",
+        "price": 1200
+      },
+      "kguide": {
+        "name": "Направляющие полного выдвижения",
+        "unit": "компл",
+        "price": 7000
+      },
+      "guide": {
+        "name": "Направляющие ящика",
+        "unit": "компл",
+        "price": 4500
+      },
+      "lift": {
+        "name": "Подъёмный механизм",
+        "unit": "шт",
+        "price": 12000
+      },
+      "leg": {
+        "name": "Опора кухонная",
+        "unit": "шт",
+        "price": 400
+      },
+      "push": {
+        "name": "Толкатель push-to-open",
+        "unit": "шт",
+        "price": 1200
+      },
+      "gola": {
+        "name": "Профиль Gola",
+        "unit": "м",
+        "price": 6000
+      },
+      "rod": {
+        "name": "Штанга",
+        "unit": "м",
+        "price": 3000
+      },
+      "led": {
+        "name": "LED-лента с профилем",
+        "unit": "м",
+        "price": 3500
+      },
+      "ledpow": {
+        "name": "Блок питания и выключатель",
+        "unit": "шт",
+        "price": 6000
+      },
+      "dryer": {
+        "name": "Сушилка для посуды",
+        "unit": "шт",
+        "price": 7000
+      },
+      "prof-eco": {
+        "name": "Профиль купе эконом",
+        "unit": "дверь",
+        "price": 14000
+      },
+      "prof-std": {
+        "name": "Профиль купе стандарт",
+        "unit": "дверь",
+        "price": 18000
+      },
+      "prof-prem": {
+        "name": "Профиль купе премиум",
+        "unit": "дверь",
+        "price": 28000
+      },
+      "fasteners": {
+        "name": "Крепёж",
+        "unit": "компл",
+        "price": 1500
+      }
+    }
+  },
+  "extras": [
+    {
+      "id": "x1",
+      "kind": "delivery",
+      "name": "Доставка и подъём",
+      "qty": 1,
+      "unit": "усл",
+      "price": 5000
+    },
+    {
+      "id": "x2",
+      "kind": "install",
+      "name": "Монтаж",
+      "qty": 1,
+      "unit": "усл",
+      "price": 10000
+    }
+  ],
+  "pricing": {
+    "workPct": 15,
+    "markupPct": 30,
+    "discountPct": 5,
+    "prepayPct": 50,
+    "roundTo": 1000,
+    "sheetUsagePct": 80,
+    "edgeReservePct": 10,
+    "cutPerSheet": 3000
+  },
+  "production": {
+    "kerf": 4,
+    "sheetTrim": 10,
+    "subtractEdge": true
+  },
+  "terms": {
+    "days": 21,
+    "daysKind": "work",
+    "warrantyMonths": 12
+  },
+  "timeline": [
+    {
+      "stage": "lead",
+      "done": "2026-11-02"
+    },
+    {
+      "stage": "measure",
+      "done": "2026-11-04",
+      "note": "Ниши нет, стены ровные"
+    },
+    {
+      "stage": "design",
+      "done": "2026-11-06"
+    },
+    {
+      "stage": "contract",
+      "done": "2026-11-09"
+    },
+    {
+      "stage": "production",
+      "done": "2026-11-10",
+      "note": "Листы заказаны на распил"
+    },
+    {
+      "stage": "install",
+      "plan": "2026-12-08"
+    }
+  ],
+  "payments": [
+    {
+      "id": "pay1",
+      "date": "2026-11-09",
+      "amount": 200000,
+      "kind": "prepay",
+      "method": "kaspi"
+    }
+  ],
+  "expenses": [
+    {
+      "id": "exp1",
+      "date": "2026-11-10",
+      "amount": 96500,
+      "category": "materials",
+      "supplier": "База ЛДСП",
+      "note": "4 листа ЛДСП, 2 листа ДВП"
+    },
+    {
+      "id": "exp2",
+      "date": "2026-11-10",
+      "amount": 12000,
+      "category": "cutting"
+    }
+  ],
+  "reminders": [
+    {
+      "id": "rem1",
+      "date": "2026-12-01",
+      "text": "Позвонить клиенту, согласовать день монтажа",
+      "done": false
+    }
+  ],
+  "files": [],
+  "notes": "Розетка на левой стене на высоте 300 мм - в боковине нужен вырез.",
+  "deadline": "2026-12-08",
+  "quote": {
+    "calcAt": "2026-11-10T09:00:00.000Z",
+    "currency": "KZT",
+    "lines": [
+      {
+        "group": "material",
+        "ref": "ldsp16",
+        "name": "ЛДСП 16 мм (13.92 м2)",
+        "qty": 4,
+        "unit": "лист",
+        "price": 22000,
+        "sum": 88000
+      },
+      {
+        "group": "material",
+        "ref": "dvp3",
+        "name": "ДВП 3 мм (6.24 м2)",
+        "qty": 2,
+        "unit": "лист",
+        "price": 5500,
+        "sum": 11000
+      },
+      {
+        "group": "material",
+        "ref": "mirror4",
+        "name": "Зеркало 4 мм",
+        "qty": 3.7,
+        "unit": "м2",
+        "price": 15000,
+        "sum": 55500
+      },
+      {
+        "group": "edge",
+        "ref": "pvc04",
+        "name": "Кромка ПВХ 0.4 мм, Дуб Сонома",
+        "qty": 25,
+        "unit": "м",
+        "price": 150,
+        "sum": 3750
+      },
+      {
+        "group": "cutting",
+        "name": "Распил и кромление",
+        "qty": 4,
+        "unit": "лист",
+        "price": 3000,
+        "sum": 12000
+      },
+      {
+        "group": "hardware",
+        "ref": "fasteners",
+        "name": "Крепёж и опоры",
+        "qty": 1,
+        "unit": "компл",
+        "price": 6000,
+        "sum": 6000
+      },
+      {
+        "group": "hardware",
+        "name": "Полкодержатели",
+        "qty": 36,
+        "unit": "шт",
+        "price": 30,
+        "sum": 1080
+      },
+      {
+        "group": "hardware",
+        "ref": "rod",
+        "name": "Штанга",
+        "qty": 1.56,
+        "unit": "м",
+        "price": 3000,
+        "sum": 4680
+      },
+      {
+        "group": "hardware",
+        "ref": "prof-std",
+        "name": "Профиль купе стандарт",
+        "qty": 3,
+        "unit": "дверь",
+        "price": 18000,
+        "sum": 54000
+      },
+      {
+        "group": "service",
+        "ref": "x1",
+        "name": "Доставка и подъём",
+        "qty": 1,
+        "unit": "усл",
+        "price": 5000,
+        "sum": 5000
+      },
+      {
+        "group": "service",
+        "ref": "x2",
+        "name": "Монтаж",
+        "qty": 1,
+        "unit": "усл",
+        "price": 10000,
+        "sum": 10000
+      }
+    ],
+    "materials": 236010,
+    "work": 35402,
+    "services": 15000,
+    "cost": 286412,
+    "markup": 85924,
+    "clientLines": [
+      {
+        "kind": "product",
+        "ref": "pr1",
+        "name": "Шкаф-купе",
+        "note": "2400x2600x600 мм",
+        "qty": 1,
+        "unit": "шт",
+        "sum": 357700
+      },
+      {
+        "kind": "service",
+        "ref": "x1",
+        "name": "Доставка и подъём",
+        "qty": 1,
+        "unit": "усл",
+        "sum": 5000
+      },
+      {
+        "kind": "service",
+        "ref": "x2",
+        "name": "Монтаж",
+        "qty": 1,
+        "unit": "усл",
+        "sum": 10000
+      }
+    ],
+    "subtotal": 372700,
+    "discountPct": 5,
+    "discountSum": 18700,
+    "total": 354000,
+    "prepayPct": 50,
+    "prepaySum": 177000,
+    "profit": 67588
+  }
+}

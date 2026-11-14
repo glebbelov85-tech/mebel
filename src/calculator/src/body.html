@@ -1,0 +1,260 @@
+<header>
+  <h1>Калькулятор мебели</h1>
+  <p>Шкафы-купе, кухни и любые корпусные изделия: детали, материалы и цена в тенге</p>
+  <button class="b1" id="voiceBtn" style="margin-left:auto"></button>
+</header>
+<nav class="mode" id="modeBar">
+  <button data-mode="kupe">Шкаф-купе</button>
+  <button data-mode="kitchen">Кухня</button>
+  <button data-mode="univ">Любое изделие</button>
+  <span class="sep"></span>
+  <button data-mode="price" class="tool">Прайс</button>
+  <button data-mode="lib" class="tool">Модули</button>
+</nav>
+
+<div class="page hide" id="demoBox" style="padding-bottom:0"><div class="card" style="border-color:var(--accent);background:var(--accent-l)">
+  <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><b style="font-size:16px">Демо-версия: калькулятор для мебельщика</b><button class="bx" id="demoX" title="Скрыть">&times;</button></div>
+  <p style="margin:6px 0">Считает шкафы-купе, кухни и любую корпусную мебель: детали, расход материалов, фасады для фабрики и цену для клиента. Всё работает прямо в браузере, ваши данные никуда не отправляются.</p>
+  <p style="margin:6px 0"><b>Что попробовать:</b> 1) нажмите "Описать словами" и продиктуйте или напишите заказ - проект соберётся сам; 2) откройте "Кухня", поменяйте модули и посмотрите 3D; 3) во вкладке "Прайс" впишите свои цены или загрузите прайс из Excel. Цены в демо примерные.</p>
+  <p style="margin:6px 0 0">Напишите, чего не хватает и что неудобно - это поможет сделать инструмент под реальную работу.</p>
+  <div class="btns"><button class="b1" id="demoVoice">Описать словами</button><a class="btn wa" id="demoWa" target="_blank" rel="noopener" href="https://wa.me/?text=%D0%9E%D1%82%D0%B7%D1%8B%D0%B2%20%D0%BE%20%D0%BA%D0%B0%D0%BB%D1%8C%D0%BA%D1%83%D0%BB%D1%8F%D1%82%D0%BE%D1%80%D0%B5%20%D0%BC%D0%B5%D0%B1%D0%B5%D0%BB%D0%B8%3A%20">Написать отзыв в WhatsApp</a></div>
+</div></div>
+<main id="calcView">
+<div class="col">
+  <div class="card">
+    <h2>Заказ</h2>
+    <div class="row2">
+      <div class="field"><label>Клиент</label><input data-b="client" placeholder="Имя, телефон"></div>
+      <div class="field"><label>Декор / цвет (для клиента)</label><input data-b="decor" placeholder="Напр. белый, дуб сонома"></div>
+    </div>
+  </div>
+
+  <!-- ===== ШКАФ-КУПЕ ===== -->
+  <div id="kupeForm">
+    <div class="card">
+      <h2>Шкаф</h2>
+      <div class="row2">
+        <div class="field"><label>Тип</label>
+          <select data-b="kupe.type" id="k_type">
+            <option value="korp">Корпусный (отдельно стоящий)</option>
+            <option value="semi">К одной стене (одна боковина)</option>
+            <option value="built">Встроенный в нишу (без боковин и крыши)</option>
+          </select></div>
+        <div class="field"><label>Материал корпуса</label><select data-b="kupe.body" data-mats="body"></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Ширина, мм</label><input data-b="kupe.W" type="number" step="10"></div>
+        <div class="field"><label>Высота, мм</label><input data-b="kupe.H" type="number" step="10"></div>
+        <div class="field"><label>Глубина, мм</label><input data-b="kupe.D" type="number" step="10"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Секций внутри</label>
+          <select data-b="kupe.N" data-n data-r><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+        <div class="field"><label>Высота ящика</label>
+          <select data-b="kupe.DH" data-n><option value="150">150 мм</option><option value="180">180 мм</option><option value="200">200 мм</option><option value="250">250 мм</option></select></div>
+        <div class="field"><label>Антресоль, мм</label><input data-b="kupe.antH" type="number" step="10"></div>
+      </div>
+      <label class="chk"><input type="checkbox" data-b="kupe.ant">Антресоль сверху на всю ширину</label>
+      <label class="chk"><input type="checkbox" data-b="kupe.back">Задняя стенка ДВП</label>
+      <label class="chk"><input type="checkbox" data-b="kupe.led">LED-подсветка (лента по ширине + блок питания)</label>
+    </div>
+    <div class="card">
+      <h2>Начинка по секциям</h2>
+      <div id="secs"></div>
+      <p class="note">Ширину секции можно не указывать - тогда секции делят место поровну. Нажмите на секцию на эскизе, чтобы найти её здесь.</p>
+    </div>
+    <div class="card">
+      <h2>Двери-купе</h2>
+      <div class="row2">
+        <div class="field"><label>Количество</label>
+          <select data-b="kupe.M" data-n data-r><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+        <div class="field"><label>Профиль</label>
+          <select data-b="kupe.prof"><option value="eco">Эконом</option><option value="std">Стандарт</option><option value="prem">Премиум</option></select></div>
+      </div>
+      <div class="doors" id="doors"></div>
+      <div class="btns"><button class="b2 small" id="doorsSame">Сделать все двери как первую</button></div>
+    </div>
+  </div>
+
+  <!-- ===== КУХНЯ ===== -->
+  <div id="kitchenForm" class="hide">
+    <div class="card">
+      <h2>Кухня</h2>
+      <div class="field"><label>Планировка</label>
+        <select data-b="kit.layout" id="k_layout"><option value="1">Прямая (1 стена)</option><option value="2R">Угловая, вторая стена справа</option><option value="2L">Угловая, вторая стена слева</option><option value="3">П-образная (3 стены)</option></select></div>
+      <div class="row2">
+        <div class="field"><label>Материал корпуса</label><select data-b="kit.body" data-mats="body"></select></div>
+        <div class="field"><label>Фасады</label><select data-b="kit.fac" data-mats="fac"></select></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Ручки</label>
+          <select data-b="kit.handles"><option value="std">Обычные ручки</option><option value="gola">Профиль Gola</option><option value="push">Без ручек (push)</option></select></div>
+        <div class="field"><label>Столешница</label><select data-b="kit.top" data-mats="top"></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Низ, высота</label><input data-b="kit.Hl" type="number" step="10"></div>
+        <div class="field"><label>Верх, высота</label><input data-b="kit.Hu" type="number" step="10" list="huList"><datalist id="huList"><option value="600"><option value="720"><option value="900"><option value="960"></datalist></div>
+        <div class="field"><label>Пенал, высота</label><input data-b="kit.Ht" type="number" step="10" id="k_Ht"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Вырезов под мойку</label><input data-b="kit.cutSink" type="number" min="0" max="3"></div>
+        <div class="field"><label>Вырезов под варочную</label><input data-b="kit.cutHob" type="number" min="0" max="3"></div>
+      </div>
+      <label class="chk"><input type="checkbox" data-b="kit.apron">Стеновая панель (фартук)</label>
+      <label class="chk"><input type="checkbox" data-b="kit.tplinth">Плинтус столешницы</label>
+      <label class="chk"><input type="checkbox" data-b="kit.led">Подсветка под верхними шкафами</label>
+      <details>
+        <summary>Размеры конструкции (цоколь, глубины, зазоры)</summary>
+        <div class="row" style="margin-top:8px">
+          <div class="field"><label>Цоколь (ножки), мм</label><input data-b="kit.PL" type="number" step="10"></div>
+          <div class="field"><label>Глубина низа</label><input data-b="kit.Dl" type="number" step="10"></div>
+          <div class="field"><label>Глубина верха</label><input data-b="kit.Du" type="number" step="10"></div>
+          <div class="field"><label>Высота фартука</label><input data-b="kit.apronH" type="number" step="10"></div>
+          <div class="field"><label>Глубина столешницы</label><input data-b="kit.TD" type="number" step="10"></div>
+          <div class="field"><label>Зазор фасадов</label><input data-b="kit.gap" type="number" step="1"></div>
+        </div>
+        <div class="btns" style="margin-top:0"><button class="b2 small" id="k_alignTall">Выровнять пенал по верху навесных</button></div>
+      </details>
+    </div>
+    <div class="card" id="cornersCard">
+      <h2>Углы</h2>
+      <div id="corners"></div>
+      <p class="note">Угловой модуль сам занимает место на обеих стенах - в списки модулей его добавлять не нужно.</p>
+    </div>
+    <div class="card">
+      <h2>Модули по стенам</h2>
+      <div id="walls"></div>
+      <p class="note">Модули идут слева направо, если смотреть на стену. Пенал занимает и низ, и верх - верхние шкафы его обходят. Нажмите на модуль на эскизе, чтобы найти его в списке.</p>
+      <datalist id="stdw"><option value="150"><option value="200"><option value="300"><option value="400"><option value="450"><option value="500"><option value="600"><option value="800"><option value="900"><option value="1000"></datalist>
+    </div>
+  </div>
+
+  <!-- ===== ЛЮБОЕ ИЗДЕЛИЕ ===== -->
+  <div id="univForm" class="hide">
+    <div class="card">
+      <h2>Шаблон изделия</h2>
+      <div class="field"><label>Что делаем</label><select id="u_tpl"></select></div>
+      <div class="row" id="u_params"></div>
+      <div id="u_manual" class="info hide">Детали изменены вручную. Чтобы применить шаблон и параметры, нажмите "Перестроить" (ручные правки пропадут).</div>
+      <div class="btns"><button class="b1" id="u_rebuild">Перестроить по шаблону</button><button class="b2" id="u_saveMod">Сохранить как мой модуль</button></div>
+    </div>
+    <div class="card">
+      <h2>Детали (<span id="u_count">0</span>)</h2>
+      <p class="note" style="margin-top:0">Координаты от левого нижнего заднего угла: X - вправо (ширина), Y - вверх (высота), Z - к себе (глубина). Нажмите на деталь здесь или на модели, чтобы её изменить.</p>
+      <div id="u_panels"></div>
+      <div class="btns"><button class="b2" id="u_add">+ Добавить деталь</button></div>
+    </div>
+    <div class="card">
+      <h2>Фурнитура</h2>
+      <div id="u_hw"></div>
+      <div class="btns" style="margin-top:4px"><button class="b2 small" id="u_addhw">+ Своя позиция</button><select id="u_addhwSel" style="width:auto;flex:1;min-width:150px;padding:6px"></select></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Дополнительно</h2>
+    <div id="extras"></div>
+    <button class="b2" id="addExtra">+ Своя позиция</button>
+    <p class="note">Всё, чего нет выше: пантограф, мойка, смеситель, доводчики, подъём на этаж...</p>
+  </div>
+
+  <div class="card">
+    <h2>Условия</h2>
+    <div class="row">
+      <div class="field"><label>Скидка, %</label><input data-b="disc" type="number" min="0" max="50"></div>
+      <div class="field"><label>Предоплата, %</label><input data-b="prepay" type="number" min="0" max="100"></div>
+      <div class="field"><label>Срок, дней</label><input data-b="days" type="number" min="1"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Сборка, %</label><input id="q_work" type="number" min="0"></div>
+      <div class="field"><label>Наценка, %</label><input id="q_markup" type="number" min="0"></div>
+      <div class="field" style="align-self:end"><button class="b2" style="width:100%" data-go="price">Все цены</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="col rcol">
+  <div class="total">
+    <small>Цена для клиента</small>
+    <div class="big" id="total">-</div>
+    <small id="totalSub"></small>
+  </div>
+
+  <div class="warns" id="warns"></div>
+
+  <div class="card" id="sketchCard">
+    <div class="tabs" id="viewTabs"></div>
+    <div id="u3d" class="hide"></div>
+    <svg id="sketch" class="sketch" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="selinfo" id="selInfo"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="card" id="costCard">
+    <h2>Расчёт стоимости</h2>
+    <table id="costs"></table>
+    <div class="info hide" id="pmInfo"></div>
+    <div class="btns">
+      <a class="btn wa" id="wa" href="#" target="_blank" rel="noopener">Отправить в WhatsApp</a>
+      <button class="b1" id="copyClient">Скопировать для клиента</button>
+    </div>
+    <textarea id="fallback" readonly></textarea>
+  </div>
+
+  <div class="card">
+    <h2>Мои расчёты</h2>
+    <div class="btns" style="margin-top:0"><button class="b1" id="save">Сохранить этот расчёт</button><button class="b2" id="newCalc">Новый расчёт</button></div>
+    <div id="savedList"></div>
+    <p class="note">Хранятся в этом браузере на этом устройстве. Чтобы не потерять - делайте резервную копию на вкладке "Прайс".</p>
+  </div>
+
+  <div class="card">
+    <h2 id="partsTitle">Детали</h2>
+    <div id="parts"></div>
+    <div class="btns">
+      <button class="b2" id="copyParts">Скопировать список на распил</button>
+      <button class="b2" id="xlsParts">Скачать в Excel</button>
+      <button class="b2" id="toUniv">Править детали вручную</button>
+      <button class="b2" id="orderOut">Файл заказа</button>
+    </div>
+    <p class="note">Расчёт для оценки цены и заказа материалов. Присадку и точный раскрой делайте в своей программе проектирования.</p>
+  </div>
+</div>
+</main>
+
+<section id="priceView" class="page hide">
+  <div class="card">
+    <h2>Мой прайс</h2>
+    <div class="ptool">
+      <input type="search" id="p_search" placeholder="Поиск по названию или артикулу">
+      <button class="b1" id="p_import">Загрузить цены из Excel</button>
+      <button class="b2" id="p_export">Скачать прайс в Excel</button>
+      <button class="b2" id="p_add">+ Позиция</button>
+    </div>
+    <div class="chips" id="p_chips"></div>
+    <div class="ptable"><table id="p_table"></table></div>
+    <p class="note">Цены сохраняются сразу. Жёлтым отмечены цены, которые отличаются от примерных. Кнопка со шестерёнкой у материала открывает размер листа, толщину и цвет на эскизе. Свой материал (например, другой декор ЛДСП) добавляется кнопкой "+ Позиция" в группе "Плиты" или "Фасады" - он сразу появится в списках материалов.</p>
+  </div>
+  <div class="card">
+    <h2>Резервная копия</h2>
+    <p class="note" style="margin-top:0">Прайс, модули и сохранённые расчёты лежат в этом браузере. Скачайте копию, чтобы перенести их на другой компьютер или телефон или не потерять при очистке браузера.</p>
+    <div class="btns">
+      <button class="b2" id="bk_save">Скачать резервную копию</button>
+      <button class="b2" id="bk_load">Восстановить из копии</button>
+      <button class="b2" id="p_reset">Вернуть примерные цены</button>
+      <input type="file" id="bk_file" accept=".json,application/json" class="hide">
+    </div>
+  </div>
+</section>
+
+<section id="libView" class="page hide">
+  <div class="card">
+    <h2>Библиотека модулей</h2>
+    <p class="note" style="margin:0 0 10px">Стандартные модули кухни: задайте свою привычную ширину и скройте те, которыми не пользуетесь. Свои модули собираются в режиме "Любое изделие" и сохраняются кнопкой "Сохранить как мой модуль" - после этого их можно ставить в кухню и использовать как шаблон.</p>
+    <div id="libBody"></div>
+  </div>
+</section>
+
+<div class="mbar" id="mbar"><div><small>Цена для клиента</small><b id="mbarTotal">-</b></div><button id="mbarBtn">К расчёту</button></div>
+<div id="modalHost"></div>
+<div class="toast" id="toast"></div>

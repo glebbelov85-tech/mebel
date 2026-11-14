@@ -1,0 +1,2294 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Карта раскроя</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Идея: рабочий стол раскройщика. Слева направо по вкладкам: детали - материалы - карты - этикетки - выгрузка.
+   Сводка всегда сверху. Лист на карте - главный объект, всё остальное спокойное. */
+:root{
+  --bg:#eef0ec; --panel:#ffffff; --ink:#1c2420; --muted:#66706a; --line:#d5dbd4;
+  --accent:#17695a; --accent-ink:#ffffff; --accent-soft:#dcebe6;
+  --edge:#e0561f; --warn:#a85a00; --warn-soft:#fbeeda; --good:#1f7a3d;
+  --sheet:#c9cfc8; --pl:86%; --off:#e7f1e4; --waste:#dfe2de;
+  --display:"Golos Text",system-ui,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#141917; --panel:#1d2421; --ink:#e8ede9; --muted:#96a19a; --line:#333d38;
+    --accent:#4fb39e; --accent-ink:#0c1512; --accent-soft:#23362f;
+    --edge:#ff8a4f; --warn:#f0b35a; --warn-soft:#3a2e1a; --good:#6cc98a;
+    --sheet:#3a443f; --pl:30%; --off:#22332a; --waste:#2a302d;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#141917; --panel:#1d2421; --ink:#e8ede9; --muted:#96a19a; --line:#333d38;
+  --accent:#4fb39e; --accent-ink:#0c1512; --accent-soft:#23362f;
+  --edge:#ff8a4f; --warn:#f0b35a; --warn-soft:#3a2e1a; --good:#6cc98a;
+  --sheet:#3a443f; --pl:30%; --off:#22332a; --waste:#2a302d;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--display);font-size:15px;line-height:1.4}
+.wrap{max-width:1280px;margin:0 auto;padding:16px 16px 90px;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;justify-content:space-between}
+h1{font-size:22px;margin:0;font-weight:700;letter-spacing:-.01em}
+h2{font-size:16px;margin:0;font-weight:600;text-wrap:balance}
+h3{font-size:13px;margin:0;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.order{display:flex;gap:8px;flex-wrap:wrap}
+.order input{width:200px}
+input,select,textarea,button{font:inherit;color:inherit}
+input,select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 8px;width:100%;min-width:0}
+input[type=checkbox]{width:18px;height:18px;flex:none;accent-color:var(--accent)}
+input[type=number]{font-family:var(--mono);font-size:14px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{cursor:pointer;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:8px 12px;font-weight:500}
+button:hover{border-color:var(--accent)}
+button.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.ghost{border-color:transparent;background:transparent;padding:6px 8px;color:var(--muted)}
+button.ghost:hover{color:var(--ink);border-color:var(--line)}
+button.on{background:var(--accent-soft);border-color:var(--accent)}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.sum div{background:var(--panel);padding:10px 12px}
+.sum b{display:block;font-family:var(--mono);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.sum span{font-size:12px;color:var(--muted)}
+.sum .hot b{color:var(--accent)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;padding:10px 14px;white-space:nowrap;color:var(--muted)}
+.tabs button.on{color:var(--ink);border-bottom-color:var(--accent);background:none;font-weight:600}
+.tabs i{font-style:normal;font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:4px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bar .sp{flex:1}
+.note{color:var(--muted);font-size:13px;margin:0;max-width:70ch}
+.warn{background:var(--warn-soft);color:var(--warn);border-radius:6px;padding:9px 12px;font-size:14px}
+.warn b{font-weight:600}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+th{font-size:12px;font-weight:500;color:var(--muted);text-align:left;padding:4px 6px;white-space:nowrap}
+td{padding:3px 4px;vertical-align:middle}
+td.n,th.n{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+#ptable td.idx{font-family:var(--mono);color:var(--muted);text-align:right;padding-right:8px}
+#ptable input,#ptable select{padding:6px}
+#ptable .w-name{min-width:170px} #ptable .w-num{width:84px} #ptable .w-q{width:60px} #ptable .w-mat{min-width:130px} #ptable .w-gr{min-width:118px}
+.ew{display:block;cursor:pointer}
+.ew .body{fill:var(--bg);stroke:var(--line)}
+.ew .s{stroke:var(--line);stroke-width:2}
+.ew .s.e1{stroke:var(--edge);stroke-width:2.5}
+.ew .s.e2{stroke:var(--edge);stroke-width:6}
+.ew .hit{stroke:transparent;stroke-width:14}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.f label,.lbl{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12.5px;border:1px solid var(--line);border-radius:99px;padding:3px 10px;background:var(--panel);font-variant-numeric:tabular-nums}
+.chip b{font-family:var(--mono);font-weight:600}
+.chip.good{color:var(--good);border-color:currentColor}
+.sheets{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:14px}
+.sh{display:flex;flex-direction:column;gap:6px}
+.sh-h{display:flex;justify-content:space-between;gap:8px;font-size:13px;align-items:baseline}
+.sh-h b{font-size:15px}
+.sh-h span{color:var(--muted);font-family:var(--mono);font-size:12.5px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:26px;vertical-align:middle;margin-right:5px}
+.pick{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:10px 16px;display:none;gap:12px;align-items:center;flex-wrap:wrap;box-shadow:0 -6px 20px rgba(0,0,0,.12);z-index:5}
+.pick.on{display:flex}
+.pick .big{font-family:var(--mono);font-size:22px;font-weight:600}
+.pick .sp{flex:1;min-width:180px}
+.labels{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.lab{border:1px dashed var(--line);border-radius:4px;padding:8px 10px;display:grid;grid-template-columns:1fr auto;gap:2px 8px;background:var(--panel);break-inside:avoid}
+.lab .no{font-family:var(--mono);font-size:22px;font-weight:600;line-height:1}
+.lab .sz{font-family:var(--mono);font-size:15px;font-weight:600}
+.lab small{color:var(--muted);font-size:11.5px;grid-column:1/-1}
+.lab .nm{grid-column:1;font-size:13px;font-weight:500}
+.lab svg{grid-column:2;grid-row:1/4;align-self:center}
+.exp{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.exp .card p{margin:0}
+.modal{position:fixed;inset:0;background:rgba(10,15,12,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+.modal.on{display:flex}
+.modal .card{width:min(760px,100%);max-height:90%;overflow:auto}
+textarea{min-height:220px;font-family:var(--mono);font-size:13px;resize:vertical}
+#toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20;max-width:90vw}
+#toast.on{opacity:1}
+.hide{display:none!important}
+.busy{opacity:.55}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+<style id="mapcss"></style>
+<link rel="stylesheet" href="../shared/site.css">
+<script>window.MEBEL_TOOL = "raskroy";</script>
+<script src="../shared/site.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Карта раскроя</h1>
+      <p class="note">Раскладка деталей на листы под форматно-раскроечный станок: сквозные резы, пропил, текстура, кромка, остатки.</p>
+    </div>
+    <div class="order">
+      <input id="o_name" placeholder="Заказ (например, шкаф в прихожую)" aria-label="Название заказа">
+      <input id="o_client" placeholder="Клиент" aria-label="Клиент">
+    </div>
+  </header>
+
+  <div class="sum" id="sum"></div>
+  <div id="warns"></div>
+
+  <nav class="tabs" id="tabs">
+    <button data-t="parts">1. Детали<i id="c_parts"></i></button>
+    <button data-t="mats">2. Материалы и настройки</button>
+    <button data-t="maps">3. Карты<i id="c_maps"></i></button>
+    <button data-t="labels">4. Этикетки</button>
+    <button data-t="export">5. Печать и выгрузка</button>
+  </nav>
+
+  <section id="t_parts" class="card">
+    <div class="bar">
+      <button class="pri" id="p_add">+ Деталь</button>
+      <button id="p_import">Вставить список</button>
+      <button id="p_demo">Пример: шкаф</button>
+      <span class="sp"></span>
+      <button class="ghost" id="p_clear">Очистить всё</button>
+    </div>
+    <div id="lockbar"></div>
+    <div class="scroll"><table id="ptable"></table></div>
+    <p class="note">Длина - размер вдоль текстуры. Кромка: нажимайте на стороны прямоугольника (верх и низ - длинные стороны, лево и право - короткие). Одно нажатие - тонкая 0.4 мм, второе - толстая 2 мм, третье - убрать. Нажатие в середину меняет все четыре стороны сразу.</p>
+  </section>
+
+  <section id="t_mats" class="hide">
+    <div class="grid2">
+      <div class="card">
+        <h2>Материалы и листы</h2>
+        <div id="mats"></div>
+        <div class="bar"><button id="m_add">+ Материал</button></div>
+      </div>
+      <div class="card">
+        <h2>Настройки распила</h2>
+        <div class="f">
+          <label>Пропил пилы, мм<input type="number" id="s_kerf" min="0" step="0.1"></label>
+          <label>Обрезка края листа, мм<input type="number" id="s_trim" min="0"></label>
+          <label>Первые резы
+            <select id="s_strips"><option value="auto">Как выгоднее</option><option value="along">Вдоль листа (полосы по длине)</option><option value="across">Поперёк листа</option></select>
+          </label>
+        </div>
+        <label class="chk"><input type="checkbox" id="s_sub">Уменьшать заготовку на толщину кромки 2 мм</label>
+        <label class="chk"><input type="checkbox" id="s_stock">Сначала пускать в дело остатки со склада</label>
+        <h3>Деловой остаток - кусок не меньше</h3>
+        <div class="f">
+          <label>Длина, мм<input type="number" id="s_offL" min="0"></label>
+          <label>Ширина, мм<input type="number" id="s_offW" min="0"></label>
+        </div>
+        <h3>Цены, ₸ (необязательно)</h3>
+        <div class="f">
+          <label>Распил, за метр реза<input type="number" id="s_cutp" min="0"></label>
+          <label>Кромка 0.4 мм, за метр<input type="number" id="s_e1p" min="0"></label>
+          <label>Кромка 2 мм, за метр<input type="number" id="s_e2p" min="0"></label>
+        </div>
+        <p class="note">Пропил - ширина реза пилы, обычно 3.2-4.4 мм. Обрезка края - сколько снимают с каждой стороны нового листа, чтобы убрать сколы.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="t_maps" class="hide">
+    <div class="card">
+      <div class="bar">
+        <button id="v_cuts">Порядок резов</button>
+        <button id="v_saw">Режим распила</button>
+        <span class="sp"></span>
+        <span class="chip" id="doneChip"></span>
+        <button class="ghost" id="v_reset">Сбросить отметки</button>
+      </div>
+      <div class="legend">
+        <span><i style="border-top:2px solid var(--edge)"></i>кромка 0.4</span>
+        <span><i style="border-top:5px solid var(--edge)"></i>кромка 2 мм</span>
+        <span><i style="height:12px;background:var(--off);border:1px dashed var(--good)"></i>деловой остаток</span>
+        <span><i style="height:12px;background:var(--waste)"></i>отход</span>
+        <span>На карте - размеры пиления. Нажмите на деталь, чтобы увидеть её данные.</span>
+      </div>
+    </div>
+    <div id="maps" style="display:flex;flex-direction:column;gap:14px;margin-top:14px"></div>
+  </section>
+
+  <section id="t_labels" class="hide card">
+    <div class="bar">
+      <p class="note">Одна этикетка на каждую деталь: номер, название, размер, кромка по сторонам и номер листа. Сборщик находит деталь по номеру.</p>
+      <span class="sp"></span>
+      <button class="pri" id="l_print">Скачать этикетки для печати</button>
+    </div>
+    <div class="labels" id="labels"></div>
+  </section>
+
+  <section id="t_export" class="hide">
+    <div class="exp">
+      <div class="card"><h2>Карты на печать</h2><p class="note">Файл со сводкой, списком деталей и картами - по одному листу на страницу А4. Откройте его и нажмите "Печать".</p><div class="bar"><button class="pri" id="x_print">Скачать карты (HTML)</button></div></div>
+      <div class="card"><h2>Бланк для цеха распила</h2><p class="note">Таблица деталей: размеры пиления, количество, текстура, кромка по каждой стороне. Открывается в Excel.</p><div class="bar"><button class="pri" id="x_csv">Скачать CSV</button><button id="x_text">Скопировать текстом</button></div></div>
+      <div class="card"><h2>Проект</h2><p class="note">Сохраните заказ в файл, чтобы открыть его на другом устройстве или передать в другие инструменты.</p><div class="bar"><button id="x_json">Скачать проект (JSON)</button><button id="x_load">Открыть проект</button></div></div>
+      <div class="card"><h2>Склад остатков</h2><p class="note">Когда заказ распилен: использованные остатки списываются, новые деловые остатки записываются на склад. Раскрой при этом фиксируется.</p><div class="bar"><button id="x_stock">Заказ распилен - обновить склад</button></div><div id="stockList" class="note"></div></div>
+    </div>
+  </section>
+</div>
+
+<div class="pick" id="pick"></div>
+<div class="modal" id="modal"><div class="card">
+  <h2 id="md_title"></h2><p class="note" id="md_note"></p>
+  <label class="lbl" id="md_filebox">Выбрать файл заказа или проекта<input type="file" id="md_file" accept=".json,.txt,.csv,application/json,text/plain"></label>
+  <textarea id="md_text" spellcheck="false"></textarea>
+  <div class="bar"><button class="pri" id="md_ok"></button><button id="md_copy">Скопировать</button><span class="sp"></span><button class="ghost" id="md_close">Закрыть</button></div>
+</div></div>
+<div id="toast" role="status"></div>
+
+<script>
+/*!
+ * mebel-order.js - общий формат заказа "Мебельный конструктор", версия 1.0
+ *
+ * Один файл без зависимостей. Работает в браузере (<script src> или вставить целиком
+ * в <script> одной HTML-страницы - появится глобальный объект MebelOrder) и в Node (require).
+ *
+ * Главное:
+ *   MebelOrder.create()            - новый пустой заказ с настройками по умолчанию
+ *   MebelOrder.parse(text)         - прочитать JSON (в том числе старый расчёт калькулятора)
+ *   MebelOrder.validate(order)     - проверка: ошибки и предупреждения по-русски
+ *   MebelOrder.migrate(obj)        - привести любой старый вариант к текущей версии
+ *   MebelOrder.stringify(order)    - JSON для файла *.mebel.json
+ *   MebelOrder.toLink / fromLink   - заказ в ссылке (для WhatsApp)
+ *   MebelOrder.forClient(order)    - копия без себестоимости и наценки
+ *   MebelOrder.listParts(order)    - все детали заказа плоским списком
+ *   MebelOrder.cutList(order)      - список на распил (длина, ширина, текстура, кромка по 4 сторонам)
+ *   MebelOrder.facadeList(order)   - фасады по размерам для заказа на фабрике
+ *   MebelOrder.bom(order)          - расход материалов, кромки, фурнитуры
+ *   MebelOrder.quote(order)        - расчёт цены; recalc(order) записывает его в order.quote
+ *   MebelOrder.balance(order)      - оплачено, остаток, расходы, прибыль
+ *
+ * Подробное описание - README.md рядом с этим файлом.
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.MebelOrder = factory();
+})(typeof self !== "undefined" ? self : this, function () {
+  "use strict";
+
+  var FORMAT = "mebel-order";
+  var VERSION = "1.0";
+  var FILE_EXT = ".mebel.json";
+
+  // ---------- Справочники ----------
+
+  var STAGES = [
+    { key: "lead", name: "Заявка" },
+    { key: "measure", name: "Замер" },
+    { key: "design", name: "Проект" },
+    { key: "contract", name: "Договор и предоплата" },
+    { key: "production", name: "Производство" },
+    { key: "install", name: "Доставка и монтаж" },
+    { key: "done", name: "Завершён" },
+    { key: "cancelled", name: "Отменён" }
+  ];
+
+  var PRODUCT_TYPES = { kupe: "Шкаф-купе", kitchen: "Кухня", univ: "Изделие" };
+
+  // Положение детали. Ось в названии - это ось, вдоль которой идёт ТОЛЩИНА листа.
+  // a и b - два размера детали; sidesA - стороны, кромка которых идёт вдоль a; sidesB - вдоль b.
+  var ORIENT = {
+    X: { name: "Вертикальная боковая", a: "Высота", b: "Глубина", sidesA: ["front", "back"], sidesB: ["top", "bottom"] },
+    Y: { name: "Горизонтальная", a: "Ширина", b: "Глубина", sidesA: ["front", "back"], sidesB: ["left", "right"] },
+    Z: { name: "Фронтальная / задняя", a: "Ширина", b: "Высота", sidesA: ["top", "bottom"], sidesB: ["left", "right"] }
+  };
+  var SIDE_NAMES = { front: "спереди", back: "сзади", left: "слева", right: "справа", top: "сверху", bottom: "снизу" };
+
+  var ROLES = {
+    side: "Боковина", top: "Крыша", bottom: "Дно", shelf: "Полка", partition: "Перегородка",
+    back: "Задняя стенка", plinth: "Цоколь", facade: "Фасад", drawer: "Деталь ящика",
+    countertop: "Столешница", apron: "Стеновая панель", filler: "Планка / добор", other: "Другое"
+  };
+
+  var MATERIAL_KINDS = { sheet: "лист", area: "м2", length: "п.м." };
+  var EXTRA_KINDS = { item: "Своя позиция", delivery: "Доставка", install: "Монтаж", service: "Услуга" };
+  var PAYMENT_KINDS = { prepay: "Предоплата", payment: "Оплата", refund: "Возврат" };
+  var PAYMENT_METHODS = { cash: "Наличные", kaspi: "Kaspi", card: "Карта", transfer: "Перевод на счёт", other: "Другое" };
+  var EXPENSE_CATEGORIES = {
+    materials: "Плитные материалы", facades: "Фасады", hardware: "Фурнитура", cutting: "Распил и кромление",
+    countertop: "Столешница", delivery: "Доставка", install: "Монтаж / сборка", other: "Другое"
+  };
+
+  // Примерные цены из калькулятора. Это стартовый набор, настоящие цены задаёт мастер.
+  function defaultCatalog() {
+    return {
+      materials: {
+        ldsp16: { name: "ЛДСП 16 мм", group: "ldsp", kind: "sheet", t: 16, sheet: { w: 2800, h: 2070 }, grain: true, price: 22000, cut: true, color: "#e9d3b5" },
+        dvp3: { name: "ДВП 3 мм", group: "dvp", kind: "sheet", t: 3, sheet: { w: 2750, h: 1700 }, grain: false, price: 5500, usagePct: 90, color: "#c9b8a3" },
+        "mdf18-film": { name: "Фасад МДФ плёнка", group: "mdf", kind: "area", t: 18, price: 22000, color: "#f3ede4" },
+        "mdf18-plastic": { name: "Фасад МДФ пластик", group: "mdf", kind: "area", t: 18, price: 30000, color: "#e8e4dc" },
+        "mdf18-enamel": { name: "Фасад МДФ эмаль", group: "mdf", kind: "area", t: 18, price: 38000, color: "#fafafa" },
+        mirror4: { name: "Зеркало 4 мм", group: "glass", kind: "area", t: 4, price: 15000, color: "#b9d3df" },
+        lacobel4: { name: "Стекло лакобель 4 мм", group: "glass", kind: "area", t: 4, price: 22000, color: "#3d4a52" },
+        top38: { name: "Столешница ЛДСП 38 мм", group: "top", kind: "length", t: 38, price: 12000, color: "#8a6a4a" }
+      },
+      edges: {
+        pvc04: { name: "Кромка ПВХ 0.4 мм", t: 0.4, w: 19, price: 150, color: "#e9d3b5" },
+        pvc2: { name: "Кромка ПВХ 2 мм", t: 2, w: 19, price: 350, color: "#e9d3b5" }
+      },
+      hardware: {
+        handle: { name: "Ручка", unit: "шт", price: 1500 },
+        hinge: { name: "Петля с доводчиком", unit: "шт", price: 1200 },
+        kguide: { name: "Направляющие полного выдвижения", unit: "компл", price: 7000 },
+        guide: { name: "Направляющие ящика", unit: "компл", price: 4500 },
+        lift: { name: "Подъёмный механизм", unit: "шт", price: 12000 },
+        leg: { name: "Опора кухонная", unit: "шт", price: 400 },
+        push: { name: "Толкатель push-to-open", unit: "шт", price: 1200 },
+        gola: { name: "Профиль Gola", unit: "м", price: 6000 },
+        rod: { name: "Штанга", unit: "м", price: 3000 },
+        led: { name: "LED-лента с профилем", unit: "м", price: 3500 },
+        ledpow: { name: "Блок питания и выключатель", unit: "шт", price: 6000 },
+        dryer: { name: "Сушилка для посуды", unit: "шт", price: 7000 },
+        "prof-eco": { name: "Профиль купе эконом", unit: "дверь", price: 14000 },
+        "prof-std": { name: "Профиль купе стандарт", unit: "дверь", price: 18000 },
+        "prof-prem": { name: "Профиль купе премиум", unit: "дверь", price: 28000 },
+        fasteners: { name: "Крепёж", unit: "компл", price: 1500 }
+      }
+    };
+  }
+
+  function defaultPricing() {
+    return {
+      workPct: 15,          // сборка, % от материалов
+      markupPct: 30,        // наценка, % от себестоимости
+      discountPct: 0,       // скидка клиенту, %
+      prepayPct: 50,        // предоплата, %
+      roundTo: 1000,        // округлять итог вверх до, тенге
+      sheetUsagePct: 80,    // использование листа, % (остальное - отходы)
+      edgeReservePct: 10,   // запас кромки, %
+      cutPerSheet: 3000     // распил и кромление, за лист
+    };
+  }
+
+  function defaultProduction() {
+    return { kerf: 4, sheetTrim: 10, subtractEdge: true };
+  }
+
+  // ---------- Мелкие помощники ----------
+
+  function isObj(v) { return v !== null && typeof v === "object" && !Array.isArray(v); }
+  function isNum(v) { return typeof v === "number" && isFinite(v); }
+  function isStr(v) { return typeof v === "string"; }
+  function arr(v) { return Array.isArray(v) ? v : []; }
+  function clone(v) { return v === undefined ? v : JSON.parse(JSON.stringify(v)); }
+  function num(v, d) { var n = Number(v); return isFinite(n) ? n : (d === undefined ? 0 : d); }
+  function r0(n) { return Math.round(n); }
+  function r2(n) { return Math.round(n * 100) / 100; }
+  function nowIso() { return new Date().toISOString(); }
+  function today() { return nowIso().slice(0, 10); }
+  function fmtMoney(n) { return String(r0(num(n))).replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
+
+  var _seq = 0;
+  function uid(prefix) {
+    _seq = (_seq + 1) % 1296;
+    var rnd = Math.floor(Math.random() * 60466176).toString(36); // до 5 знаков
+    var t = (Date.now() % 46656).toString(36);
+    return (prefix || "id") + "_" + ("00000" + rnd).slice(-5) + ("00" + t).slice(-3) + ("0" + _seq.toString(36)).slice(-2);
+  }
+
+  var DATE_RE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/;
+  function isDate(v) { return isStr(v) && DATE_RE.test(v) && !isNaN(Date.parse(v)); }
+
+  // ---------- Создание и значения по умолчанию ----------
+
+  function create(init) {
+    var t = nowIso();
+    var o = {
+      format: FORMAT,
+      version: VERSION,
+      id: uid("o"),
+      number: "",
+      title: "",
+      createdAt: t,
+      updatedAt: t,
+      currency: "KZT",
+      units: "mm",
+      stage: "lead",
+      client: { name: "", phone: "", address: "" },
+      products: [],
+      catalog: defaultCatalog(),
+      extras: [],
+      pricing: defaultPricing(),
+      production: defaultProduction(),
+      terms: { days: 30, daysKind: "work", warrantyMonths: 12 },
+      timeline: [{ stage: "lead", done: t.slice(0, 10) }],
+      payments: [],
+      expenses: [],
+      reminders: [],
+      files: [],
+      notes: ""
+    };
+    if (isObj(init)) for (var k in init) o[k] = clone(init[k]);
+    return normalize(o);
+  }
+
+  function newProduct(init) {
+    var p = { id: uid("pr"), type: "univ", name: "", qty: 1, size: { w: 0, h: 0, d: 0 }, finish: {}, params: {}, modules: [], parts: [], hardware: [] };
+    if (isObj(init)) for (var k in init) p[k] = clone(init[k]);
+    return p;
+  }
+  function newModule(init) {
+    var m = { id: uid("m"), kind: "", name: "", pos: { x: 0, y: 0, z: 0 }, rot: 0, size: { w: 0, h: 0, d: 0 }, params: {}, parts: [], hardware: [] };
+    if (isObj(init)) for (var k in init) m[k] = clone(init[k]);
+    return m;
+  }
+  function newPart(init) {
+    var p = { id: uid("p"), name: "", mat: "@corpus", o: "X", x: 0, y: 0, z: 0, a: 0, b: 0 };
+    if (isObj(init)) for (var k in init) p[k] = clone(init[k]);
+    return p;
+  }
+
+  // Дополняет недостающие разделы, ничего не удаляя. Незнакомые поля сохраняются как есть.
+  function normalize(o) {
+    if (!isObj(o)) return o;
+    if (!o.format) o.format = FORMAT;
+    if (!o.version) o.version = VERSION;
+    if (!o.id) o.id = uid("o");
+    if (!o.createdAt) o.createdAt = nowIso();
+    if (!o.updatedAt) o.updatedAt = o.createdAt;
+    if (!o.currency) o.currency = "KZT";
+    if (!o.units) o.units = "mm";
+    if (!o.stage) o.stage = "lead";
+    if (!isObj(o.client)) o.client = { name: "", phone: "", address: "" };
+    if (!Array.isArray(o.products)) o.products = [];
+    if (!isObj(o.catalog)) o.catalog = {};
+    ["materials", "edges", "hardware"].forEach(function (k) { if (!isObj(o.catalog[k])) o.catalog[k] = {}; });
+    var dp = defaultPricing();
+    if (!isObj(o.pricing)) o.pricing = {};
+    for (var k in dp) if (!isNum(o.pricing[k])) o.pricing[k] = dp[k];
+    var dpr = defaultProduction();
+    if (!isObj(o.production)) o.production = {};
+    for (var k2 in dpr) if (o.production[k2] === undefined) o.production[k2] = dpr[k2];
+    if (!isObj(o.terms)) o.terms = {};
+    ["extras", "timeline", "payments", "expenses", "reminders", "files"].forEach(function (k) { if (!Array.isArray(o[k])) o[k] = []; });
+    o.products.forEach(function (p) {
+      if (!isObj(p)) return;
+      if (!p.id) p.id = uid("pr");
+      if (!p.type) p.type = "univ";
+      if (!isNum(p.qty)) p.qty = 1;
+      if (!isObj(p.finish)) p.finish = {};
+      ["modules", "parts", "hardware"].forEach(function (k) { if (!Array.isArray(p[k])) p[k] = []; });
+      p.parts.forEach(function (pt) { if (isObj(pt) && !pt.id) pt.id = uid("p"); });
+      p.modules.forEach(function (m) {
+        if (!isObj(m)) return;
+        if (!m.id) m.id = uid("m");
+        if (!isObj(m.pos)) m.pos = { x: 0, y: 0, z: 0 };
+        if (!isNum(m.rot)) m.rot = 0;
+        ["parts", "hardware"].forEach(function (k) { if (!Array.isArray(m[k])) m[k] = []; });
+        m.parts.forEach(function (pt) { if (isObj(pt) && !pt.id) pt.id = uid("p"); });
+      });
+    });
+    return o;
+  }
+
+  function touch(o) { o.updatedAt = nowIso(); return o; }
+
+  // ---------- Материалы и кромка ----------
+
+  // Ссылка на материал: "ldsp16" - ключ в catalog.materials, "@facade" - роль из product.finish.
+  function resolveRef(ref, product) {
+    if (!isStr(ref)) return null;
+    if (ref.charAt(0) === "@") {
+      var id = product && isObj(product.finish) ? product.finish[ref.slice(1)] : null;
+      return isStr(id) ? id : null;
+    }
+    return ref;
+  }
+  function getMaterial(order, product, ref) {
+    var id = resolveRef(ref, product);
+    var m = id && order.catalog && order.catalog.materials ? order.catalog.materials[id] : null;
+    if (!isObj(m)) return null;
+    var out = clone(m); out.id = id; return out;
+  }
+  function getEdge(order, product, ref) {
+    var id = resolveRef(ref, product);
+    var e = id && order.catalog && order.catalog.edges ? order.catalog.edges[id] : null;
+    if (!isObj(e)) return null;
+    var out = clone(e); out.id = id; return out;
+  }
+  function getHardware(order, line) {
+    var item = line && line.item && order.catalog && order.catalog.hardware ? order.catalog.hardware[line.item] : null;
+    return {
+      item: line.item || null,
+      name: line.name || (item && item.name) || "",
+      unit: line.unit || (item && item.unit) || "шт",
+      price: isNum(line.price) ? line.price : (item && isNum(item.price) ? item.price : 0),
+      qty: num(line.qty)
+    };
+  }
+
+  // ---------- Геометрия ----------
+
+  // Размеры детали по осям [по X, по Y, по Z] при толщине t.
+  function partDims(part, t) {
+    return part.o === "X" ? [t, part.a, part.b] : part.o === "Y" ? [part.a, t, part.b] : [part.a, part.b, t];
+  }
+  function hasPos(part) { return isNum(part.x) && isNum(part.y) && isNum(part.z); }
+
+  // Поворот вокруг вертикальной оси Y на 0/90/180/270 градусов и сдвиг.
+  // Точка (x, z) переходит в (x*cos + z*sin, -x*sin + z*cos).
+  function placeBox(b, pos, rot) {
+    var r = ((num(rot) % 360) + 360) % 360;
+    var c = r === 90 ? 0 : r === 180 ? -1 : r === 270 ? 0 : 1;
+    var s = r === 90 ? 1 : r === 180 ? 0 : r === 270 ? -1 : 0;
+    var xa = b.x0 * c + b.z0 * s, xb = b.x1 * c + b.z1 * s;
+    var za = -b.x0 * s + b.z0 * c, zb = -b.x1 * s + b.z1 * c;
+    var px = pos ? num(pos.x) : 0, py = pos ? num(pos.y) : 0, pz = pos ? num(pos.z) : 0;
+    return {
+      x0: Math.min(xa, xb) + px, x1: Math.max(xa, xb) + px,
+      y0: b.y0 + py, y1: b.y1 + py,
+      z0: Math.min(za, zb) + pz, z1: Math.max(za, zb) + pz
+    };
+  }
+
+  // Коробка детали в координатах изделия (с учётом положения и поворота модуля). null - если у детали нет координат.
+  function partBox(order, product, module, part) {
+    if (!hasPos(part) || !ORIENT[part.o]) return null;
+    var m = getMaterial(order, product, part.mat);
+    var d = partDims(part, m && isNum(m.t) ? m.t : 16);
+    var b = { x0: part.x, y0: part.y, z0: part.z, x1: part.x + d[0], y1: part.y + d[1], z1: part.z + d[2] };
+    if (module) b = placeBox(b, module.pos, module.rot);
+    return b;
+  }
+  // То же, но в координатах помещения (с учётом положения самого изделия).
+  function partWorldBox(order, product, module, part) {
+    var b = partBox(order, product, module, part);
+    return b && (product.pos || product.rot) ? placeBox(b, product.pos, product.rot) : b;
+  }
+
+  function productBounds(order, product) {
+    var bb = null;
+    eachPart({ products: [product], catalog: order.catalog }, function (e) {
+      var b = partBox(order, product, e.module, e.part);
+      if (!b) return;
+      if (!bb) bb = clone(b);
+      else {
+        bb.x0 = Math.min(bb.x0, b.x0); bb.y0 = Math.min(bb.y0, b.y0); bb.z0 = Math.min(bb.z0, b.z0);
+        bb.x1 = Math.max(bb.x1, b.x1); bb.y1 = Math.max(bb.y1, b.y1); bb.z1 = Math.max(bb.z1, b.z1);
+      }
+    });
+    if (!bb) return null;
+    bb.w = r0(bb.x1 - bb.x0); bb.h = r0(bb.y1 - bb.y0); bb.d = r0(bb.z1 - bb.z0);
+    return bb;
+  }
+
+  // ---------- Обход деталей ----------
+
+  function eachPart(order, cb) {
+    arr(order.products).forEach(function (product) {
+      if (!isObj(product)) return;
+      arr(product.parts).forEach(function (part, i) { if (isObj(part)) cb({ product: product, module: null, part: part, index: i }); });
+      arr(product.modules).forEach(function (module) {
+        if (!isObj(module)) return;
+        arr(module.parts).forEach(function (part, i) { if (isObj(part)) cb({ product: product, module: module, part: part, index: i }); });
+      });
+    });
+  }
+  function listParts(order) { var out = []; eachPart(order, function (e) { out.push(e); }); return out; }
+
+  function eachHardware(order, cb) {
+    arr(order.products).forEach(function (product) {
+      if (!isObj(product)) return;
+      arr(product.hardware).forEach(function (line) { if (isObj(line)) cb({ product: product, module: null, line: line }); });
+      arr(product.modules).forEach(function (module) {
+        if (!isObj(module)) return;
+        arr(module.hardware).forEach(function (line) { if (isObj(line)) cb({ product: product, module: module, line: line }); });
+      });
+    });
+  }
+
+  function findPart(order, id) {
+    var found = null;
+    eachPart(order, function (e) { if (!found && e.part.id === id) found = e; });
+    return found;
+  }
+
+  // Маркировка для наклеек: "1.3-07" = изделие 1, модуль 3, деталь 7. Детали без модуля: "1-07".
+  function assignMarks(order) {
+    arr(order.products).forEach(function (product, pi) {
+      var n = 0;
+      arr(product.parts).forEach(function (part) { n++; part.mark = (pi + 1) + "-" + ("0" + n).slice(-2); });
+      arr(product.modules).forEach(function (module, mi) {
+        var k = 0;
+        arr(module.parts).forEach(function (part) { k++; part.mark = (pi + 1) + "." + (mi + 1) + "-" + ("0" + k).slice(-2); });
+      });
+    });
+    return order;
+  }
+
+  // ---------- Текстура и кромка детали ----------
+
+  // Направление текстуры: "a" - вдоль размера a, "b" - вдоль b, "any" - не важно.
+  // Если не указано: у материала без рисунка - "any"; с рисунком - вдоль большей стороны детали.
+  function partGrain(part, material) {
+    if (part.grain === "a" || part.grain === "b" || part.grain === "any") return part.grain;
+    if (!material || !material.grain) return "any";
+    return part.a >= part.b ? "a" : "b";
+  }
+
+  // Кромка детали по сторонам: { front: {id,name,t,...} | null, ... } - только стороны, которые есть у этого положения.
+  function partEdges(order, product, part) {
+    var o = ORIENT[part.o], out = {};
+    if (!o) return out;
+    o.sidesA.concat(o.sidesB).forEach(function (s) {
+      var ref = isObj(part.edges) ? part.edges[s] : null;
+      out[s] = ref ? getEdge(order, product, ref) : null;
+    });
+    return out;
+  }
+  // Длина кромки детали в мм по каждому виду кромки: { pvc04: 1234, ... }
+  function partEdgeLength(order, product, part) {
+    var o = ORIENT[part.o], out = {};
+    if (!o || !isObj(part.edges)) return out;
+    for (var s in part.edges) {
+      var id = resolveRef(part.edges[s], product);
+      if (!id) continue;
+      var len = o.sidesA.indexOf(s) >= 0 ? part.a : o.sidesB.indexOf(s) >= 0 ? part.b : 0;
+      out[id] = (out[id] || 0) + num(len);
+    }
+    return out;
+  }
+
+  // ---------- Список на распил ----------
+
+  // opts.kinds - какие материалы включать (по умолчанию только листовые: ["sheet"]); opts.group - склеить одинаковые детали.
+  // Каждая строка: длина и ширина ГОТОВОЙ детали (с кромкой), cutLength/cutWidth - размер пиления (минус толстая кромка),
+  // grain: "length" (текстура вдоль длины) или "any", canRotate, кромка по сторонам L1, L2 (вдоль длины) и W1, W2 (вдоль ширины).
+  function cutList(order, opts) {
+    opts = opts || {};
+    var kinds = opts.kinds || ["sheet"];
+    var subtract = !order.production || order.production.subtractEdge !== false;
+    var rows = [];
+    eachPart(order, function (e) {
+      var part = e.part, product = e.product, o = ORIENT[part.o];
+      var mat = getMaterial(order, product, part.mat);
+      if (!o || !mat || kinds.indexOf(mat.kind) < 0) return;
+      if (!(part.a > 0 && part.b > 0)) return;
+      var g = partGrain(part, mat);
+      var alongA = g === "a" ? true : g === "b" ? false : part.a >= part.b;
+      var ed = partEdges(order, product, part);
+      var eA = o.sidesA.map(function (s) { return ed[s]; }), eB = o.sidesB.map(function (s) { return ed[s]; });
+      var L = alongA ? part.a : part.b, W = alongA ? part.b : part.a;
+      var eL = alongA ? eA : eB, eW = alongA ? eB : eA;
+      var slim = function (x) { return x ? { id: x.id, name: x.name, t: x.t } : null; };
+      var cut = function (x) { return subtract && x && x.t >= 1 ? x.t : 0; };
+      rows.push({
+        id: part.id,
+        mark: part.mark || "",
+        name: part.name || "",
+        role: part.role || "",
+        product: { id: product.id, name: product.name || "" },
+        module: e.module ? { id: e.module.id, name: e.module.name || "" } : null,
+        material: { id: mat.id, name: mat.name, t: mat.t, decor: mat.decor || "", sheet: mat.sheet ? clone(mat.sheet) : null, grain: !!mat.grain },
+        length: L,
+        width: W,
+        cutLength: r2(L - cut(eW[0]) - cut(eW[1])),
+        cutWidth: r2(W - cut(eL[0]) - cut(eL[1])),
+        qty: Math.max(1, num(part.qty, 1)) * Math.max(1, num(product.qty, 1)),
+        grain: g === "any" ? "any" : "length",
+        canRotate: g === "any",
+        edges: { L1: slim(eL[0]), L2: slim(eL[1]), W1: slim(eW[0]), W2: slim(eW[1]) },
+        note: part.note || ""
+      });
+    });
+    if (!opts.group) return rows;
+    var map = {}, out = [];
+    rows.forEach(function (r) {
+      var ek = ["L1", "L2", "W1", "W2"].map(function (k) { return r.edges[k] ? r.edges[k].id : "-"; }).join(",");
+      var key = [r.material.id, r.length, r.width, r.grain, ek].join("|");
+      if (map[key]) { map[key].qty += r.qty; map[key].ids.push(r.id); }
+      else { var c = clone(r); c.ids = [r.id]; map[key] = c; out.push(c); }
+    });
+    return out;
+  }
+
+  // Список фасадов для заказа на фабрике: по материалу и размеру (ширина x высота), с количеством.
+  function facadeList(order) {
+    var map = {}, out = [];
+    eachPart(order, function (e) {
+      var part = e.part;
+      if (part.role !== "facade" || !(part.a > 0 && part.b > 0)) return;
+      var mat = getMaterial(order, e.product, part.mat);
+      if (!mat) return;
+      var w = part.o === "X" ? part.b : part.a, h = part.o === "Y" ? part.b : part.o === "X" ? part.a : part.b;
+      var q = Math.max(1, num(part.qty, 1)) * Math.max(1, num(e.product.qty, 1));
+      var key = mat.id + "|" + w + "|" + h;
+      if (map[key]) { map[key].qty += q; map[key].ids.push(part.id); }
+      else { map[key] = { material: { id: mat.id, name: mat.name, t: mat.t, decor: mat.decor || "" }, width: w, height: h, qty: q, area: 0, ids: [part.id] }; out.push(map[key]); }
+    });
+    out.forEach(function (r) { r.area = r2(r.width * r.height / 1e6 * r.qty); });
+    return out;
+  }
+
+  // ---------- Расход материалов ----------
+
+  function bom(order) {
+    var pr = order.pricing || defaultPricing();
+    var mats = {}, edges = {}, hw = {}, byProduct = {};
+    var pb = function (id) { return byProduct[id] || (byProduct[id] = { materials: {}, edges: {}, hardware: 0 }); };
+    eachPart(order, function (e) {
+      var part = e.part, product = e.product;
+      var mat = getMaterial(order, product, part.mat);
+      if (!mat || !(part.a > 0 && part.b > 0)) return;
+      var q = Math.max(1, num(part.qty, 1)) * Math.max(1, num(product.qty, 1));
+      var m = mats[mat.id] || (mats[mat.id] = { id: mat.id, name: mat.name, kind: mat.kind, price: num(mat.price), count: 0, area: 0, length: 0 });
+      var area = part.a * part.b / 1e6 * q, len = Math.max(part.a, part.b) / 1000 * q;
+      m.count += q; m.area += area; m.length += len;
+      var share = pb(product.id).materials;
+      share[mat.id] = (share[mat.id] || 0) + (mat.kind === "length" ? len : area);
+      var el = partEdgeLength(order, product, part);
+      for (var id in el) {
+        var ed = getEdge(order, product, id);
+        if (!ed) continue;
+        var x = edges[id] || (edges[id] = { id: id, name: ed.name, price: num(ed.price), net: 0 });
+        x.net += el[id] / 1000 * q;
+        var es = pb(product.id).edges; es[id] = (es[id] || 0) + el[id] / 1000 * q;
+      }
+    });
+    var sheetsCut = 0;
+    Object.keys(mats).forEach(function (id) {
+      var m = mats[id], src = order.catalog.materials[id];
+      m.area = r2(m.area); m.length = r2(m.length);
+      if (m.kind === "sheet") {
+        var sh = src.sheet || { w: 2800, h: 2070 };
+        var use = Math.min(100, Math.max(30, num(src.usagePct, num(pr.sheetUsagePct, 80)))) / 100;
+        m.sheets = Math.ceil(m.area / (sh.w * sh.h / 1e6 * use) - 1e-9);
+        m.qty = m.sheets; m.unit = "лист";
+        if (src.cut) sheetsCut += m.sheets;
+      } else if (m.kind === "length") { m.qty = m.length; m.unit = "п.м."; }
+      else { m.qty = m.area; m.unit = "м2"; }
+      m.sum = r0(m.qty * m.price);
+    });
+    Object.keys(edges).forEach(function (id) {
+      var x = edges[id];
+      x.net = r2(x.net);
+      x.qty = Math.ceil(x.net * (1 + num(pr.edgeReservePct, 10) / 100) - 1e-9);
+      x.unit = "м"; x.sum = r0(x.qty * x.price);
+    });
+    eachHardware(order, function (e) {
+      var h = getHardware(order, e.line);
+      var q = h.qty * Math.max(1, num(e.product.qty, 1));
+      if (!q) return;
+      var key = (h.item || "") + "|" + h.name + "|" + h.price;
+      var x = hw[key] || (hw[key] = { item: h.item, name: h.name, unit: h.unit, price: h.price, qty: 0, sum: 0 });
+      x.qty = r2(x.qty + q); x.sum = r0(x.qty * x.price);
+      pb(e.product.id).hardware += q * h.price;
+    });
+    return {
+      materials: Object.keys(mats).map(function (k) { return mats[k]; }),
+      edges: Object.keys(edges).map(function (k) { return edges[k]; }),
+      hardware: Object.keys(hw).map(function (k) { return hw[k]; }),
+      sheetsCut: sheetsCut,
+      cutting: { qty: sheetsCut, unit: "лист", price: num(pr.cutPerSheet), sum: r0(sheetsCut * num(pr.cutPerSheet)) },
+      byProduct: byProduct
+    };
+  }
+
+  // ---------- Цена ----------
+
+  function ceilTo(n, step) { step = Math.max(1, num(step, 1)); return Math.ceil(n / step - 1e-9) * step || 0; }
+
+  // Делит сумму total по долям weights целыми числами, остаток - в самую большую долю.
+  function splitSum(total, weights, step) {
+    var sum = weights.reduce(function (s, w) { return s + w; }, 0);
+    if (!weights.length) return [];
+    step = step || 1;
+    var out = weights.map(function (w) { return sum > 0 ? Math.floor(total * w / sum / step) * step : 0; });
+    var rest = total - out.reduce(function (s, v) { return s + v; }, 0), big = 0;
+    weights.forEach(function (w, i) { if (w > weights[big]) big = i; });
+    out[big] += rest;
+    return out;
+  }
+
+  // Расчёт цены по правилам калькулятора. Ничего не меняет в заказе, возвращает объект quote.
+  // lines - подробные строки для мастера (себестоимость), clientLines - строки для клиента (КП, договор).
+  function quote(order) {
+    var pr = order.pricing || defaultPricing(), b = bom(order), lines = [];
+    b.materials.forEach(function (m) { if (m.sum > 0) lines.push({ group: "material", ref: m.id, name: m.name + (m.kind === "sheet" ? " (" + m.area + " м2)" : ""), qty: m.qty, unit: m.unit, price: m.price, sum: m.sum }); });
+    b.edges.forEach(function (x) { if (x.sum > 0) lines.push({ group: "edge", ref: x.id, name: x.name, qty: x.qty, unit: x.unit, price: x.price, sum: x.sum }); });
+    if (b.cutting.sum > 0) lines.push({ group: "cutting", name: "Распил и кромление", qty: b.cutting.qty, unit: "лист", price: b.cutting.price, sum: b.cutting.sum });
+    b.hardware.forEach(function (h) { if (h.sum > 0) lines.push({ group: "hardware", ref: h.item || undefined, name: h.name, qty: h.qty, unit: h.unit, price: h.price, sum: h.sum }); });
+    var items = [], services = [];
+    arr(order.extras).forEach(function (x) {
+      if (!isObj(x)) return;
+      var sum = r0(num(x.qty, 1) * num(x.price));
+      if (!sum) return;
+      var line = { group: x.kind && x.kind !== "item" ? "service" : "extra", ref: x.id, name: x.name || EXTRA_KINDS[x.kind] || "Своя позиция", qty: num(x.qty, 1), unit: x.unit || "шт", price: num(x.price), sum: sum };
+      lines.push(line);
+      (line.group === "service" ? services : items).push(line);
+    });
+
+    var servicesSum = services.reduce(function (s, l) { return s + l.sum; }, 0);
+    var materials = lines.reduce(function (s, l) { return s + l.sum; }, 0) - servicesSum;
+    var work = r0(materials * num(pr.workPct) / 100);
+    var cost = materials + work + servicesSum;
+    var markup = r0(cost * num(pr.markupPct) / 100);
+    var d = Math.min(90, Math.max(0, num(pr.discountPct))) / 100;
+    var total = ceilTo((cost + markup) * (1 - d), pr.roundTo);
+    var step = total % 100 === 0 ? 100 : 1; // строки для клиента - ровными суммами
+    var subtotal = d > 0 ? ceilTo(total / (1 - d), step) : total;
+    var prepayPct = Math.min(100, Math.max(0, num(pr.prepayPct)));
+    var prepaySum = Math.min(total, ceilTo(total * prepayPct / 100, pr.roundTo));
+
+    // Доля каждого изделия в общих материалах - по площади (длине) деталей и по своей фурнитуре.
+    var clientLines = [], weights = [];
+    var matSum = {}, matQty = {}, edgeSum = {}, edgeQty = {};
+    b.materials.forEach(function (m) { matSum[m.id] = m.sum; matQty[m.id] = m.kind === "length" ? m.length : m.area; });
+    b.edges.forEach(function (x) { edgeSum[x.id] = x.sum; edgeQty[x.id] = x.net; });
+    var cutBase = 0;
+    b.materials.forEach(function (m) { if (m.kind === "sheet" && order.catalog.materials[m.id].cut) cutBase += m.area; });
+    arr(order.products).forEach(function (p) {
+      var bp = b.byProduct[p.id] || { materials: {}, edges: {}, hardware: 0 }, base = bp.hardware, id;
+      for (id in bp.materials) {
+        if (matQty[id] > 0) base += matSum[id] * bp.materials[id] / matQty[id];
+        if (cutBase > 0 && order.catalog.materials[id].kind === "sheet" && order.catalog.materials[id].cut) base += b.cutting.sum * bp.materials[id] / cutBase;
+      }
+      for (id in bp.edges) if (edgeQty[id] > 0) base += edgeSum[id] * bp.edges[id] / edgeQty[id];
+      var sz = p.size || {};
+      clientLines.push({ kind: "product", ref: p.id, name: p.name || PRODUCT_TYPES[p.type] || "Изделие", note: sz.w ? sz.w + "x" + sz.h + "x" + sz.d + " мм" : "", qty: Math.max(1, num(p.qty, 1)), unit: "шт" });
+      weights.push(base * (1 + num(pr.workPct) / 100));
+    });
+    items.forEach(function (l) { clientLines.push({ kind: "extra", ref: l.ref, name: l.name, qty: l.qty, unit: l.unit }); weights.push(l.sum * (1 + num(pr.workPct) / 100)); });
+    // Услуги (доставка, монтаж) клиент видит по своей цене, вся наценка сидит в изделиях и своих позициях.
+    var showServices = servicesSum < subtotal && weights.some(function (w) { return w > 0; });
+    if (showServices) {
+      splitSum(subtotal - servicesSum, weights, step).forEach(function (s, i) { clientLines[i].sum = s; });
+      services.forEach(function (l) { clientLines.push({ kind: "service", ref: l.ref, name: l.name, qty: l.qty, unit: l.unit, sum: l.sum }); });
+    } else {
+      services.forEach(function (l) { clientLines.push({ kind: "service", ref: l.ref, name: l.name, qty: l.qty, unit: l.unit }); weights.push(l.sum); });
+      splitSum(subtotal, weights, step).forEach(function (s, i) { clientLines[i].sum = s; });
+    }
+    clientLines = clientLines.filter(function (l) { return l.sum > 0; });
+
+    return {
+      calcAt: nowIso(),
+      currency: order.currency || "KZT",
+      lines: lines,
+      materials: materials,
+      work: work,
+      services: servicesSum,
+      cost: cost,
+      markup: markup,
+      clientLines: clientLines,
+      subtotal: subtotal,
+      discountPct: r2(d * 100),
+      discountSum: subtotal - total,
+      total: total,
+      prepayPct: prepayPct,
+      prepaySum: prepaySum,
+      profit: total - cost
+    };
+  }
+  function recalc(order) { order.quote = quote(order); return touch(order); }
+
+  // ---------- Оплаты и прибыль ----------
+
+  function balance(order) {
+    var paid = 0, spent = 0;
+    arr(order.payments).forEach(function (p) { if (isObj(p)) paid += (p.kind === "refund" ? -1 : 1) * Math.abs(num(p.amount)); });
+    arr(order.expenses).forEach(function (x) { if (isObj(x)) spent += num(x.amount); });
+    var q = isObj(order.quote) ? order.quote : {};
+    var total = num(q.total);
+    return {
+      total: total,
+      paid: paid,
+      due: Math.max(0, total - paid),
+      overpaid: Math.max(0, paid - total),
+      prepayDue: Math.max(0, num(q.prepaySum) - paid),
+      expenses: spent,
+      profitPlan: isNum(q.profit) ? q.profit : (isNum(q.cost) ? total - q.cost : null),
+      profitFact: paid - spent
+    };
+  }
+
+  // ---------- Этапы ----------
+
+  function stageName(key) { for (var i = 0; i < STAGES.length; i++) if (STAGES[i].key === key) return STAGES[i].name; return key; }
+  function setStage(order, key, date) {
+    order.stage = key;
+    var d = date || today(), row = null;
+    order.timeline = arr(order.timeline);
+    order.timeline.forEach(function (t) { if (t.stage === key) row = t; });
+    if (!row) { row = { stage: key }; order.timeline.push(row); }
+    row.done = d;
+    return touch(order);
+  }
+  // Ближайшая дата, к которой что-то надо сделать: напоминание или план по этапу.
+  function nextDue(order) {
+    var list = [];
+    arr(order.reminders).forEach(function (r) { if (isObj(r) && !r.done && isDate(r.date)) list.push({ date: r.date.slice(0, 10), text: r.text || "Напоминание" }); });
+    arr(order.timeline).forEach(function (t) { if (isObj(t) && !t.done && isDate(t.plan)) list.push({ date: t.plan.slice(0, 10), text: stageName(t.stage) }); });
+    list.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    return list[0] || null;
+  }
+
+  // ---------- Тексты для клиента ----------
+
+  function productSummary(order, product) {
+    if (Array.isArray(product.describe) && product.describe.length) return product.describe.slice();
+    var sz = product.size && product.size.w ? product.size : null, bb = sz ? null : productBounds(order, product);
+    var head = (product.name || PRODUCT_TYPES[product.type] || "Изделие");
+    if (sz) head += ", " + sz.w + "x" + sz.h + "x" + sz.d + " мм (ШxВxГ)";
+    else if (bb) head += ", " + bb.w + "x" + bb.h + "x" + bb.d + " мм (ШxВxГ)";
+    var corpus = {}, fac = {}, tops = {};
+    eachPart({ products: [product] }, function (e) {
+      var m = getMaterial(order, product, e.part.mat);
+      if (!m || m.group === "dvp") return;
+      var label = m.name + (m.decor ? ", " + m.decor : "");
+      (e.part.role === "facade" ? fac : e.part.role === "countertop" ? tops : corpus)[label] = 1;
+    });
+    var hw = {};
+    eachHardware({ products: [product] }, function (e) { var h = getHardware(order, e.line); if (h.qty > 0 && h.name && !/^крепёж|^крепеж/i.test(h.name)) hw[h.name.toLowerCase()] = 1; });
+    var out = [head];
+    if (Object.keys(corpus).length) out.push("Корпус: " + Object.keys(corpus).join("; "));
+    if (Object.keys(fac).length) out.push("Фасады: " + Object.keys(fac).join("; "));
+    if (Object.keys(tops).length) out.push("Столешница: " + Object.keys(tops).join("; "));
+    if (Object.keys(hw).length) out.push("Фурнитура: " + Object.keys(hw).join(", "));
+    return out;
+  }
+
+  function clientText(order) {
+    var q = isObj(order.quote) ? order.quote : quote(order), t = order.terms || {}, out = [];
+    arr(order.products).forEach(function (p) { out.push(productSummary(order, p).join("\n")); });
+    var ex = arr(q.clientLines).filter(function (l) { return l.kind !== "product"; }).map(function (l) { return "- " + l.name; });
+    if (ex.length) out.push("Дополнительно:\n" + ex.join("\n"));
+    var tail = ["Стоимость: " + fmtMoney(q.total) + " ₸" + (q.discountPct ? " (со скидкой " + q.discountPct + "%)" : "")];
+    if (q.prepaySum) tail.push("Предоплата: " + fmtMoney(q.prepaySum) + " ₸");
+    if (t.days) tail.push("Срок изготовления: " + t.days + (t.daysKind === "calendar" ? " календарных дн." : " рабочих дн."));
+    if (t.warrantyMonths) tail.push("Гарантия: " + t.warrantyMonths + " мес.");
+    out.push(tail.join("\n"));
+    return out.join("\n\n");
+  }
+
+  // Телефон для wa.me: только цифры, казахстанская "8" в начале заменяется на "7".
+  function waPhone(phone) {
+    var d = String(phone || "").replace(/\D/g, "");
+    if (d.length === 11 && d.charAt(0) === "8") d = "7" + d.slice(1);
+    if (d.length === 10) d = "7" + d;
+    return d;
+  }
+  function whatsappLink(order, text) {
+    var c = order.client || {};
+    return "https://wa.me/" + waPhone(c.whatsapp || c.phone) + "?text=" + encodeURIComponent(text === undefined ? clientText(order) : text);
+  }
+
+  // Копия заказа для клиента: без себестоимости, наценки, расходов и закупочных цен.
+  function forClient(order) {
+    var o = clone(order);
+    o.audience = "client";
+    if (isObj(o.quote)) ["lines", "materials", "work", "services", "cost", "markup", "profit"].forEach(function (k) { delete o.quote[k]; });
+    if (isObj(o.pricing)) o.pricing = { discountPct: o.pricing.discountPct, prepayPct: o.pricing.prepayPct, roundTo: o.pricing.roundTo };
+    delete o.expenses; delete o.history; delete o.reminders; delete o.x;
+    if (isObj(o.catalog)) ["materials", "edges", "hardware"].forEach(function (g) {
+      for (var id in (o.catalog[g] || {})) { delete o.catalog[g][id].price; delete o.catalog[g][id].supplier; delete o.catalog[g][id].code; }
+    });
+    eachHardware(o, function (e) { delete e.line.price; });
+    arr(o.extras).forEach(function (x) { if (isObj(x)) { delete x.price; delete x.cost; } });
+    return o;
+  }
+
+  // ---------- Проверка ----------
+
+  function validate(order, opts) {
+    opts = opts || {};
+    var errors = [], warnings = [];
+    var E = function (path, msg) { errors.push({ level: "error", path: path, msg: msg }); };
+    var W = function (path, msg) { warnings.push({ level: "warn", path: path, msg: msg }); };
+    var done = function () { return { ok: errors.length === 0, errors: errors, warnings: warnings, all: errors.concat(warnings) }; };
+
+    if (!isObj(order)) { E("", "Заказ должен быть объектом JSON."); return done(); }
+    if (order.format !== FORMAT) E("format", 'Поле format должно быть "' + FORMAT + '".');
+    if (!isStr(order.version) || !/^\d+\.\d+$/.test(order.version)) E("version", 'Поле version должно быть строкой вида "1.0".');
+    else if (order.version.split(".")[0] !== VERSION.split(".")[0]) E("version", "Версия " + order.version + " не поддерживается этим модулем (нужна " + VERSION.split(".")[0] + ".x). Сначала вызовите migrate().");
+    if (!isStr(order.id) || !order.id) E("id", "У заказа нет id.");
+    ["createdAt", "updatedAt"].forEach(function (k) { if (order[k] !== undefined && !isDate(order[k])) E(k, "Дата " + k + " должна быть в виде 2026-11-14 или 2026-11-14T10:30:00Z."); });
+    if (order.currency !== undefined && order.currency !== "KZT") W("currency", 'Валюта не "KZT" - инструменты считают в тенге.');
+    if (order.units !== undefined && order.units !== "mm") E("units", 'Размеры должны быть в миллиметрах (units: "mm").');
+    var stageKeys = STAGES.map(function (s) { return s.key; });
+    if (order.stage !== undefined && stageKeys.indexOf(order.stage) < 0) E("stage", 'Неизвестный этап "' + order.stage + '". Возможные: ' + stageKeys.join(", ") + ".");
+
+    if (!isObj(order.client)) E("client", "Нет раздела client.");
+    else {
+      if (!order.client.name) W("client.name", "Не указано имя клиента.");
+      if (!order.client.phone && !order.client.whatsapp) W("client.phone", "Не указан телефон клиента - не получится отправить в WhatsApp.");
+      else if (waPhone(order.client.whatsapp || order.client.phone).length !== 11) W("client.phone", "Телефон клиента похож на неполный.");
+    }
+
+    var cat = isObj(order.catalog) ? order.catalog : {};
+    var mats = isObj(cat.materials) ? cat.materials : {}, edges = isObj(cat.edges) ? cat.edges : {}, hws = isObj(cat.hardware) ? cat.hardware : {};
+    if (!isObj(order.catalog)) E("catalog", "Нет раздела catalog (материалы, кромка, фурнитура).");
+    Object.keys(mats).forEach(function (id) {
+      var m = mats[id], p = "catalog.materials." + id;
+      if (!isObj(m)) return E(p, "Материал должен быть объектом.");
+      if (!m.name) W(p + ".name", "У материала нет названия.");
+      if (!MATERIAL_KINDS[m.kind]) E(p + ".kind", 'Вид материала должен быть "sheet" (лист), "area" (м2) или "length" (п.м.).');
+      if (!(isNum(m.t) && m.t > 0)) E(p + ".t", "Не указана толщина материала, мм.");
+      if (m.kind === "sheet" && !(isObj(m.sheet) && m.sheet.w > 0 && m.sheet.h > 0)) E(p + ".sheet", "У листового материала нужен размер листа: sheet: { w, h }.");
+      if (m.price !== undefined && !(isNum(m.price) && m.price >= 0)) E(p + ".price", "Цена должна быть числом.");
+    });
+    Object.keys(edges).forEach(function (id) {
+      var e = edges[id], p = "catalog.edges." + id;
+      if (!isObj(e)) return E(p, "Кромка должна быть объектом.");
+      if (!(isNum(e.t) && e.t > 0)) E(p + ".t", "Не указана толщина кромки, мм.");
+      if (e.price !== undefined && !(isNum(e.price) && e.price >= 0)) E(p + ".price", "Цена должна быть числом.");
+    });
+
+    var ids = {};
+    var checkId = function (id, path, what) {
+      if (!isStr(id) || !id) return E(path + ".id", "Нет id (" + what + ").");
+      if (ids[id]) E(path + ".id", 'Повторяется id "' + id + '" (' + what + "). Каждый id в заказе должен быть уникальным.");
+      ids[id] = 1;
+    };
+    var checkHardware = function (list, path) {
+      if (list === undefined) return;
+      if (!Array.isArray(list)) return E(path, "Фурнитура должна быть списком.");
+      list.forEach(function (h, i) {
+        var p = path + "[" + i + "]";
+        if (!isObj(h)) return E(p, "Строка фурнитуры должна быть объектом.");
+        if (h.item !== undefined && !hws[h.item]) E(p + ".item", 'Фурнитуры "' + h.item + '" нет в catalog.hardware.');
+        if (!h.item && !h.name) E(p + ".name", "У фурнитуры нет названия.");
+        if (!isNum(h.qty) || h.qty < 0) E(p + ".qty", "Количество должно быть числом.");
+        if (h.price !== undefined && !isNum(h.price)) E(p + ".price", "Цена должна быть числом.");
+      });
+    };
+    var boxes = [];
+    var checkPart = function (part, path, product, module) {
+      if (!isObj(part)) return E(path, "Деталь должна быть объектом.");
+      checkId(part.id, path, "деталь");
+      var label = 'Деталь "' + (part.name || part.id || "?") + '"';
+      var o = ORIENT[part.o];
+      if (!o) E(path + ".o", label + ': положение o должно быть "X", "Y" или "Z".');
+      if (!(isNum(part.a) && isNum(part.b))) E(path, label + ": размеры a и b должны быть числами.");
+      else if (part.a <= 0 || part.b <= 0) W(path, label + ": нулевой размер.");
+      var coords = ["x", "y", "z"].filter(function (k) { return part[k] !== undefined; });
+      if (coords.length && (coords.length < 3 || !hasPos(part))) E(path, label + ": координаты x, y, z должны быть числами (либо все три, либо ни одной).");
+      if (part.qty !== undefined && !(isNum(part.qty) && part.qty >= 1 && part.qty % 1 === 0)) E(path + ".qty", label + ": количество должно быть целым числом от 1.");
+      else if (part.qty > 1 && hasPos(part)) W(path + ".qty", label + ": количество больше 1, но координаты только у одной. В 3D будет видна одна деталь.");
+      if (part.role !== undefined && !ROLES[part.role]) W(path + ".role", label + ': незнакомая роль "' + part.role + '".');
+      if (part.grain !== undefined && ["a", "b", "any"].indexOf(part.grain) < 0) E(path + ".grain", label + ': направление текстуры grain должно быть "a", "b" или "any".');
+      var mat = null;
+      if (!isStr(part.mat) || !part.mat) E(path + ".mat", label + ": не указан материал.");
+      else {
+        var mid = resolveRef(part.mat, product);
+        if (!mid) E(path + ".mat", label + ': роль материала "' + part.mat + '" не задана в finish изделия.');
+        else if (!isObj(mats[mid])) E(path + ".mat", label + ': материала "' + mid + '" нет в catalog.materials.');
+        else mat = mats[mid];
+      }
+      if (part.edges !== undefined) {
+        if (!isObj(part.edges)) E(path + ".edges", label + ": кромка должна быть объектом вида { front: \"pvc04\" }.");
+        else if (o) Object.keys(part.edges).forEach(function (s) {
+          if (!part.edges[s]) return;
+          if (o.sidesA.indexOf(s) < 0 && o.sidesB.indexOf(s) < 0) return E(path + ".edges." + s, label + ': у детали с положением "' + part.o + '" нет стороны "' + s + '". Есть: ' + o.sidesA.concat(o.sidesB).join(", ") + ".");
+          var eid = resolveRef(part.edges[s], product);
+          if (!eid) E(path + ".edges." + s, label + ': роль кромки "' + part.edges[s] + '" не задана в finish изделия.');
+          else if (!isObj(edges[eid])) E(path + ".edges." + s, label + ': кромки "' + eid + '" нет в catalog.edges.');
+        });
+      }
+      if (mat && mat.kind === "sheet" && isObj(mat.sheet) && part.a > 0 && part.b > 0) {
+        var sw = mat.sheet.w, sh = mat.sheet.h, g = partGrain(part, mat);
+        var L = g === "b" ? part.b : part.a, S = g === "b" ? part.a : part.b; // L - вдоль текстуры
+        var fitsAlong = L <= Math.max(sw, sh) && S <= Math.min(sw, sh), fitsAny = fitsAlong || (S <= Math.max(sw, sh) && L <= Math.min(sw, sh));
+        if (!fitsAny) W(path, label + " " + part.a + "x" + part.b + " не выходит из листа " + sw + "x" + sh + ".");
+        else if (g !== "any" && !fitsAlong) W(path, label + " " + part.a + "x" + part.b + " выходит из листа только поперёк текстуры.");
+      }
+      if (mat && o && hasPos(part)) boxes.push({ label: label, path: path, product: product, box: partBox(order, product, module, part) });
+    };
+
+    if (!Array.isArray(order.products)) E("products", "Нет списка изделий products.");
+    else {
+      if (!order.products.length) W("products", "В заказе пока нет изделий.");
+      order.products.forEach(function (p, pi) {
+        var pp = "products[" + pi + "]";
+        if (!isObj(p)) return E(pp, "Изделие должно быть объектом.");
+        checkId(p.id, pp, "изделие");
+        if (!PRODUCT_TYPES[p.type]) E(pp + ".type", 'Тип изделия должен быть "kupe", "kitchen" или "univ".');
+        if (!p.name) W(pp + ".name", "У изделия нет названия.");
+        if (p.qty !== undefined && !(isNum(p.qty) && p.qty >= 1)) E(pp + ".qty", "Количество изделий должно быть числом от 1.");
+        if (p.finish !== undefined && !isObj(p.finish)) E(pp + ".finish", "finish должен быть объектом вида { corpus: \"ldsp16\" }.");
+        else Object.keys(p.finish || {}).forEach(function (role) {
+          var id = p.finish[role];
+          if (!isStr(id) || (!mats[id] && !edges[id])) E(pp + ".finish." + role, 'Отделка "' + role + '": материала или кромки "' + id + '" нет в catalog.');
+        });
+        if (p.parts !== undefined && !Array.isArray(p.parts)) E(pp + ".parts", "parts должен быть списком.");
+        arr(p.parts).forEach(function (part, i) { checkPart(part, pp + ".parts[" + i + "]", p, null); });
+        checkHardware(p.hardware, pp + ".hardware");
+        if (p.modules !== undefined && !Array.isArray(p.modules)) E(pp + ".modules", "modules должен быть списком.");
+        var count = arr(p.parts).length;
+        arr(p.modules).forEach(function (m, mi) {
+          var mp = pp + ".modules[" + mi + "]";
+          if (!isObj(m)) return E(mp, "Модуль должен быть объектом.");
+          checkId(m.id, mp, "модуль");
+          if (m.pos !== undefined && !(isObj(m.pos) && isNum(m.pos.x) && isNum(m.pos.y) && isNum(m.pos.z))) E(mp + ".pos", "Положение модуля: pos: { x, y, z } числами.");
+          if (m.rot !== undefined && [0, 90, 180, 270].indexOf(m.rot) < 0) E(mp + ".rot", "Поворот модуля rot может быть 0, 90, 180 или 270.");
+          arr(m.parts).forEach(function (part, i) { checkPart(part, mp + ".parts[" + i + "]", p, m); });
+          checkHardware(m.hardware, mp + ".hardware");
+          count += arr(m.parts).length;
+        });
+        if (!count && !(isObj(p.generator) && p.generator.id)) W(pp, 'В изделии "' + (p.name || p.id) + '" нет деталей.');
+        else if (!count) W(pp, 'В изделии "' + (p.name || p.id) + '" пока нет деталей - только параметры. Откройте его в калькуляторе, чтобы построить детали.');
+      });
+    }
+
+    // Пересечения деталей (внутри одного изделия). Касание и заход до 1 мм не считаются.
+    if (opts.geometry !== false && boxes.length <= (opts.maxGeometryParts || 800)) {
+      var hits = 0, max = opts.maxOverlaps || 10, e = 1;
+      for (var i = 0; i < boxes.length && hits < max; i++) for (var j = i + 1; j < boxes.length && hits < max; j++) {
+        if (boxes[i].product !== boxes[j].product) continue;
+        var a = boxes[i].box, c = boxes[j].box;
+        if (a.x0 < c.x1 - e && c.x0 < a.x1 - e && a.y0 < c.y1 - e && c.y0 < a.y1 - e && a.z0 < c.z1 - e && c.z0 < a.z1 - e) {
+          W(boxes[i].path, boxes[i].label + " и " + boxes[j].label.replace(/^Д/, "д") + " пересекаются."); hits++;
+        }
+      }
+    }
+
+    if (order.extras !== undefined && !Array.isArray(order.extras)) E("extras", "extras должен быть списком.");
+    arr(order.extras).forEach(function (x, i) {
+      var p = "extras[" + i + "]";
+      if (!isObj(x)) return E(p, "Позиция должна быть объектом.");
+      if (x.kind !== undefined && !EXTRA_KINDS[x.kind]) E(p + ".kind", 'Вид позиции: "item", "delivery", "install" или "service".');
+      if (!x.name && !x.kind) W(p + ".name", "У позиции нет названия.");
+      if (x.price !== undefined && !isNum(x.price)) E(p + ".price", "Цена должна быть числом.");
+      if (x.qty !== undefined && !isNum(x.qty)) E(p + ".qty", "Количество должно быть числом.");
+    });
+
+    if (order.pricing !== undefined) {
+      if (!isObj(order.pricing)) E("pricing", "pricing должен быть объектом.");
+      else {
+        var pr = order.pricing, pct = function (k, lo, hi) { if (pr[k] !== undefined && !(isNum(pr[k]) && pr[k] >= lo && pr[k] <= hi)) E("pricing." + k, k + " должно быть числом от " + lo + " до " + hi + "."); };
+        pct("workPct", 0, 500); pct("markupPct", 0, 1000); pct("discountPct", 0, 90); pct("prepayPct", 0, 100); pct("sheetUsagePct", 30, 100); pct("edgeReservePct", 0, 100);
+        if (pr.roundTo !== undefined && !(isNum(pr.roundTo) && pr.roundTo >= 1)) E("pricing.roundTo", "roundTo должно быть числом от 1.");
+      }
+    }
+    if (order.terms !== undefined) {
+      if (!isObj(order.terms)) E("terms", "terms должен быть объектом.");
+      else if (order.terms.daysKind !== undefined && ["work", "calendar"].indexOf(order.terms.daysKind) < 0) E("terms.daysKind", 'daysKind: "work" (рабочие дни) или "calendar" (календарные).');
+    }
+
+    arr(order.timeline).forEach(function (t, i) {
+      var p = "timeline[" + i + "]";
+      if (!isObj(t)) return E(p, "Запись этапа должна быть объектом.");
+      if (stageKeys.indexOf(t.stage) < 0) E(p + ".stage", 'Неизвестный этап "' + t.stage + '".');
+      ["plan", "done"].forEach(function (k) { if (t[k] !== undefined && t[k] !== null && !isDate(t[k])) E(p + "." + k, "Дата должна быть в виде 2026-11-14."); });
+    });
+    arr(order.payments).forEach(function (x, i) {
+      var p = "payments[" + i + "]";
+      if (!isObj(x)) return E(p, "Оплата должна быть объектом.");
+      if (!(isNum(x.amount) && x.amount > 0)) E(p + ".amount", "Сумма оплаты должна быть числом больше нуля.");
+      if (!isDate(x.date)) E(p + ".date", "Дата оплаты должна быть в виде 2026-11-14.");
+      if (x.kind !== undefined && !PAYMENT_KINDS[x.kind]) E(p + ".kind", 'Вид оплаты: "prepay", "payment" или "refund".');
+      if (x.method !== undefined && !PAYMENT_METHODS[x.method]) W(p + ".method", 'Незнакомый способ оплаты "' + x.method + '".');
+    });
+    arr(order.expenses).forEach(function (x, i) {
+      var p = "expenses[" + i + "]";
+      if (!isObj(x)) return E(p, "Расход должен быть объектом.");
+      if (!isNum(x.amount)) E(p + ".amount", "Сумма расхода должна быть числом.");
+      if (x.date !== undefined && !isDate(x.date)) E(p + ".date", "Дата расхода должна быть в виде 2026-11-14.");
+      if (x.category !== undefined && !EXPENSE_CATEGORIES[x.category]) W(p + ".category", 'Незнакомая статья расхода "' + x.category + '".');
+    });
+    arr(order.reminders).forEach(function (x, i) {
+      if (!isObj(x)) return E("reminders[" + i + "]", "Напоминание должно быть объектом.");
+      if (!isDate(x.date)) E("reminders[" + i + "].date", "Дата напоминания должна быть в виде 2026-11-14.");
+    });
+
+    if (order.quote !== undefined) {
+      if (!isObj(order.quote)) E("quote", "quote должен быть объектом.");
+      else {
+        if (!isNum(order.quote.total)) E("quote.total", "В расчёте нет итоговой суммы total.");
+        else {
+          var bal = balance(order);
+          if (bal.overpaid > 0) W("payments", "Оплачено больше, чем стоит заказ: переплата " + fmtMoney(bal.overpaid) + " ₸.");
+          if (order.stage === "production" && bal.paid === 0) W("payments", "Заказ в производстве, а оплат нет.");
+        }
+        if (order.audience !== "client" && isDate(order.quote.calcAt) && isDate(order.updatedAt) && Date.parse(order.updatedAt) - Date.parse(order.quote.calcAt) > 60000) W("quote", "Заказ менялся после расчёта цены. Пересчитайте, чтобы цена была актуальной.");
+      }
+    }
+    return done();
+  }
+
+  // ---------- Миграция ----------
+
+  // Соответствие старых цен калькулятора (localStorage "kupe_prices") новому каталогу.
+  var LEGACY_PRICE = {
+    ldsp: ["materials", "ldsp16"], dvp: ["materials", "dvp3"], mirror: ["materials", "mirror4"], lacobel: ["materials", "lacobel4"],
+    fac_film: ["materials", "mdf18-film"], fac_plastic: ["materials", "mdf18-plastic"], fac_enamel: ["materials", "mdf18-enamel"], top_ldsp: ["materials", "top38"],
+    edge: ["edges", "pvc04"],
+    handle: ["hardware", "handle"], hinge: ["hardware", "hinge"], kguide: ["hardware", "kguide"], guide: ["hardware", "guide"], lift: ["hardware", "lift"],
+    leg: ["hardware", "leg"], push: ["hardware", "push"], gola: ["hardware", "gola"], rod: ["hardware", "rod"], led: ["hardware", "led"], ledpow: ["hardware", "ledpow"],
+    dryer: ["hardware", "dryer"], prof_eco: ["hardware", "prof-eco"], prof_std: ["hardware", "prof-std"], prof_prem: ["hardware", "prof-prem"]
+  };
+  var LEGACY_PRICING = { work: "workPct", markup: "markupPct", usage: "sheetUsagePct", round: "roundTo", cut: "cutPerSheet" };
+  var LEGACY_MAT = { ldsp16: "ldsp16", ldsp16f: "ldsp16", dvp: "dvp3", mdf: "mdf18-film", mirror: "mirror4", glass: "lacobel4", top38: "top38" };
+  var LEGACY_FACADE = { ldsp16f: 1, mdf: 1, mirror: 1, glass: 1 };
+  var LEGACY_TPL = { cabinet: "Шкаф распашной", tumba: "Тумба", komod: "Комод", shelf: "Стеллаж", bed: "Кровать", hall: "Прихожая", table: "Стол", empty: "Изделие" };
+
+  function guessRole(name, facade) {
+    if (facade) return "facade";
+    var n = String(name || "").toLowerCase();
+    if (n.indexOf("ящик") >= 0) return "drawer";
+    if (n.indexOf("боков") >= 0 || n.indexOf("стойк") >= 0) return "side";
+    if (n.indexOf("крыш") >= 0) return "top";
+    if (n.indexOf("дно") >= 0) return "bottom";
+    if (n.indexOf("полк") >= 0) return "shelf";
+    if (n.indexOf("перегород") >= 0) return "partition";
+    if (n.indexOf("задн") >= 0) return "back";
+    if (n.indexOf("цокол") >= 0) return "plinth";
+    if (n.indexOf("столешн") >= 0) return "countertop";
+    return "other";
+  }
+
+  // Старый код кромки 0-4 (сколько сторон) в кромку по сторонам.
+  function legacyEdges(o, a, b, code, edgeId) {
+    var or = ORIENT[o], n = Math.max(0, Math.min(4, num(code)));
+    if (!or || !n) return undefined;
+    var longS = a >= b ? or.sidesA : or.sidesB, shortS = a >= b ? or.sidesB : or.sidesA;
+    var order = [longS[0], longS[1], shortS[0], shortS[1]], out = {};
+    for (var i = 0; i < n; i++) out[order[i]] = edgeId;
+    return out;
+  }
+
+  function isLegacyState(o) { return isObj(o) && !o.format && ["kupe", "kitchen", "univ"].indexOf(o.mode) >= 0; }
+  function isLegacySaved(o) { return isObj(o) && !o.format && isLegacyState(o.state); }
+
+  function fromLegacy(src, opts, notes) {
+    var saved = isLegacySaved(src) ? src : null, s = saved ? saved.state : src;
+    var o = create();
+    o.title = saved && saved.name ? String(saved.name) : "";
+    o.client.name = s.client ? String(s.client) : "";
+    if (saved && /^\d{2}\.\d{2}\.\d{4}$/.test(saved.date || "")) {
+      var d = saved.date.split(".");
+      o.createdAt = o.updatedAt = d[2] + "-" + d[1] + "-" + d[0] + "T00:00:00.000Z";
+      o.timeline = [{ stage: "lead", done: o.createdAt.slice(0, 10) }];
+    }
+    var prices = isObj(opts.prices) ? opts.prices : null;
+    if (prices) {
+      for (var k in prices) {
+        if (LEGACY_PRICE[k]) o.catalog[LEGACY_PRICE[k][0]][LEGACY_PRICE[k][1]].price = num(prices[k]);
+        else if (LEGACY_PRICING[k]) o.pricing[LEGACY_PRICING[k]] = num(prices[k]);
+      }
+    } else notes.push("Цены взяты примерные. Чтобы перенести свои, передайте их в migrate(obj, { prices }).");
+    o.pricing.discountPct = Math.min(90, Math.max(0, num(s.disc)));
+    o.pricing.prepayPct = Math.min(100, Math.max(0, num(s.prepay, 50)));
+    o.terms.days = Math.max(1, num(s.days, 30));
+    arr(s.extras).forEach(function (x) { if (isObj(x)) o.extras.push({ id: uid("x"), kind: "item", name: String(x.name || "Своя позиция"), qty: num(x.q, 1), unit: "шт", price: num(x.p) }); });
+    var decor = s.decor ? String(s.decor) : "";
+    if (decor) o.catalog.materials.ldsp16.decor = decor;
+
+    var pr = newProduct({ type: s.mode, finish: { corpus: "ldsp16", back: "dvp3", edge: "pvc04" } });
+    if (s.mode === "univ") {
+      var u = isObj(s.u) ? s.u : {};
+      pr.name = LEGACY_TPL[u.tpl] || "Изделие";
+      pr.template = u.tpl || "empty";
+      pr.params = isObj(u.prms) && isObj(u.prms[u.tpl]) ? clone(u.prms[u.tpl]) : {};
+      pr.generator = { id: "calc-univ-" + (u.tpl || "empty"), version: 0, manual: !!u.manual };
+      arr(u.panels).forEach(function (p) {
+        if (!isObj(p)) return;
+        var matId = LEGACY_MAT[p.mat] || "ldsp16", facade = !!LEGACY_FACADE[p.mat];
+        var m = o.catalog.materials[matId];
+        var part = { id: uid("p"), name: String(p.name || ""), role: guessRole(p.name, facade), mat: matId, o: ORIENT[p.o] ? p.o : "X", x: num(p.x), y: num(p.y), z: num(p.z), a: num(p.a), b: num(p.b) };
+        if (m.kind === "sheet" && matId !== "dvp3") { var ed = legacyEdges(part.o, part.a, part.b, p.edge, "pvc04"); if (ed) part.edges = ed; }
+        pr.parts.push(part);
+      });
+      arr(u.hw).forEach(function (h) { if (isObj(h) && num(h.q) > 0) pr.hardware.push({ name: String(h.name || "Фурнитура"), qty: num(h.q), unit: "шт", price: num(h.p) }); });
+      var bb = productBounds(o, pr);
+      if (bb) pr.size = { w: bb.w, h: bb.h, d: bb.d };
+      o.extras.push({ id: uid("x"), kind: "install", name: "Доставка и сборка", qty: 1, unit: "усл", price: prices && isNum(prices.uinstall) ? prices.uinstall : 10000 });
+      o.products.push(pr);
+      recalc(o);
+      if (saved && isNum(saved.total) && saved.total !== o.quote.total) notes.push("Цена пересчитана по правилам формата: было " + fmtMoney(saved.total) + " ₸, стало " + fmtMoney(o.quote.total) + " ₸. Проверьте цены и позиции.");
+    } else {
+      var keysKupe = ["type", "W", "H", "D", "N", "DH", "ant", "back", "led", "M", "prof"];
+      var keysKitchen = ["k_layout", "k_fac", "k_Hl", "k_Hu", "k_Ht", "k_handles", "k_top", "k_cutSink", "k_cutHob", "k_apron", "k_tplinth", "k_led"];
+      pr.params = { decor: decor };
+      (s.mode === "kupe" ? keysKupe : keysKitchen).forEach(function (k) { if (s[k] !== undefined) pr.params[k] = s[k]; });
+      if (s.mode === "kupe") {
+        pr.name = "Шкаф-купе";
+        pr.size = { w: num(s.W), h: num(s.H), d: num(s.D) };
+        pr.params.secs = clone(arr(s.secs)); pr.params.doors = clone(arr(s.doors));
+      } else {
+        pr.name = "Кухня";
+        pr.params.walls = clone(arr(s.walls)).slice(0, Math.max(1, num(s.k_layout, 1)));
+      }
+      pr.generator = { id: "calc-" + s.mode, version: 0 };
+      o.products.push(pr);
+      if (saved && isNum(saved.total)) o.quote = { calcAt: o.updatedAt, currency: "KZT", total: saved.total, subtotal: saved.total, discountPct: o.pricing.discountPct, discountSum: 0, prepayPct: o.pricing.prepayPct, prepaySum: ceilTo(saved.total * o.pricing.prepayPct / 100, o.pricing.roundTo), clientLines: [{ kind: "product", ref: pr.id, name: pr.name, qty: 1, unit: "шт", sum: saved.total }], source: "legacy" };
+      notes.push('Старый расчёт "' + pr.name + '" перенесён параметрами, без списка деталей. Детали появятся, когда калькулятор построит изделие на общем движке.');
+    }
+    return o;
+  }
+
+  // Приводит объект к текущей версии формата. Возвращает { order, from, changed, notes }.
+  // Понимает: заказ текущей версии, состояние старого калькулятора (getState) и запись из его списка "Сохранённые".
+  function migrate(src, opts) {
+    opts = opts || {};
+    var notes = [];
+    if (isLegacySaved(src) || isLegacyState(src)) return { order: fromLegacy(src, opts, notes), from: "calc-legacy", changed: true, notes: notes };
+    if (!isObj(src) || src.format !== FORMAT) throw new Error("Это не заказ в формате " + FORMAT + ".");
+    var major = parseInt(String(src.version).split(".")[0], 10);
+    if (!(major >= 1)) throw new Error("Непонятная версия заказа: " + src.version + ".");
+    if (major > parseInt(VERSION, 10)) throw new Error("Заказ сохранён в более новой версии формата (" + src.version + "). Обновите инструмент.");
+    var order = clone(src), from = String(src.version);
+    // Здесь будут шаги вида: if (major === 1) { ...перевод в 2.0...; major = 2; }
+    // Младшая версия (1.0 -> 1.1) только добавляет необязательные поля и миграции не требует.
+    normalize(order);
+    return { order: order, from: from, changed: false, notes: notes };
+  }
+
+  // ---------- Импорт и экспорт ----------
+
+  // Читает текст JSON: заказ, старый расчёт или список старых расчётов. Возвращает { order, report, notes } или список таких объектов для массива.
+  function parse(text, opts) {
+    var data;
+    try { data = typeof text === "string" ? JSON.parse(text) : text; }
+    catch (e) { throw new Error("Файл не читается: это не JSON."); }
+    var one = function (obj) {
+      var m = migrate(obj, opts);
+      return { order: m.order, report: validate(m.order, opts), notes: m.notes, from: m.from };
+    };
+    return Array.isArray(data) ? data.map(one) : one(data);
+  }
+
+  function stringify(order, pretty) { return JSON.stringify(order, null, pretty === false ? 0 : 2); }
+
+  function fileName(order) {
+    var name = [order.number, (order.client && order.client.name) || order.title || "zakaz"].filter(Boolean).join(" ");
+    name = name.replace(/[\\/:*?"<>|\s]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "zakaz";
+    return name + FILE_EXT;
+  }
+
+  // Только в браузере: скачать заказ файлом.
+  function download(order) {
+    var blob = new Blob([stringify(order)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = fileName(order);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+  // Только в браузере: прочитать файл из <input type="file">. Возвращает Promise с результатом parse().
+  function readFile(file, opts) {
+    return file.text().then(function (t) { return parse(t, opts); });
+  }
+
+  // --- Заказ в ссылке: сжатый JSON в хвосте адреса после "#order=" ---
+  function b64urlEncode(bytes) {
+    var s = "";
+    for (var i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function b64urlDecode(str) {
+    var s = atob(str.replace(/-/g, "+").replace(/_/g, "/")), out = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+    return out;
+  }
+  function pipe(bytes, stream) {
+    var w = stream.writable.getWriter();
+    w.write(bytes); w.close();
+    return new Response(stream.readable).arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+  // Возвращает Promise со строкой "m1.xxxxx" (сжато) или "j1.xxxxx" (без сжатия, если браузер старый).
+  function encode(order) {
+    var bytes = new TextEncoder().encode(JSON.stringify(order));
+    if (typeof CompressionStream === "undefined") return Promise.resolve("j1." + b64urlEncode(bytes));
+    return pipe(bytes, new CompressionStream("deflate-raw")).then(function (z) { return "m1." + b64urlEncode(z); });
+  }
+  function decode(code, opts) {
+    code = String(code || "");
+    var done = function (bytes) { return parse(new TextDecoder().decode(bytes), opts); };
+    if (code.indexOf("j1.") === 0) return Promise.resolve(done(b64urlDecode(code.slice(3))));
+    if (code.indexOf("m1.") === 0) {
+      if (typeof DecompressionStream === "undefined") return Promise.reject(new Error("Этот браузер не умеет открывать сжатые ссылки. Обновите браузер."));
+      return pipe(b64urlDecode(code.slice(3)), new DecompressionStream("deflate-raw")).then(done);
+    }
+    return Promise.reject(new Error("В ссылке нет заказа."));
+  }
+  // Ссылка на страницу инструмента с заказом внутри: toLink(order, "https://.../configurator.html").
+  function toLink(order, baseUrl) {
+    return encode(order).then(function (c) { return String(baseUrl || "").split("#")[0] + "#order=" + c; });
+  }
+  // Достаёт заказ из ссылки или из location.hash. Promise с результатом parse() либо null, если заказа в ссылке нет.
+  function fromLink(url) {
+    var m = /[#&]order=([A-Za-z0-9._-]+)/.exec(String(url === undefined && typeof location !== "undefined" ? location.hash : url || ""));
+    return m ? decode(m[1]) : Promise.resolve(null);
+  }
+
+  return {
+    FORMAT: FORMAT, VERSION: VERSION, FILE_EXT: FILE_EXT,
+    STAGES: STAGES, PRODUCT_TYPES: PRODUCT_TYPES, ORIENT: ORIENT, SIDE_NAMES: SIDE_NAMES, ROLES: ROLES,
+    MATERIAL_KINDS: MATERIAL_KINDS, EXTRA_KINDS: EXTRA_KINDS, PAYMENT_KINDS: PAYMENT_KINDS, PAYMENT_METHODS: PAYMENT_METHODS, EXPENSE_CATEGORIES: EXPENSE_CATEGORIES,
+    defaultCatalog: defaultCatalog, defaultPricing: defaultPricing, defaultProduction: defaultProduction,
+    create: create, newProduct: newProduct, newModule: newModule, newPart: newPart, normalize: normalize, touch: touch, uid: uid, clone: clone,
+    resolveRef: resolveRef, getMaterial: getMaterial, getEdge: getEdge, getHardware: getHardware,
+    partDims: partDims, partBox: partBox, partWorldBox: partWorldBox, placeBox: placeBox, productBounds: productBounds,
+    eachPart: eachPart, listParts: listParts, eachHardware: eachHardware, findPart: findPart, assignMarks: assignMarks,
+    partGrain: partGrain, partEdges: partEdges, partEdgeLength: partEdgeLength, legacyEdges: legacyEdges,
+    cutList: cutList, facadeList: facadeList, bom: bom, quote: quote, recalc: recalc, balance: balance,
+    stageName: stageName, setStage: setStage, nextDue: nextDue,
+    productSummary: productSummary, clientText: clientText, waPhone: waPhone, whatsappLink: whatsappLink, forClient: forClient, fmtMoney: fmtMoney,
+    validate: validate, migrate: migrate,
+    parse: parse, stringify: stringify, fileName: fileName, download: download, readFile: readFile,
+    encode: encode, decode: decode, toLink: toLink, fromLink: fromLink
+  };
+});
+
+</script>
+<script>
+// ===== Движок раскроя: гильотинный, с пропилом, текстурой и остатками =====
+const RK = (function(){
+  // Размер заготовки под пилу: готовый размер минус толстая кромка (если включено)
+  function cutSize(p, edgeTypes, subtract){
+    let L = p.L, W = p.W;
+    if(subtract){
+      const t = k => { const e = edgeTypes[k]; return e && e.t >= 1 ? e.t : 0; };
+      L -= t(p.e.w1) + t(p.e.w2);   // кромка на коротких сторонах укорачивает длину
+      W -= t(p.e.l1) + t(p.e.l2);
+    }
+    return {L: Math.round(L*10)/10, W: Math.round(W*10)/10};
+  }
+
+  // Разворачиваем детали в штуки. w - размер вдоль листа (X, вдоль текстуры), h - поперёк
+  function expand(parts, mat, opt){
+    const items = [];
+    parts.forEach(p => {
+      const cs = cutSize(p, opt.edgeTypes, opt.subtractEdge);
+      let rot;                       // null - можно крутить, false - как есть, true - только повёрнуто
+      if(!mat.grain || p.grain === "any") rot = null;
+      else rot = p.grain === "across";
+      for(let i = 0; i < p.qty; i++) items.push({pid: p.id, n: i+1, w0: cs.L, h0: cs.W, rot});
+    });
+    return items;
+  }
+
+  const SPLITS = {
+    H:   () => true,                                   // полосы вдоль листа
+    V:   () => false,                                  // полосы поперёк листа
+    SLA: (W,H,w,h) => (W-w) < (H-h),                   // короткий остаток
+    LLA: (W,H,w,h) => (W-w) >= (H-h),                  // длинный остаток
+    MAXA:(W,H,w,h) => w*(H-h) <= h*(W-w),
+    MINA:(W,H,w,h) => w*(H-h) > h*(W-w)
+  };
+  const SCORES = {
+    BAF: (W,H,w,h) => W*H - w*h,
+    BSSF:(W,H,w,h) => Math.min(W-w, H-h),
+    BLSF:(W,H,w,h) => Math.max(W-w, H-h)
+  };
+
+  function newSheet(stock, trim){
+    const t = stock.offcut ? 0 : trim;
+    const root = {x: t, y: t, w: stock.L - 2*t, h: stock.W - 2*t, free: true};
+    return {stock, root, free: [root], placed: []};
+  }
+
+  function place(sheet, node, it, w, h, rotated, kerf, splitH){
+    const {x, y, w: W, h: H} = node;
+    sheet.free.splice(sheet.free.indexOf(node), 1);
+    node.free = false;
+    const part = {x, y, w, h, part: it, rotated};
+    sheet.placed.push(part);
+    const mk = (x,y,w,h) => { if(w <= 0 || h <= 0) return null; const n = {x,y,w,h,free:true}; sheet.free.push(n); return n; };
+    const dw = W - w, dh = H - h;
+    let inner;
+    if(splitH){
+      // сначала рез поперёк всей ширины узла, сверху остаётся полоса во всю ширину
+      inner = dw > 0 ? {x, y, w: W, h, cut: {dir: "V", at: x + w, len: h}, kids: [part, mk(x+w+kerf, y, dw-kerf, h)]} : part;
+      if(dh > 0){ node.cut = {dir: "H", at: y + h, len: W}; node.kids = [inner, mk(x, y+h+kerf, W, dh-kerf)]; }
+      else Object.assign(node, inner === part ? {kids: [part]} : {cut: inner.cut, kids: inner.kids});
+    } else {
+      inner = dh > 0 ? {x, y, w, h: H, cut: {dir: "H", at: y + h, len: w}, kids: [part, mk(x, y+h+kerf, w, dh-kerf)]} : part;
+      if(dw > 0){ node.cut = {dir: "V", at: x + w, len: H}; node.kids = [inner, mk(x+w+kerf, y, dw-kerf, H)]; }
+      else Object.assign(node, inner === part ? {kids: [part]} : {cut: inner.cut, kids: inner.kids});
+    }
+  }
+
+  function packOnce(items, stocks, opt, scoreFn, splitFn, preopen){
+    const sheets = [], unplaced = [];
+    const avail = stocks.map(s => ({s, left: s.qty == null ? Infinity : s.qty}));
+    // вариант "сначала остатки": все остатки со склада сразу лежат на столе
+    if(preopen) for(const a of avail) if(a.s.offcut) while(a.left > 0){ sheets.push(newSheet(a.s, opt.trim)); a.left--; }
+    const orients = it => it.rot === null ? (it.w0 === it.h0 ? [[it.w0,it.h0,false]] : [[it.w0,it.h0,false],[it.h0,it.w0,true]])
+                        : it.rot ? [[it.h0,it.w0,true]] : [[it.w0,it.h0,false]];
+    for(const it of items){
+      let best = null;
+      const os = orients(it);
+      for(const sh of sheets) for(const f of sh.free) for(const o of os){
+        if(o[0] <= f.w && o[1] <= f.h){
+          const sc = scoreFn(f.w, f.h, o[0], o[1]);
+          if(!best || sc < best.sc) best = {sc, sh, f, o};
+        }
+      }
+      if(!best){
+        // новый лист: сначала остатки (от меньшего), потом целые листы
+        for(const a of avail){
+          if(a.left <= 0) continue;
+          const sh = newSheet(a.s, opt.trim), f = sh.root;
+          const o = os.find(o => o[0] <= f.w && o[1] <= f.h);
+          if(o){ a.left--; sheets.push(sh); best = {sh, f, o}; break; }
+        }
+      }
+      if(!best){ unplaced.push(it); continue; }
+      place(best.sh, best.f, it, best.o[0], best.o[1], best.o[2], opt.kerf, splitFn(best.f.w, best.f.h, best.o[0], best.o[1]));
+    }
+    return {sheets: sheets.filter(sh => sh.placed.length), unplaced};
+  }
+
+  // Оценка: меньше целых листов, меньше площадь сырья, крупнее цельный остаток, меньше резов
+  function evaluate(res){
+    let full = 0, bigFree = 0, nfree = 0, offA = 0;
+    for(const sh of res.sheets){
+      if(!sh.stock.offcut) full++; else offA += sh.stock.L * sh.stock.W;
+      for(const f of sh.free){ const a = f.w*f.h; if(!sh.stock.offcut && a > bigFree) bigFree = a; nfree++; }
+    }
+    return [res.unplaced.length, full, -bigFree, nfree, offA];
+  }
+  const better = (a, b) => { for(let i = 0; i < a.length; i++){ if(a[i] !== b[i]) return a[i] < b[i]; } return false; };
+
+  function rng(seed){ let s = seed >>> 0; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296; }
+
+  function optimize(parts, mat, opt){
+    const items = expand(parts, mat, opt);
+    const stocks = (mat.offcuts || []).filter(o => o.qty > 0).map(o => ({L: o.L, W: o.W, qty: o.qty, offcut: true, name: "Остаток " + o.L + "x" + o.W}))
+      .sort((a,b) => a.L*a.W - b.L*b.W);
+    stocks.push({L: mat.L, W: mat.W, qty: null, offcut: false, name: "Лист " + mat.L + "x" + mat.W});
+
+    const splitKeys = opt.strips === "along" ? ["H"] : opt.strips === "across" ? ["V"] : Object.keys(SPLITS);
+    const orders = [
+      (a,b) => b.w0*b.h0 - a.w0*a.h0,
+      (a,b) => Math.max(b.w0,b.h0) - Math.max(a.w0,a.h0) || Math.min(b.w0,b.h0) - Math.min(a.w0,a.h0),
+      (a,b) => Math.min(b.w0,b.h0) - Math.min(a.w0,a.h0) || Math.max(b.w0,b.h0) - Math.max(a.w0,a.h0),
+      (a,b) => (b.w0+b.h0) - (a.w0+a.h0),
+      (a,b) => b.h0 - a.h0 || b.w0 - a.w0,
+      (a,b) => b.w0 - a.w0 || b.h0 - a.h0
+    ];
+    let best = null, bestEv = null, bestCfg = null, tries = 0;
+    const hasOff = stocks.length > 1;
+    const consider = (seq, sk, ck) => {
+      for(const pre of hasOff ? [false, true] : [false]){
+        const r = packOnce(seq, stocks, opt, SCORES[ck], SPLITS[sk], pre); tries++;
+        const ev = evaluate(r);
+        if(!best || better(ev, bestEv)){ best = r; bestEv = ev; bestCfg = {seq, sk, ck}; }
+      }
+    };
+    for(const ord of orders){
+      const seq = items.slice().sort(ord);
+      for(const sk of splitKeys) for(const ck of Object.keys(SCORES)) consider(seq, sk, ck);
+    }
+    // Случайные перестановки вокруг лучшего порядка, пока есть время
+    const t0 = Date.now(), budget = opt.timeMs == null ? 700 : opt.timeMs, rnd = rng(12345);
+    const cks = Object.keys(SCORES);
+    const maxTries = opt.maxTries || Infinity;
+    while(items.length > 2 && tries < maxTries && Date.now() - t0 < budget){
+      const seq = bestCfg.seq.slice(), n = seq.length, moves = 1 + Math.floor(rnd()*3);
+      for(let m = 0; m < moves; m++){
+        const i = Math.floor(rnd()*n), j = Math.floor(rnd()*n);
+        const t = seq[i]; seq[i] = seq[j]; seq[j] = t;
+      }
+      consider(seq, splitKeys[Math.floor(rnd()*splitKeys.length)], cks[Math.floor(rnd()*cks.length)]);
+    }
+    return finish(best, mat, opt, tries);
+  }
+
+  // Убираем лишние резы: если обе части после реза пустые - это один цельный кусок
+  function collapse(n){
+    if(!n || !n.kids) return;
+    n.kids.forEach(collapse);
+    const kids = n.kids.filter(Boolean);
+    if(kids.length && kids.every(k => k.free)){ delete n.cut; delete n.kids; n.free = true; }
+  }
+
+  function finish(res, mat, opt, tries){
+    const out = {mat, sheets: [], unplaced: res.unplaced, tries, totals: {}};
+    let stockArea = 0, partArea = 0, usefulArea = 0, cutLen = 0, cutN = 0;
+    for(const sh of res.sheets){
+      collapse(sh.root);
+      const cuts = [], free = [];
+      const t = sh.stock.offcut ? 0 : opt.trim;
+      if(t > 0){   // обрезка кромки листа
+        const {L, W} = sh.stock;
+        cuts.push({dir:"H", x: 0, y: t, len: L, trim: true}, {dir:"V", x: t, y: t, len: W - t, trim: true},
+                  {dir:"H", x: t, y: W - t, len: L - t, trim: true}, {dir:"V", x: L - t, y: t, len: W - 2*t, trim: true});
+      }
+      (function walk(n){
+        if(!n) return;
+        if(n.free){ free.push(n); return; }
+        if(n.cut){
+          cuts.push(n.cut.dir === "H" ? {dir:"H", x: n.x, y: n.cut.at, len: n.cut.len} : {dir:"V", x: n.cut.at, y: n.y, len: n.cut.len});
+        }
+        (n.kids || []).forEach(walk);
+      })(sh.root);
+      const offcuts = free.map(f => {
+        const a = Math.max(f.w, f.h), b = Math.min(f.w, f.h);
+        return {x: f.x, y: f.y, w: f.w, h: f.h, useful: a >= opt.minOffL && b >= opt.minOffW};
+      });
+      const sArea = sh.stock.L * sh.stock.W;
+      const pArea = sh.placed.reduce((s,p) => s + p.w*p.h, 0);
+      const uArea = offcuts.filter(o => o.useful).reduce((s,o) => s + o.w*o.h, 0);
+      const cl = cuts.reduce((s,c) => s + c.len, 0);
+      stockArea += sArea; partArea += pArea; usefulArea += uArea; cutLen += cl; cutN += cuts.length;
+      const sig = sh.stock.L + "x" + sh.stock.W + "|" + sh.placed.map(p => [p.part.pid, p.x, p.y, p.w, p.h].join(",")).sort().join(";");
+      out.sheets.push({stock: sh.stock, trim: t, placed: sh.placed, cuts, offcuts, sig, count: 1,
+        used: pArea / sArea, pArea, sArea, uArea, cutLen: cl});
+    }
+    // Одинаковые карты объединяем: "x2"
+    const merged = [];
+    for(const s of out.sheets){
+      const m = merged.find(q => q.sig === s.sig);
+      if(m) m.count++; else merged.push(s);
+    }
+    out.sheets = merged;
+    out.totals = {
+      sheets: res.sheets.filter(s => !s.stock.offcut).length,
+      offcutsUsed: res.sheets.filter(s => s.stock.offcut).length,
+      stockArea, partArea, usefulArea, cutLen, cutN,
+      used: stockArea ? partArea / stockArea : 0,
+      waste: stockArea ? (stockArea - partArea - usefulArea) / stockArea : 0
+    };
+    return out;
+  }
+
+  return {optimize, cutSize};
+})();
+
+
+</script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = n => Math.round(n).toLocaleString("ru-RU");
+const f1 = n => (Math.round(n*10)/10).toLocaleString("ru-RU");
+const mm = n => String(Math.round(n*10)/10);
+
+// Стили карты - общие для экрана и для файла на печать
+const MAP_CSS = `
+svg.sheet{display:block;width:100%;height:auto;font-family:"JetBrains Mono",ui-monospace,Consolas,monospace;border-radius:4px}
+.s-bg{fill:var(--sheet)} .s-in{fill:var(--waste)}
+.off{fill:var(--waste)} .off.use{fill:var(--off);stroke:var(--good);stroke-width:3;stroke-dasharray:18 12}
+.offt{fill:var(--muted);text-anchor:middle;dominant-baseline:central}
+.part rect{stroke:var(--ink);stroke-width:2.5;cursor:pointer}
+.part text{fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.part .pn{font-weight:600}
+.part.sel rect{stroke:var(--accent);stroke-width:12}
+.part.done rect{fill:var(--waste)!important} .part.done text{opacity:.45}
+.part .tick{display:none;stroke:var(--good);stroke-width:14;fill:none;stroke-linecap:round;pointer-events:none}
+.part.done .tick{display:block}
+.eb{stroke:var(--edge);pointer-events:none} .eb.e1{stroke-width:5} .eb.e2{stroke-width:13}
+.cut{stroke:var(--ink);opacity:.0}
+.cutn{display:none;pointer-events:none}
+.cutn circle{fill:var(--ink)} .cutn text{fill:var(--panel);text-anchor:middle;dominant-baseline:central;font-weight:600}
+.show-cuts .cutn{display:block} .show-cuts .cut{opacity:.9;stroke-dasharray:24 10}
+.grain{fill:var(--muted)}
+`;
+$("mapcss").textContent = MAP_CSS;
+
+// ---------- Данные ----------
+const GRAIN = {along:"Вдоль длины", across:"Поперёк длины", any:"Любая"};
+const ENAME = {0:"-", 1:"0.4", 2:"2"};
+const DEF_SET = {kerf:4, trim:10, strips:"auto", sub:true, stock:true, offL:400, offW:150, cutp:0, e1p:0, e2p:0};
+const DEF_MATS = () => [
+  {id:"m1", name:"ЛДСП 16", L:2800, W:2070, grain:true, price:0, offcuts:[]},
+  {id:"m2", name:"ДВП 3", L:2750, W:1700, grain:false, price:0, offcuts:[]}
+];
+const E = (l1=0,l2=0,w1=0,w2=0) => ({l1,l2,w1,w2});
+function demoParts(){
+  const P = (name,L,W,qty,mat,e,grain="along") => ({id:uid(), name, L, W, qty, mat, grain, e});
+  return [
+    P("Боковина",2000,481,2,"m1",E(2,0,1,1)),
+    P("Крыша",768,481,1,"m1",E(2,0,0,0)),
+    P("Дно",768,481,1,"m1",E(2,0,0,0)),
+    P("Полка",768,461,4,"m1",E(2,0,0,0)),
+    P("Цоколь",768,80,1,"m1",E(1,0,0,0)),
+    P("Дверь",1997,397,2,"m1",E(2,2,2,2)),
+    P("Фасад ящика",797,177,2,"m1",E(2,2,2,2),"across"),
+    P("Ящик: бок",400,120,4,"m1",E(1,0,0,0)),
+    P("Ящик: перед и зад",678,120,4,"m1",E(1,0,0,0)),
+    P("Задняя стенка",1920,796,1,"m2",E(),"any"),
+    P("Дно ящика",710,400,2,"m2",E(),"any")
+  ];
+}
+let _uid = 0;
+function uid(){ return "p" + Date.now().toString(36) + (++_uid).toString(36); }
+
+let S = {order:{name:"", client:""}, parts:[], mats:DEF_MATS(), set:Object.assign({}, DEF_SET), done:{}, locked:null, tab:"parts", demo:true};
+let R = [];           // результаты по материалам
+let ui = {cuts:false, saw:false, sel:null};
+
+function load(){
+  try{
+    const raw = localStorage.getItem("raskroy_v1");
+    if(raw){ const s = JSON.parse(raw); if(s && Array.isArray(s.parts)){ S = Object.assign(S, s); S.set = Object.assign({}, DEF_SET, s.set); return; } }
+  }catch(e){}
+  S.parts = demoParts(); S.order.name = "Шкаф распашной 800x2000x500 (пример)";
+}
+function save(){ try{ localStorage.setItem("raskroy_v1", JSON.stringify(S)); }catch(e){} }
+const matById = id => S.mats.find(m => m.id === id) || S.mats[0];
+const partNo = p => S.parts.indexOf(p) + 1;
+
+// ---------- Расчёт ----------
+let timer = null;
+function changed(now){
+  S.demo = false; save();
+  if(S.locked) return;
+  clearTimeout(timer);
+  $("sum").classList.add("busy");
+  timer = setTimeout(compute, now ? 0 : 350);
+}
+function engineOpt(){
+  const s = S.set;
+  return {kerf:+s.kerf||0, trim:+s.trim||0, minOffL:+s.offL||0, minOffW:+s.offW||0, strips:s.strips,
+    subtractEdge:!!s.sub, edgeTypes:{0:{t:0},1:{t:0.4},2:{t:2}}, timeMs:900, maxTries:4000};
+}
+function validParts(){ return S.parts.filter(p => p.L > 0 && p.W > 0 && p.qty > 0); }
+function compute(){
+  if(S.locked){ R = S.locked; renderAll(); return; }
+  const opt = engineOpt(), vp = validParts();
+  R = [];
+  S.mats.forEach(m => {
+    const ps = vp.filter(p => matById(p.mat) === m).map(p => ({id:p.id, L:+p.L, W:+p.W, qty:Math.floor(+p.qty), grain:p.grain, e:p.e}));
+    if(!ps.length) return;
+    const mat = {id:m.id, name:m.name, L:+m.L, W:+m.W, grain:!!m.grain, price:+m.price||0, offcuts:S.set.stock ? m.offcuts.map(o => ({L:+o.L, W:+o.W, qty:+o.qty})) : []};
+    const r = RK.optimize(ps, mat, opt);
+    let n = 1;
+    r.sheets.forEach(sh => { sh.from = n; n += sh.count; sh.to = n - 1; });
+    R.push(r);
+  });
+  renderAll();
+}
+function edgeMeters(){
+  const m = {1:0, 2:0};
+  validParts().forEach(p => {
+    const add = (k, len) => { if(p.e[k]) m[p.e[k]] += len * p.qty / 1000; };
+    add("l1", p.L); add("l2", p.L); add("w1", p.W); add("w2", p.W);
+  });
+  return m;
+}
+function totals(){
+  const t = {sheets:0, off:0, stock:0, part:0, useful:0, cutLen:0, cutN:0, cost:0, unplaced:0, pieces:0};
+  R.forEach(r => {
+    t.sheets += r.totals.sheets; t.off += r.totals.offcutsUsed; t.stock += r.totals.stockArea; t.part += r.totals.partArea;
+    t.useful += r.totals.usefulArea; t.cutLen += r.totals.cutLen; t.cutN += r.totals.cutN; t.unplaced += r.unplaced.length;
+    t.cost += r.totals.sheets * (r.mat.price || 0);
+    r.sheets.forEach(s => t.pieces += s.placed.length * s.count);
+  });
+  t.edge = edgeMeters();
+  t.cost += t.cutLen/1000 * (+S.set.cutp||0) + t.edge[1]*1.1*(+S.set.e1p||0) + t.edge[2]*1.1*(+S.set.e2p||0);
+  return t;
+}
+
+// ---------- Отрисовка ----------
+function renderAll(){
+  $("sum").classList.remove("busy");
+  renderSum(); renderWarns(); renderMaps(); renderLabels(); renderStock(); renderLock();
+}
+function renderSum(){
+  const t = totals();
+  const used = t.stock ? t.part/t.stock*100 : 0, waste = t.stock ? (t.stock - t.part - t.useful)/t.stock*100 : 0;
+  const cells = [
+    ["hot", t.sheets + (t.off ? " + " + t.off : ""), t.off ? "листов + остатков со склада" : "листов нужно"],
+    ["", f1(used) + "%", "площади ушло в детали"],
+    ["", f1(waste) + "%", "отходы (без деловых остатков)"],
+    ["", f1(t.cutLen/1000) + " м", t.cutN + " резов"],
+    ["", f1((t.edge[1]+t.edge[2])*1.1) + " м", "кромки с запасом 10%"]
+  ];
+  if(t.cost > 0) cells.push(["", fmt(t.cost) + " ₸", "материал, распил, кромка"]);
+  $("sum").innerHTML = cells.map(c => `<div class="${c[0]}"><b>${c[1]}</b><span>${c[2]}</span></div>`).join("");
+  $("c_parts").textContent = S.parts.reduce((s,p) => s + (+p.qty||0), 0) || "";
+  $("c_maps").textContent = R.reduce((s,r) => s + r.sheets.reduce((a,b) => a + b.count, 0), 0) || "";
+}
+function renderWarns(){
+  const w = [];
+  if(S.demo) w.push("Сейчас открыт <b>пример</b>. Нажмите \"Очистить всё\" и добавьте свои детали или вставьте список из калькулятора.");
+  R.forEach(r => {
+    const ids = [...new Set(r.unplaced.map(u => u.pid))];
+    ids.forEach(id => { const p = S.parts.find(x => x.id === id); if(p) w.push(`<b>Деталь №${partNo(p)} "${esc(p.name)}" ${p.L}x${p.W}</b> не помещается на лист ${r.mat.L}x${r.mat.W} (${esc(r.mat.name)}). Проверьте размер, направление текстуры или размер листа.`); });
+  });
+  S.parts.forEach(p => { if(!(p.L > 0 && p.W > 0 && p.qty > 0)) w.push(`Деталь №${partNo(p)} "${esc(p.name)}": заполните длину, ширину и количество - пока она не участвует в раскрое.`); });
+  $("warns").innerHTML = w.map(x => `<div class="warn" style="margin-bottom:6px">${x}</div>`).join("");
+}
+function renderLock(){
+  $("lockbar").innerHTML = S.locked ? `<div class="warn">Заказ распилен, раскрой зафиксирован и склад обновлён. Изменения деталей не пересчитываются. <button id="unlock">Разблокировать и пересчитать</button> <button id="neworder">Начать новый заказ</button></div>` : "";
+  if(S.locked){
+    $("unlock").onclick = () => { S.locked = null; changed(true); };
+    $("neworder").onclick = () => { S.locked = null; S.parts = []; S.done = {}; S.order = {name:"", client:""}; syncOrder(); renderParts(); changed(true); };
+  }
+}
+
+function edgeWidget(p, size){
+  const w = size || 58, h = Math.round(w*0.62), a = 6;
+  const c = k => "s e" + (p.e[k]||0);
+  return `<svg class="ew" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="Кромка">
+    <rect class="body" data-side="all" x="${a}" y="${a}" width="${w-2*a}" height="${h-2*a}"></rect>
+    <line class="${c("l1")}" x1="${a}" y1="${a}" x2="${w-a}" y2="${a}"></line><line class="${c("l2")}" x1="${a}" y1="${h-a}" x2="${w-a}" y2="${h-a}"></line>
+    <line class="${c("w1")}" x1="${a}" y1="${a}" x2="${a}" y2="${h-a}"></line><line class="${c("w2")}" x1="${w-a}" y1="${a}" x2="${w-a}" y2="${h-a}"></line>
+    <line class="hit" data-side="l1" x1="${a}" y1="${a}" x2="${w-a}" y2="${a}"></line><line class="hit" data-side="l2" x1="${a}" y1="${h-a}" x2="${w-a}" y2="${h-a}"></line>
+    <line class="hit" data-side="w1" x1="${a}" y1="${a}" x2="${a}" y2="${h-a}"></line><line class="hit" data-side="w2" x1="${w-a}" y1="${a}" x2="${w-a}" y2="${h-a}"></line></svg>`;
+}
+function renderParts(){
+  const mo = id => S.mats.map(m => `<option value="${m.id}" ${m.id===id?"selected":""}>${esc(m.name)}</option>`).join("");
+  const go = g => Object.keys(GRAIN).map(k => `<option value="${k}" ${k===g?"selected":""}>${GRAIN[k]}</option>`).join("");
+  let h = `<thead><tr><th class="n">№</th><th>Название</th><th>Длина, мм</th><th>Ширина, мм</th><th>Кол-во</th><th>Материал</th><th>Текстура</th><th>Кромка</th><th></th></tr></thead><tbody>`;
+  S.parts.forEach((p,i) => {
+    h += `<tr data-id="${p.id}"><td class="idx">${i+1}</td>
+      <td><input class="w-name" data-f="name" value="${esc(p.name)}" aria-label="Название"></td>
+      <td><input class="w-num" data-f="L" type="number" min="0" value="${p.L||""}" aria-label="Длина"></td>
+      <td><input class="w-num" data-f="W" type="number" min="0" value="${p.W||""}" aria-label="Ширина"></td>
+      <td><input class="w-q" data-f="qty" type="number" min="0" value="${p.qty||""}" aria-label="Количество"></td>
+      <td><select class="w-mat" data-f="mat" aria-label="Материал">${mo(p.mat)}</select></td>
+      <td><select class="w-gr" data-f="grain" aria-label="Текстура">${go(p.grain)}</select></td>
+      <td>${edgeWidget(p)}</td>
+      <td style="white-space:nowrap"><button class="ghost" data-a="dup" title="Копия">⧉</button><button class="ghost" data-a="del" title="Удалить">✕</button></td></tr>`;
+  });
+  if(!S.parts.length) h += `<tr><td colspan="9"><p class="note" style="padding:14px 4px">Деталей пока нет. Добавьте вручную или вставьте список из калькулятора, Excel или программы проектирования.</p></td></tr>`;
+  $("ptable").innerHTML = h + "</tbody>";
+}
+$("ptable").addEventListener("input", e => {
+  const tr = e.target.closest("tr[data-id]"), f = e.target.dataset.f; if(!tr || !f) return;
+  const p = S.parts.find(x => x.id === tr.dataset.id); if(!p) return;
+  p[f] = (f === "L" || f === "W" || f === "qty") ? +e.target.value : e.target.value;
+  changed();
+});
+$("ptable").addEventListener("click", e => {
+  const tr = e.target.closest("tr[data-id]"); if(!tr) return;
+  const i = S.parts.findIndex(x => x.id === tr.dataset.id), p = S.parts[i];
+  const side = e.target.dataset.side, a = e.target.dataset.a;
+  if(side){
+    if(side === "all"){ const v = (Math.max(p.e.l1,p.e.l2,p.e.w1,p.e.w2) + 1) % 3; p.e = E(v,v,v,v); }
+    else p.e[side] = ((p.e[side]||0) + 1) % 3;
+    e.target.closest("td").innerHTML = edgeWidget(p); changed();
+  } else if(a === "del"){ S.parts.splice(i,1); renderParts(); changed(); }
+  else if(a === "dup"){ S.parts.splice(i+1, 0, Object.assign({}, p, {id:uid(), e:Object.assign({}, p.e)})); renderParts(); changed(); }
+});
+$("p_add").onclick = () => {
+  S.parts.push({id:uid(), name:"Деталь", L:0, W:0, qty:1, mat:S.mats[0].id, grain:"along", e:E()});
+  renderParts(); changed();
+  const inp = $("ptable").querySelector("tbody tr:last-child input[data-f=L]"); if(inp) inp.focus();
+};
+$("p_demo").onclick = () => { S.parts = demoParts(); S.mats.length < 2 && (S.mats = DEF_MATS()); S.parts.forEach(p => { if(!S.mats.find(m => m.id === p.mat)) p.mat = S.mats[0].id; }); S.done = {}; renderParts(); changed(true); S.demo = true; };
+$("p_clear").onclick = () => { S.parts = []; S.done = {}; S.locked = null; renderParts(); changed(true); };
+
+// Материалы
+function renderMats(){
+  $("mats").innerHTML = S.mats.map((m,i) => `<div data-m="${m.id}" style="border-top:${i?"1px solid var(--line)":"0"};padding:${i?12:0}px 0 12px;display:flex;flex-direction:column;gap:8px">
+    <div class="f" style="grid-template-columns:2fr 1fr 1fr 1fr">
+      <label>Название и декор<input data-f="name" value="${esc(m.name)}"></label>
+      <label>Длина листа<input data-f="L" type="number" value="${m.L}"></label>
+      <label>Ширина листа<input data-f="W" type="number" value="${m.W}"></label>
+      <label>Цена листа, ₸<input data-f="price" type="number" value="${m.price||""}"></label>
+    </div>
+    <div class="bar"><label class="chk"><input type="checkbox" data-f="grain" ${m.grain?"checked":""}>Есть текстура (рисунок вдоль длины листа)</label><span class="sp"></span>
+      ${S.mats.length > 1 ? `<button class="ghost" data-a="mdel">Удалить материал</button>` : ""}</div>
+    <div class="lbl">Остатки на складе (длина x ширина, штук)</div>
+    ${m.offcuts.map((o,j) => `<div class="bar" data-o="${j}"><input style="width:90px" type="number" data-of="L" value="${o.L}" aria-label="Длина остатка"><span>x</span><input style="width:90px" type="number" data-of="W" value="${o.W}" aria-label="Ширина остатка"><input style="width:64px" type="number" data-of="qty" value="${o.qty}" aria-label="Штук"><span class="note">шт.</span><button class="ghost" data-a="odel" title="Удалить">✕</button></div>`).join("")}
+    <div class="bar"><button data-a="oadd">+ Остаток</button></div>
+  </div>`).join("");
+}
+$("mats").addEventListener("input", e => {
+  const box = e.target.closest("[data-m]"); if(!box) return;
+  const m = S.mats.find(x => x.id === box.dataset.m), f = e.target.dataset.f, of = e.target.dataset.of;
+  if(f) m[f] = f === "grain" ? e.target.checked : f === "name" ? e.target.value : +e.target.value;
+  if(of) m.offcuts[+e.target.closest("[data-o]").dataset.o][of] = +e.target.value;
+  if(f === "name") renderParts();
+  changed();
+});
+$("mats").addEventListener("click", e => {
+  const a = e.target.dataset.a, box = e.target.closest("[data-m]"); if(!a || !box) return;
+  const m = S.mats.find(x => x.id === box.dataset.m);
+  if(a === "oadd") m.offcuts.push({L:1000, W:500, qty:1});
+  if(a === "odel") m.offcuts.splice(+e.target.closest("[data-o]").dataset.o, 1);
+  if(a === "mdel"){ S.mats = S.mats.filter(x => x !== m); S.parts.forEach(p => { if(p.mat === m.id) p.mat = S.mats[0].id; }); renderParts(); }
+  renderMats(); changed();
+});
+$("m_add").onclick = () => { S.mats.push({id:"m" + Date.now().toString(36), name:"ЛДСП 16 (новый декор)", L:2800, W:2070, grain:true, price:0, offcuts:[]}); renderMats(); renderParts(); changed(); };
+const SET_F = {s_kerf:"kerf", s_trim:"trim", s_strips:"strips", s_sub:"sub", s_stock:"stock", s_offL:"offL", s_offW:"offW", s_cutp:"cutp", s_e1p:"e1p", s_e2p:"e2p"};
+function renderSet(){ for(const id in SET_F){ const el = $(id), v = S.set[SET_F[id]]; if(el.type === "checkbox") el.checked = !!v; else el.value = v || (el.tagName === "SELECT" ? v : (v === 0 ? "" : v)); } $("s_kerf").value = S.set.kerf; $("s_trim").value = S.set.trim; }
+for(const id in SET_F) $(id).addEventListener("input", e => { const el = e.target; S.set[SET_F[id]] = el.type === "checkbox" ? el.checked : el.tagName === "SELECT" ? el.value : +el.value; changed(); });
+
+// ---------- Карта листа ----------
+function fitText(cx, cy, w, h, lines, cls, maxF){
+  const rot = h > w * 1.25, aw = rot ? h : w, ah = rot ? w : h;
+  // варианты от подробного к короткому: 3 строки, 2 строки, одна строка "№ и размер", только номер
+  const vars = [lines];
+  if(lines.length > 2) vars.push(lines.slice(0, 2));
+  if(lines.length > 1) vars.push([lines[0] + " " + lines[1]], [lines[0]]);
+  let ls, f = 0;
+  for(const v of vars){
+    const mc = Math.max(...v.map(l => l.length));
+    ls = v; f = Math.min(maxF || 64, aw * 0.9 / (mc * 0.62), ah * 0.86 / (v.length * 1.2));
+    if(f >= 34) break;
+  }
+  if(f < 12) return "";
+  const lh = f * 1.2, y0 = -(ls.length - 1) * lh / 2;
+  return `<g transform="translate(${cx} ${cy})${rot ? " rotate(-90)" : ""}">` + ls.map((l,i) => `<text class="${i === 0 ? cls : ""}" y="${y0 + i*lh}" font-size="${(i === 0 ? f : f*0.82).toFixed(1)}">${esc(l)}</text>`).join("") + `</g>`;
+}
+function hue(pid){ const i = S.parts.findIndex(p => p.id === pid); return (i * 47 + 28) % 360; }
+function sheetSVG(r, sh){
+  const {L, W} = sh.stock, t = sh.trim, pad = 8;
+  let s = `<svg class="sheet" viewBox="${-pad} ${-pad} ${L+2*pad} ${W+2*pad}" xmlns="http://www.w3.org/2000/svg">`;
+  s += `<rect class="s-bg" x="0" y="0" width="${L}" height="${W}"></rect><rect class="s-in" x="${t}" y="${t}" width="${L-2*t}" height="${W-2*t}"></rect>`;
+  sh.offcuts.forEach(o => {
+    s += `<rect class="off${o.useful ? " use" : ""}" x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}"></rect>`;
+    if(o.useful) s += fitText(o.x + o.w/2, o.y + o.h/2, o.w, o.h, [Math.floor(o.w) + "x" + Math.floor(o.h)], "offt", 44).replace(/<text class="offt"/g, '<text class="offt"').replace(/<text class=""/g, '<text class="offt"');
+  });
+  sh.placed.forEach(p => {
+    const src = S.parts.find(x => x.id === p.part.pid) || {name:"", e:E()}, no = partNo(src) || "?";
+    const key = p.part.pid + ":" + p.part.n;
+    s += `<g class="part${S.done[key] ? " done" : ""}${ui.sel === p.part.pid ? " sel" : ""}" data-pid="${p.part.pid}" data-key="${key}">`;
+    s += `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" style="fill:hsl(${hue(p.part.pid)} 45% var(--pl))"></rect>`;
+    // кромка: l1/l2 - стороны вдоль длины детали, w1/w2 - торцы
+    const e = src.e, d = 11, sides = p.rotated
+      ? {l1:[p.x+d,p.y,p.x+d,p.y+p.h], l2:[p.x+p.w-d,p.y,p.x+p.w-d,p.y+p.h], w1:[p.x,p.y+d,p.x+p.w,p.y+d], w2:[p.x,p.y+p.h-d,p.x+p.w,p.y+p.h-d]}
+      : {l1:[p.x,p.y+d,p.x+p.w,p.y+d], l2:[p.x,p.y+p.h-d,p.x+p.w,p.y+p.h-d], w1:[p.x+d,p.y,p.x+d,p.y+p.h], w2:[p.x+p.w-d,p.y,p.x+p.w-d,p.y+p.h]};
+    for(const k in sides) if(e[k]){ const q = sides[k]; s += `<line class="eb e${e[k]}" x1="${q[0]}" y1="${q[1]}" x2="${q[2]}" y2="${q[3]}"></line>`; }
+    s += fitText(p.x + p.w/2, p.y + p.h/2, p.w - 30, p.h - 30, ["№" + no, mm(p.w) + "x" + mm(p.h), src.name.slice(0, 18)], "pn");
+    const c = Math.min(p.w, p.h) * 0.22;
+    s += `<path class="tick" d="M${p.x+p.w/2-c} ${p.y+p.h/2} l${c*0.7} ${c*0.7} l${c*1.3} ${-c*1.4}"></path></g>`;
+  });
+  const k = Math.max(+r_kerf(), 3);
+  sh.cuts.forEach((c, i) => {
+    const o = c.trim ? 0 : r_kerf()/2;
+    const x1 = c.dir === "H" ? c.x : c.x + o, y1 = c.dir === "H" ? c.y + o : c.y, x2 = c.dir === "H" ? c.x + c.len : x1, y2 = c.dir === "H" ? y1 : c.y + c.len;
+    s += `<line class="cut" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke-width="${k}"></line>`;
+    s += `<g class="cutn" transform="translate(${(x1+x2)/2} ${(y1+y2)/2})"><circle r="30"></circle><text font-size="32">${i+1}</text></g>`;
+  });
+  if(r.mat.grain) s += `<text class="grain" x="${L-t-12}" y="${W-t-14}" font-size="34" text-anchor="end">текстура ⟷</text>`;
+  return s + "</svg>";
+}
+function r_kerf(){ return +S.set.kerf || 0; }
+function sheetTitle(sh){ return (sh.count > 1 ? `Листы ${sh.from}-${sh.to}` : `Лист ${sh.from}`) + (sh.stock.offcut ? " (остаток со склада)" : ""); }
+function renderMaps(){
+  let h = "";
+  R.forEach((r, ri) => {
+    const t = r.totals, useful = r.sheets.reduce((a,s) => a + s.offcuts.filter(o => o.useful).length * s.count, 0);
+    h += `<div class="card"><div class="bar"><h2>${esc(r.mat.name)}</h2><span class="note">лист ${r.mat.L}x${r.mat.W}${r.mat.grain ? ", с текстурой" : ", без текстуры"}</span></div>
+      <div class="chips"><span class="chip">листов <b>${t.sheets}</b></span>${t.offcutsUsed ? `<span class="chip good">остатков со склада <b>${t.offcutsUsed}</b></span>` : ""}
+      <span class="chip">в детали <b>${f1(t.used*100)}%</b></span><span class="chip">отходы <b>${f1(t.waste*100)}%</b></span>
+      <span class="chip">резов <b>${t.cutN}</b>, <b>${f1(t.cutLen/1000)}</b> м</span>${useful ? `<span class="chip good">деловых остатков <b>${useful}</b></span>` : ""}</div>
+      <div class="sheets">`;
+    r.sheets.forEach((sh, si) => {
+      h += `<div class="sh" data-r="${ri}" data-s="${si}"><div class="sh-h"><b>${sheetTitle(sh)}${sh.count > 1 ? ` - одинаковые, ${sh.count} шт.` : ""}</b><span>${sh.stock.L}x${sh.stock.W} · ${f1(sh.used*100)}% · ${sh.placed.length} дет.</span></div>${sheetSVG(r, sh)}</div>`;
+    });
+    h += `</div></div>`;
+  });
+  if(!R.length) h = `<div class="card"><p class="note">Добавьте детали на вкладке "Детали" - карты появятся здесь.</p></div>`;
+  const box = $("maps"); box.innerHTML = h; box.classList.toggle("show-cuts", ui.cuts);
+  let tot = 0, dn = 0;
+  R.forEach(r => r.sheets.forEach(s => s.placed.forEach(p => { tot++; if(S.done[p.part.pid + ":" + p.part.n]) dn++; })));
+  $("doneChip").innerHTML = `выпилено <b>${dn}</b> из <b>${tot}</b>`;
+}
+$("maps").addEventListener("click", e => {
+  const g = e.target.closest(".part"); if(!g){ return; }
+  const key = g.dataset.key, pid = g.dataset.pid;
+  if(ui.saw){ if(S.done[key]) delete S.done[key]; else S.done[key] = true; save(); renderMaps(); return; }
+  ui.sel = ui.sel === pid ? null : pid; renderMaps(); renderPick(key);
+});
+function edgeText(p){
+  const n = {l1:"длинная 1", l2:"длинная 2", w1:"торец 1", w2:"торец 2"}, a = [];
+  for(const k in n) if(p.e[k]) a.push(n[k] + " - " + ENAME[p.e[k]] + " мм");
+  return a.length ? a.join(", ") : "без кромки";
+}
+function renderPick(key){
+  const p = S.parts.find(x => x.id === ui.sel), box = $("pick");
+  if(!p){ box.classList.remove("on"); return; }
+  const cs = RK.cutSize(p, engineOpt().edgeTypes, S.set.sub), where = [];
+  R.forEach(r => r.sheets.forEach(s => { const c = s.placed.filter(q => q.part.pid === p.id).length; if(c) where.push(sheetTitle(s).replace(/ \(.*/, "") + ": " + c * s.count + " шт."); }));
+  box.innerHTML = `<span class="big">№${partNo(p)}</span>${edgeWidget(p, 70)}
+    <div class="sp"><b>${esc(p.name)}</b> · ${esc(matById(p.mat).name)} · ${p.qty} шт.<br><span class="note">Готовый размер ${p.L}x${p.W}, пилить ${mm(cs.L)}x${mm(cs.W)}. Кромка: ${edgeText(p)}. ${where.join("; ")}${p.note ? " Примечание: " + esc(p.note) : ""}</span></div>
+    <button id="pk_done">${S.done[key] ? "Снять отметку" : "Эта деталь выпилена"}</button><button class="ghost" id="pk_x">Закрыть</button>`;
+  box.classList.add("on");
+  $("pk_done").onclick = () => { if(S.done[key]) delete S.done[key]; else S.done[key] = true; save(); renderMaps(); renderPick(key); };
+  $("pk_x").onclick = () => { ui.sel = null; box.classList.remove("on"); renderMaps(); };
+}
+$("v_cuts").onclick = e => { ui.cuts = !ui.cuts; e.target.classList.toggle("on", ui.cuts); $("maps").classList.toggle("show-cuts", ui.cuts); };
+$("v_saw").onclick = e => { ui.saw = !ui.saw; e.target.classList.toggle("on", ui.saw); ui.sel = null; $("pick").classList.remove("on"); renderMaps(); toast(ui.saw ? "Режим распила: нажатие на деталь отмечает её выпиленной" : "Режим распила выключен"); };
+$("v_reset").onclick = () => { S.done = {}; save(); renderMaps(); };
+
+// ---------- Этикетки ----------
+function labelList(){
+  const out = [];
+  R.forEach(r => r.sheets.forEach(sh => sh.placed.forEach(pl => {
+    const p = S.parts.find(x => x.id === pl.part.pid); if(!p) return;
+    for(let c = 0; c < sh.count; c++) out.push({p, r, sheet: sh.from + c, pl});
+  })));
+  out.sort((a,b) => partNo(a.p) - partNo(b.p) || a.sheet - b.sheet);
+  return out;
+}
+function labelsHTML(){
+  const et = engineOpt().edgeTypes;
+  return labelList().map(l => { const cs = RK.cutSize(l.p, et, S.set.sub); return `<div class="lab">
+    <span class="no">№${partNo(l.p)}</span>${edgeWidget(l.p, 62)}
+    <span class="nm">${esc(l.p.name)}</span>
+    <span class="sz">${l.p.L} x ${l.p.W}</span>
+    <small>${esc(l.r.mat.name)} · лист ${l.sheet} · пилить ${mm(cs.L)}x${mm(cs.W)}</small>
+    <small>${esc(edgeText(l.p))}${l.p.mark ? " · марка " + esc(l.p.mark) : ""}</small>${l.p.note ? `<small>${esc(l.p.note)}</small>` : ""}
+    ${S.order.name || S.order.client ? `<small>${esc([S.order.name, S.order.client].filter(Boolean).join(" · "))}</small>` : ""}</div>`; }).join("");
+}
+function renderLabels(){ $("labels").innerHTML = labelsHTML() || `<p class="note">Этикетки появятся после раскроя.</p>`; }
+
+// ---------- Печать и выгрузка ----------
+const PRINT_CSS = `:root{--bg:#fff;--panel:#fff;--ink:#111;--muted:#555;--line:#bbb;--accent:#17695a;--edge:#d4480f;--good:#1f7a3d;--sheet:#bdbdbd;--pl:90%;--off:#eef6ea;--waste:#e3e3e3}
+*{box-sizing:border-box}body{font-family:system-ui,"Segoe UI",Roboto,Arial,sans-serif;font-size:12px;color:#111;margin:0;padding:10mm}
+h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;margin:0}p{margin:2px 0}
+table{border-collapse:collapse;width:100%;margin-top:6px}th,td{border:1px solid #bbb;padding:3px 6px;text-align:left;font-size:11px}td.n{text-align:right;font-family:Consolas,monospace}
+.pg{page-break-after:always;break-after:page}.pg:last-child{page-break-after:auto}
+.hd{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:4px}
+.tb{position:sticky;top:0;background:#fff;padding:8px 0;margin-bottom:8px;border-bottom:1px solid #bbb}.tb button{font-size:15px;padding:8px 16px}
+.labels{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm}
+.lab{border:1px dashed #999;padding:2.5mm 3mm;display:grid;grid-template-columns:1fr auto;gap:1px 6px;break-inside:avoid;page-break-inside:avoid}
+.lab .no{font-family:Consolas,monospace;font-size:20px;font-weight:700;line-height:1}.lab .sz{font-family:Consolas,monospace;font-size:14px;font-weight:700}
+.lab small{color:#444;font-size:9.5px;grid-column:1/-1}.lab .nm{grid-column:1;font-size:12px}.lab svg{grid-column:2;grid-row:1/4;align-self:center}
+.ew .body{fill:#f4f4f4;stroke:#999}.ew .s{stroke:#bbb;stroke-width:1.5}.ew .s.e1{stroke:var(--edge);stroke-width:2.5}.ew .s.e2{stroke:var(--edge);stroke-width:6}.ew .hit{stroke:none}
+@page{size:A4 landscape;margin:8mm}
+@media print{body{padding:0}.tb{display:none}svg.sheet{max-height:150mm;width:auto;max-width:100%}}`;
+function docShell(title, body, portrait){
+  return `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>${esc(title)}</title><style>${PRINT_CSS}${MAP_CSS}${portrait ? "@page{size:A4 portrait;margin:8mm}" : ""}</style></head><body>
+<div class="tb"><button onclick="window.print()">Печать</button></div>${body}</body></html>`;
+}
+function orderLine(){ return [S.order.name || "Заказ без названия", S.order.client, new Date().toLocaleDateString("ru-RU")].filter(Boolean).join(" · "); }
+function partsTable(filter){
+  const et = engineOpt().edgeTypes;
+  let h = `<table><tr><th>№</th><th>Название</th><th>Материал</th><th>Готовый размер</th><th>Пилить</th><th>Кол-во</th><th>Текстура</th><th>Кромка</th></tr>`;
+  S.parts.forEach(p => { const q = filter ? filter(p) : p.qty; if(!q) return; const cs = RK.cutSize(p, et, S.set.sub);
+    h += `<tr><td class="n">${partNo(p)}</td><td>${esc(p.name)}</td><td>${esc(matById(p.mat).name)}</td><td class="n">${p.L} x ${p.W}</td><td class="n">${mm(cs.L)} x ${mm(cs.W)}</td><td class="n">${q}</td><td>${GRAIN[p.grain]}</td><td>${esc(edgeText(p))}</td></tr>`; });
+  return h + "</table>";
+}
+function mapsDoc(){
+  const t = totals();
+  let b = `<div class="pg"><h1>Карта раскроя</h1><p>${esc(orderLine())}</p>
+    <p>Листов: <b>${t.sheets}</b>${t.off ? `, остатков со склада: <b>${t.off}</b>` : ""}. Резов: ${t.cutN}, ${f1(t.cutLen/1000)} м. Кромка 0.4 мм: ${f1(t.edge[1]*1.1)} м, кромка 2 мм: ${f1(t.edge[2]*1.1)} м (с запасом 10%).</p>
+    <p>Пропил ${S.set.kerf} мм, обрезка края листа ${S.set.trim} мм. На картах указаны размеры пиления${S.set.sub ? " (уже за вычетом кромки 2 мм)" : ""}. Оранжевая линия у края детали - кромка: тонкая 0.4 мм, толстая 2 мм.</p>
+    ${R.map(r => `<p><b>${esc(r.mat.name)}</b>, лист ${r.mat.L}x${r.mat.W}: ${r.totals.sheets} шт.${r.totals.offcutsUsed ? " + остатков " + r.totals.offcutsUsed : ""}, в детали ${f1(r.totals.used*100)}%, отходы ${f1(r.totals.waste*100)}%</p>`).join("")}
+    ${partsTable()}</div>`;
+  const was = ui.sel; ui.sel = null;
+  R.forEach(r => r.sheets.forEach(sh => {
+    const offs = sh.offcuts.filter(o => o.useful).map(o => Math.floor(o.w) + "x" + Math.floor(o.h));
+    b += `<div class="pg"><div class="hd"><h2>${esc(r.mat.name)} - ${sheetTitle(sh)}${sh.count > 1 ? ` (пилить ${sh.count} одинаковых)` : ""}</h2><span>${esc(orderLine())} · ${sh.stock.L}x${sh.stock.W} · заполнение ${f1(sh.used*100)}%</span></div>
+      <div class="show-cuts">${sheetSVG(r, sh)}</div>
+      <p>Цифры в кружках - порядок резов. ${offs.length ? "Деловые остатки: " + offs.join(", ") + "." : ""}</p></div>`;
+  }));
+  ui.sel = was;
+  return docShell("Карта раскроя - " + (S.order.name || "заказ"), b);
+}
+function labelsDoc(){ return docShell("Этикетки - " + (S.order.name || "заказ"), `<div class="labels">${labelsHTML()}</div>`, true); }
+function csv(){
+  const et = engineOpt().edgeTypes, q = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const rows = [["№","Наименование","Материал","Длина пиления","Ширина пиления","Кол-во","Текстура","Кромка длинная 1","Кромка длинная 2","Кромка торец 1","Кромка торец 2","Готовая длина","Готовая ширина"]];
+  validParts().forEach(p => { const cs = RK.cutSize(p, et, S.set.sub);
+    rows.push([partNo(p), p.name, matById(p.mat).name, mm(cs.L), mm(cs.W), p.qty, GRAIN[p.grain], ENAME[p.e.l1], ENAME[p.e.l2], ENAME[p.e.w1], ENAME[p.e.w2], p.L, p.W]); });
+  return "﻿" + rows.map(r => r.map(q).join(";")).join("\r\n");
+}
+function shopText(){
+  const et = engineOpt().edgeTypes, t = totals();
+  let s = `Заказ на распил: ${orderLine()}\n`;
+  R.forEach(r => {
+    s += `\n${r.mat.name}, лист ${r.mat.L}x${r.mat.W} - ${r.totals.sheets} шт.\n`;
+    validParts().filter(p => matById(p.mat).id === r.mat.id).forEach(p => { const cs = RK.cutSize(p, et, S.set.sub);
+      s += `${partNo(p)}. ${p.name}: ${mm(cs.L)}x${mm(cs.W)} - ${p.qty} шт.${r.mat.grain ? ", текстура: " + GRAIN[p.grain].toLowerCase() : ""}, кромка: ${edgeText(p)}\n`; });
+  });
+  s += `\nКромка 0.4 мм: ${f1(t.edge[1]*1.1)} м, кромка 2 мм: ${f1(t.edge[2]*1.1)} м. Размеры - под пилу${S.set.sub ? ", кромка 2 мм уже вычтена" : ""}.`;
+  return s;
+}
+function projectJSON(){
+  return JSON.stringify({format:"mebel-raskroy", version:1, order:S.order, materials:S.mats, settings:S.set,
+    parts:S.parts.map((p,i) => ({no:i+1, name:p.name, length:p.L, width:p.W, qty:p.qty, material:p.mat, grain:p.grain, edge:p.e}))}, null, 2);
+}
+
+let DL = null;
+try{ if(window.claude && window.claude.use) window.claude.use("downloads").then(d => { DL = d; }).catch(() => {}); }catch(e){}
+async function saveFile(name, data){
+  if(DL){
+    try{ await DL.save({filename:name, data}); toast("Файл сохранён: " + name); return; }
+    catch(e){ if(e && e.code === "declined") return; }
+  }
+  let framed = true; try{ framed = window.top !== window; }catch(e){}
+  if(!framed){
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data])); a.download = name; document.body.appendChild(a); a.click(); a.remove(); return;
+  }
+  openModal({title:name, note:"Сохранить файл здесь не получилось. Скопируйте текст и вставьте его в файл с таким именем.", text:data});
+}
+async function copyText(t){
+  try{ await navigator.clipboard.writeText(t); toast("Скопировано"); }
+  catch(e){ openModal({title:"Скопируйте текст", note:"Выделите всё и скопируйте.", text:t}); }
+}
+const fileBase = () => (S.order.name || "raskroy").replace(/[^\wа-яА-ЯёЁ\- ]+/g, "").trim().replace(/\s+/g, "-").slice(0, 40) || "raskroy";
+$("x_print").onclick = () => saveFile("karty-" + fileBase() + ".html", mapsDoc());
+$("l_print").onclick = () => saveFile("etiketki-" + fileBase() + ".html", labelsDoc());
+$("x_csv").onclick = () => saveFile("raspil-" + fileBase() + ".csv", csv());
+$("x_text").onclick = () => copyText(shopText());
+$("x_json").onclick = () => saveFile("proekt-" + fileBase() + ".json", projectJSON());
+$("x_load").onclick = () => openImport();
+
+// Склад
+function renderStock(){
+  const a = [];
+  S.mats.forEach(m => m.offcuts.forEach(o => { if(o.qty > 0) a.push(`${esc(m.name)}: ${o.L}x${o.W} - ${o.qty} шт.`); }));
+  $("stockList").innerHTML = a.length ? "На складе: " + a.join("; ") : "Склад остатков пуст.";
+  $("x_stock").disabled = !!S.locked || !R.length;
+}
+$("x_stock").onclick = () => {
+  R.forEach(r => {
+    const m = S.mats.find(x => x.id === r.mat.id); if(!m) return;
+    r.sheets.forEach(sh => {
+      if(sh.stock.offcut){ const o = m.offcuts.find(o => +o.L === sh.stock.L && +o.W === sh.stock.W && o.qty > 0); if(o) o.qty -= Math.min(o.qty, sh.count); }
+      sh.offcuts.filter(o => o.useful).forEach(o => {
+        const L = Math.floor(Math.max(o.w, o.h)), W = Math.floor(Math.min(o.w, o.h));
+        // у материала с текстурой остаток хранится как лежит: длина вдоль текстуры
+        const oL = m.grain ? Math.floor(o.w) : L, oW = m.grain ? Math.floor(o.h) : W;
+        const ex = m.offcuts.find(q => +q.L === oL && +q.W === oW);
+        if(ex) ex.qty += sh.count; else m.offcuts.push({L:oL, W:oW, qty:sh.count});
+      });
+    });
+    m.offcuts = m.offcuts.filter(o => o.qty > 0);
+  });
+  S.locked = JSON.parse(JSON.stringify(R)); save(); renderMats(); renderAll();
+  toast("Склад обновлён, раскрой зафиксирован");
+};
+
+// ---------- Импорт ----------
+function findMat(name){
+  const n = String(name || "").toLowerCase().trim(); if(!n) return S.mats[0].id;
+  const key = {ldsp16:"лдсп", ldsp16f:"лдсп", dvp:"двп"}[n];
+  let m = S.mats.find(x => x.id === name) || S.mats.find(x => x.name.toLowerCase() === n) || S.mats.find(x => x.name.toLowerCase().includes(key || n) || n.includes(x.name.toLowerCase()));
+  if(!m && /двп|хдф|hdf/.test(n)) m = S.mats.find(x => /двп|хдф/i.test(x.name));
+  if(!m && /лдсп/.test(n) && !/фасад/.test(n)) m = S.mats.find(x => /лдсп/i.test(x.name));
+  if(!m){ m = {id:"m" + Date.now().toString(36) + S.mats.length, name:String(name).trim().slice(0, 40), L:2800, W:2070, grain:!/двп|хдф|мдф|бел/i.test(n), price:0, offcuts:[]}; S.mats.push(m); }
+  return m.id;
+}
+function edgeFrom(v){
+  if(v && typeof v === "object") return E(+v.l1||0, +v.l2||0, +v.w1||0, +v.w2||0);
+  const s = String(v == null ? "" : v).toLowerCase();
+  const n = /все|4/.test(s) ? 4 : /3/.test(s) ? 3 : /2/.test(s) ? 2 : /1/.test(s) ? 1 : 0;
+  return [E(), E(1), E(1,1), E(1,1,1), E(1,1,1,1)][n];
+}
+function parseImport(text){
+  const out = [], skipped = [];
+  const push = (name, L, W, qty, mat, grain, e) => { if(L > 0 && W > 0) out.push({id:uid(), name:String(name || "Деталь").trim().slice(0, 60) || "Деталь", L:Math.round(L), W:Math.round(W), qty:Math.max(1, Math.round(qty) || 1), mat:findMat(mat), grain:grain || "along", e:e || E()}); };
+  const t = text.trim();
+  if(t[0] === "{" || t[0] === "["){
+    const j = JSON.parse(t);
+    if(j.format === "mebel-raskroy"){ return {project:j}; }
+    if(j && !Array.isArray(j) && Array.isArray(j.products) && window.MebelOrder){
+      // общий формат заказа проекта: берём готовый список на распил
+      const o = MebelOrder.parse(j).order, mats = [], parts = [];
+      MebelOrder.cutList(o, {group:true}).forEach(c => {
+        const mn = (c.material.name + (c.material.decor ? ", " + c.material.decor : "")).slice(0, 60);
+        let m = mats.find(x => x.name === mn);
+        if(!m){ m = {id:"m" + (mats.length + 1), name:mn, L:c.material.sheet.w, W:c.material.sheet.h, grain:!!c.material.grain, price:0, offcuts:[]}; mats.push(m); }
+        const ev = e => !e ? 0 : e.t >= 1 ? 2 : 1, ed = c.edges || {};
+        parts.push({id:uid(), mark:c.mark, name:c.name + (c.module ? " (" + c.module.name + ")" : ""), L:c.length, W:c.width, qty:c.qty, mat:m.id,
+          grain:c.canRotate || c.grain === "any" ? "any" : "along", e:E(ev(ed.L1), ev(ed.L2), ev(ed.W1), ev(ed.W2)), note:c.note || ""});
+      });
+      return {order:{o, mats, parts}};
+    }
+    const u = j.u || (j.state && j.state.u);
+    const arr = Array.isArray(j) ? j : j.parts || j.panels || j.details || (u && u.panels) || [];
+    const sheetKeys = {ldsp16:"ЛДСП 16", ldsp16f:"ЛДСП 16", dvp:"ДВП 3"};
+    arr.forEach(p => {
+      if(p.o && p.mat && !Array.isArray(j) || (p.o && "a" in p)){
+        // деталь из калькулятора: у фронтальных деталей текстура идёт по высоте (b)
+        if(!sheetKeys[p.mat]){ skipped.push(p.name); return; }
+        const L = p.o === "Z" ? p.b : p.a, W = p.o === "Z" ? p.a : p.b, big = Math.max(L, W) === L;
+        let e = edgeFrom(p.edge); if(!big && (p.edge === 1 || p.edge === 2)) e = p.edge === 1 ? E(0,0,1,0) : E(0,0,1,1);
+        if(!big && p.edge === 3) e = E(1,0,1,1);
+        push(p.name, L, W, 1, sheetKeys[p.mat], p.mat === "dvp" ? "any" : "along", e);
+      } else {
+        push(p.name || p.title, +(p.length || p.L || p.l || p.a), +(p.width || p.W || p.w || p.b), +(p.qty || p.q || p.count || 1), p.material || p.mat, p.grain, p.edge != null ? edgeFrom(p.edge) : null);
+      }
+    });
+  } else {
+    t.split(/\r?\n/).forEach(line => {
+      line = line.trim(); if(!line) return;
+      if(/[\t;]/.test(line)){
+        const cells = line.split(/[\t;]/).map(c => c.trim()), nums = [], strs = [];
+        cells.forEach(c => { const v = +c.replace(",", ".").replace(/\s/g, ""); if(c !== "" && isFinite(v)) nums.push(v); else if(c) strs.push(c); });
+        if(nums.length >= 2 && nums[0] > 0){ const hasNo = nums.length >= 4 && nums[0] < 1000 && Number.isInteger(nums[0]) && nums[1] > 20; const n = hasNo ? nums.slice(1) : nums; push(strs[0], n[0], n[1], n[2] || 1, strs[1]); }
+        return;
+      }
+      const m = line.match(/(\d+(?:[.,]\d+)?)\s*[x×хХX*]\s*(\d+(?:[.,]\d+)?)/); if(!m) return;
+      const a = +m[1].replace(",", "."), b = +m[2].replace(",", ".");
+      const rest = line.slice(m.index + m[0].length), q = rest.match(/(\d+)\s*шт/) || rest.match(/[-–x×х*]\s*(\d+)/) || rest.match(/(\d+)/);
+      let head = line.slice(0, m.index).replace(/^\s*\d+[.)]\s*/, "").replace(/[:\-–\s]+$/, ""), mat = "", name = head;
+      const pm = head.match(/^(.*)\(([^)]+)\)\s*$/);
+      if(pm){ name = pm[1].trim(); mat = pm[2]; }
+      else if(/лдсп|двп|мдф|хдф/i.test(head)){ mat = head; name = "Деталь"; }
+      if(/зеркал|лакобель|стекл|столешниц|мдф/i.test(mat)){ skipped.push(head); return; }
+      const em = rest.match(/кромка:?\s*([^)]+)/i);
+      push(name, Math.max(a, b), Math.min(a, b), q ? +q[1] : 1, mat, /двп|хдф/i.test(mat) ? "any" : "along", em ? edgeFrom(em[1]) : null);
+    });
+  }
+  return {parts:out, skipped};
+}
+function openImport(){
+  openModal({title:"Вставить список деталей", ok:"Добавить детали",
+    file:true, note:"Подходит: файл заказа из калькулятора (.mebel.json), список на распил текстом (\"ЛДСП 16: 2000x500 - 2 шт.\"), строки из Excel (название, длина, ширина, количество, материал) или сохранённый проект.",
+    text:"", onOk:applyImport});
+}
+// Разбирает текст или заказ и кладёт детали в проект. Возвращает true, если что-то открыто.
+// Вызывается из окна "Вставить" и с сайта, когда заказ передан из другого инструмента.
+function applyImport(text){
+    {
+      let r; try{ r = parseImport(text); }catch(e){ toast("Не получилось прочитать: проверьте, что текст скопирован целиком"); return false; }
+      if(r.order){ const {o, mats, parts} = r.order;
+        if(!parts.length){ toast("В заказе нет деталей из листовых материалов"); return false; }
+        // склад остатков и цены листов сохраняем для материалов с тем же названием
+        mats.forEach(m => { const old = S.mats.find(x => x.name === m.name); if(old){ m.offcuts = old.offcuts; m.price = old.price; } });
+        S.mats = mats; S.parts = parts; S.done = {}; S.locked = null;
+        S.order = {name:[o.number, o.title].filter(Boolean).join(" "), client:(o.client && o.client.name) || ""};
+        const pr = o.production || {};
+        if(pr.kerf != null) S.set.kerf = pr.kerf; if(pr.sheetTrim != null) S.set.trim = pr.sheetTrim; if(pr.subtractEdge != null) S.set.sub = !!pr.subtractEdge;
+        syncOrder(); renderSet(); renderMats(); renderParts(); changed(true); setTab("maps"); toast("Заказ открыт, деталей: " + parts.reduce((a,p) => a + p.qty, 0)); return true; }
+      if(r.project){ const j = r.project; S.order = j.order || S.order; S.mats = j.materials || S.mats; S.set = Object.assign({}, DEF_SET, j.settings);
+        S.parts = (j.parts || []).map(p => ({id:uid(), name:p.name, L:+p.length, W:+p.width, qty:+p.qty, mat:p.material, grain:p.grain || "along", e:edgeFrom(p.edge)}));
+        S.done = {}; S.locked = null; syncOrder(); renderSet(); renderMats(); renderParts(); changed(true); toast("Проект открыт"); return true; }
+      if(!r.parts.length){ toast("Не нашёл деталей. Нужны строки с размерами вида 2000x500"); return false; }
+      if(S.demo) S.parts = [];
+      S.parts.push(...r.parts); renderMats(); renderParts(); changed(true);
+      toast("Добавлено деталей: " + r.parts.length + (r.skipped.length ? ". Пропущено (не листовой материал): " + r.skipped.length : ""));
+      return true;
+    }
+}
+$("p_import").onclick = openImport;
+
+// ---------- Окно, вкладки, мелочи ----------
+let mdOk = null;
+function openModal(o){
+  $("md_title").textContent = o.title; $("md_note").textContent = o.note || ""; $("md_text").value = o.text || "";
+  $("md_ok").textContent = o.ok || ""; $("md_ok").classList.toggle("hide", !o.onOk); $("md_copy").classList.toggle("hide", !!o.onOk);
+  $("md_filebox").classList.toggle("hide", !o.file); $("md_file").value = "";
+  mdOk = o.onOk || null; $("modal").classList.add("on"); $("md_text").focus(); if(!o.onOk) $("md_text").select();
+}
+$("md_ok").onclick = () => { if(mdOk && mdOk($("md_text").value) !== false) $("modal").classList.remove("on"); };
+$("md_copy").onclick = () => { $("md_text").select(); copyText($("md_text").value); };
+$("md_file").onchange = e => { const f = e.target.files[0]; if(!f) return; const rd = new FileReader(); rd.onload = () => { $("md_text").value = rd.result; $("md_ok").click(); }; rd.readAsText(f); };
+$("md_close").onclick = () => $("modal").classList.remove("on");
+$("modal").addEventListener("click", e => { if(e.target === $("modal")) $("modal").classList.remove("on"); });
+let toastT;
+function toast(t){ const e = $("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => e.classList.remove("on"), 2600); }
+function setTab(t){
+  S.tab = t;
+  ["parts","mats","maps","labels","export"].forEach(k => $("t_" + k).classList.toggle("hide", k !== t));
+  $("tabs").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  if(t !== "maps"){ $("pick").classList.remove("on"); }
+}
+$("tabs").addEventListener("click", e => { const b = e.target.closest("button"); if(b){ setTab(b.dataset.t); save(); } });
+function syncOrder(){ $("o_name").value = S.order.name || ""; $("o_client").value = S.order.client || ""; }
+$("o_name").oninput = e => { S.order.name = e.target.value; save(); renderLabels(); };
+$("o_client").oninput = e => { S.order.client = e.target.value; save(); renderLabels(); };
+
+load(); syncOrder(); renderSet(); renderMats(); renderParts(); setTab(S.tab || "parts"); compute();
+</script>
+<script>
+// Карта раскроя: принимает заказ (список на распил через MebelOrder.cutList); дальше передаёт пришедший заказ.
+MebelSite.register({
+  get: null, fallback: true,
+  put: function (o) { applyImport(JSON.stringify(o)); return false; }, // сообщение покажет сам раскрой
+  empty: "Сюда заказ пока не передавали. Откройте его в калькуляторе и нажмите \"Передать заказ\""
+});
+</script>
+</body>
+</html>

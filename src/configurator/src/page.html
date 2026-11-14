@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Конфигуратор мебели</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Светлый "шоурум": сцена слева/сверху, спокойная панель выбора, одна зелёная акцентная краска, зелёный WhatsApp только на отправке */
+:root{
+  color-scheme: light;
+  --bg:#eef0ee; --panel:#fbfbfa; --ink:#1d2321; --muted:#68716d; --line:#dfe3e0;
+  --accent:#1f6b57; --accent-soft:#e2efea; --warn:#a85a14; --warn-soft:#fbefdf; --wa:#1faa54;
+  --font:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.35;-webkit-tap-highlight-color:transparent;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{height:100%;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,11fr) minmax(0,12fr) auto;grid-template-areas:"head" "stage" "panel" "bar"}
+@media(min-width:900px){
+  .app{grid-template-columns:minmax(0,1fr) 430px;grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"head head" "stage panel" "stage bar"}
+}
+header{grid-area:head;display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+header .brand{font-weight:800;font-size:16px;letter-spacing:-.01em;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .brand small{font-weight:500;color:var(--muted);font-size:12px;margin-left:8px}
+@media(max-width:520px){header .brand small{display:none}header{padding:7px 10px;gap:6px}.ghost{padding:7px 10px;font-size:12.5px}.pill{padding:7px 10px;font-size:12.5px}}
+.ghost{padding:7px 12px;border-radius:999px;border:1px solid var(--line);font-size:13px;font-weight:600;background:#fff;white-space:nowrap}
+.ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+.stage{grid-area:stage;position:relative;min-height:0;background:linear-gradient(#f4f5f3,#e3e6e3);background-size:cover;background-position:center;overflow:hidden}
+.stage canvas{display:block;width:100%;height:100%}
+.stage .tools{position:absolute;top:10px;right:10px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100% - 20px)}
+.pill{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.92);box-shadow:0 1px 4px rgba(20,30,25,.14);font-size:13px;font-weight:600;backdrop-filter:blur(6px)}
+.pill.on{background:var(--accent);color:#fff}
+.stage .hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:rgba(29,35,33,.78);color:#fff;font-size:12.5px;padding:6px 12px;border-radius:999px;pointer-events:none;transition:opacity .4s;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis}
+.stage .hint.off{opacity:0}
+.stage .load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--muted);font-weight:600}
+
+.panel{grid-area:panel;min-height:0;display:flex;flex-direction:column;background:var(--panel);border-top:1px solid var(--line)}
+@media(min-width:900px){.panel{border-top:0;border-left:1px solid var(--line)}}
+.tabs{display:flex;gap:4px;padding:8px 10px 0;overflow-x:auto;scrollbar-width:none;flex:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:1 0 auto;padding:9px 12px;border-radius:10px 10px 0 0;font-weight:700;font-size:14px;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.body{flex:1;min-height:0;overflow-y:auto;padding:14px 14px 18px;display:flex;flex-direction:column;gap:18px;border-top:1px solid var(--line);overscroll-behavior:contain}
+.sec{display:flex;flex-direction:column;gap:9px}
+.sec>h3{margin:0;font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.sec>h3 span{font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink);font-size:13px;text-align:right}
+.note{font-size:12.5px;color:var(--muted);margin:0}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{padding:9px 13px;border-radius:11px;border:1.5px solid var(--line);background:#fff;font-weight:600;font-size:14px;min-height:42px;display:inline-flex;align-items:center;gap:8px}
+.chip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.chip i{width:16px;height:16px;border-radius:50%;border:1px solid rgba(0,0,0,.18);flex:none}
+.chip svg{width:34px;height:26px;flex:none}
+.shape{flex:1 1 calc(50% - 4px);justify-content:flex-start}
+.grp{display:flex;flex-direction:column;gap:7px}
+.grp .gh{display:flex;align-items:baseline;gap:8px;font-size:14px}
+.grp .gh b{font-weight:700}
+.grp .gh small{color:var(--muted);flex:1;min-width:0}
+.grp .gh em{font-style:normal;font-weight:700;color:var(--accent);font-size:12px;letter-spacing:.02em;white-space:nowrap}
+.sws{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:8px}
+.sw{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;line-height:1.15;color:var(--muted);text-align:center;padding:3px 0}
+.sw i{width:52px;height:52px;border-radius:13px;border:1px solid rgba(0,0,0,.14);box-shadow:inset 0 0 0 2px #fff;display:block;position:relative}
+.sw.on{color:var(--ink);font-weight:700}
+.sw.on i{outline:2.5px solid var(--accent);outline-offset:2px}
+.sw input[type=color]{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.sw .rainbow{background:conic-gradient(#e35d5b,#e6b84a,#7fbf6a,#4aa7c9,#6d6bd1,#c45fb0,#e35d5b)}
+.slide{display:grid;grid-template-columns:40px 1fr 40px;gap:8px;align-items:center}
+.slide .lbl{grid-column:1/-1;display:flex;justify-content:space-between;font-size:14px;font-weight:600}
+.slide .lbl b{font-variant-numeric:tabular-nums;font-weight:800}
+.slide button{width:40px;height:40px;border-radius:11px;border:1.5px solid var(--line);background:#fff;font-size:20px;font-weight:700;line-height:1}
+input[type=range]{width:100%;accent-color:var(--accent);height:30px;margin:0}
+.hlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:7px}
+.hcard{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:11px;border:1.5px solid var(--line);background:#fff;text-align:left;min-height:52px}
+.hcard.on{border-color:var(--accent);background:var(--accent-soft)}
+.hcard i{width:18px;height:18px;border-radius:50%;border:1px solid rgba(0,0,0,.18);flex:none}
+.hcard span{flex:1;min-width:0;font-weight:600;font-size:13.5px;line-height:1.2}
+.hcard small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.hcard b{font-size:12.5px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.info{background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:10px 12px;font-size:13.5px;font-weight:500}
+.warn{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:13px}
+.warn ul{margin:4px 0 0;padding-left:18px}
+.linkbtn{color:var(--accent);font-weight:700;font-size:13.5px;text-decoration:underline;text-underline-offset:3px;align-self:flex-start}
+
+.bar{grid-area:bar;display:flex;align-items:center;gap:12px;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid var(--line)}
+@media(min-width:900px){.bar{border-left:1px solid var(--line)}}
+.bar .price{flex:1;min-width:0}
+.bar .price small{display:block;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .price b{font-size:22px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cta{background:var(--accent);color:#fff;font-weight:800;padding:13px 18px;border-radius:13px;font-size:15px;white-space:nowrap}
+.cta.wa{background:var(--wa);display:flex;justify-content:center;text-decoration:none;text-align:center}
+.cta.sec2{background:var(--accent-soft);color:var(--accent)}
+
+.sheet{position:fixed;inset:0;background:rgba(20,26,24,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.sheet.on{display:flex}
+@media(min-width:700px){.sheet{align-items:center}}
+.card{background:var(--panel);width:min(560px,100%);max-height:92%;overflow-y:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+@media(min-width:700px){.card{border-radius:20px}}
+.card.wide{width:min(760px,100%)}
+.card h2{margin:0;font-size:19px;font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:10px;text-wrap:balance}
+.x{width:36px;height:36px;border-radius:50%;background:var(--bg);font-size:20px;line-height:1;flex:none}
+.sum{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13.5px;white-space:pre-wrap}
+.f{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:600}
+.f input,.f select,.f textarea{padding:11px 11px;border-radius:11px;border:1.5px solid var(--line);background:#fff;font-size:15px;color:var(--ink);font-weight:500;width:100%}
+.f textarea{min-height:64px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btns>*{flex:1 1 auto}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;word-break:break-all;background:#fff;border:1px dashed var(--line);border-radius:10px;padding:8px 10px;max-height:84px;overflow:auto;color:var(--muted)}
+.mods{display:flex;flex-direction:column;gap:5px}
+.mod{display:grid;grid-template-columns:1fr 84px 36px;gap:6px;align-items:center}
+.mod select,.mod input{padding:8px 8px;border-radius:9px;border:1.5px solid var(--line);background:#fff;font-size:14px;width:100%}
+.wallbox{border:1px solid var(--line);border-radius:12px;padding:10px;background:#fff;display:flex;flex-direction:column;gap:8px}
+.wallbox .wh{display:flex;justify-content:space-between;font-weight:700;font-size:13.5px;gap:8px}
+.wallbox .wh span{font-weight:600;color:var(--muted);font-size:12.5px}
+.wallbox .wh span.bad{color:var(--warn)}
+.shot{width:100%;border-radius:12px;border:1px solid var(--line)}
+#sheet .card:not(.wide) .shot.sm{max-height:210px;object-fit:cover}
+.toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:40;max-width:90%;text-align:center}
+.toast.on{opacity:1}
+.hide{display:none!important}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><span id="brand">Мебель на заказ</span><small>конфигуратор</small></div>
+    <button class="ghost" id="btnCode">Есть код</button>
+    <button class="ghost" id="btnPro">Дизайнеру</button>
+  </header>
+  <div class="stage" id="stage">
+    <div class="load" id="load">Загружаем 3D-модель...</div>
+    <div class="tools"><button class="pill hide" id="tOpen">Открыть двери</button><button class="pill hide" id="tPan">Двигать</button><button class="pill" id="tPhoto">Примерить на фото</button><button class="pill" id="tFit">Вернуть вид</button><button class="pill" id="tShot">Картинка</button></div>
+    <div class="hint" id="hint">Поверните модель пальцем</div>
+    <input type="file" id="photoFile" accept="image/*" class="hide">
+  </div>
+  <div class="panel">
+    <div class="tabs" id="tabs" role="tablist"></div>
+    <div class="body" id="body"></div>
+  </div>
+  <div class="bar">
+    <div class="price"><small id="priceNote">Примерная цена с монтажом</small><b id="price">-</b></div>
+    <button class="cta" id="btnSend">Отправить заявку</button>
+  </div>
+</div>
+<div class="sheet" id="sheet"><div class="card" id="card"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+/*MEBEL_ORDER*/
+</script>
+<script>
+/*APP*/
+</script>
+</body>
+</html>
