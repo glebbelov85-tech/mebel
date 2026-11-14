@@ -489,6 +489,7 @@ function renderSum(res){
 function openVoice(){
   openModal("Описать проект словами",`
     <p class="note" style="margin-top:0">Расскажите о заказе как клиенту или мастеру: что делаем, размеры, отделку, технику. Можно говорить по частям и поправлять себя - ниже сразу видно, что программа поняла и чего не хватает.</p>
+    <div id="voTpl"></div>
     <textarea id="voTxt" rows="5" placeholder="Например: угловая кухня, основная стена 3 метра 60, вторая 1,8 метра, потолок 2,7, фасады эмаль, встроенный холодильник"></textarea>
     <div class="vo-live hide" id="voLive"></div>
     <div class="btns vo-bar"><button class="b1 hide" id="voMic">${MIC_SVG} Говорить</button><button class="b2" id="voUndo" title="Убрать последнюю фразу">Отменить фразу</button><button class="b2" id="voClear">Очистить</button><span class="vo-st" id="voSt"></span></div>
@@ -528,6 +529,7 @@ function openVoice(){
       if(e.target.id==="voCopy"){ const txt=sumText(res); const done=()=>toast("Выжимка скопирована");
         if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done,()=>toast("Не получилось скопировать")); else toast("Копирование здесь недоступно"); }
     });
+    if(typeof renderTplRow==="function") renderTplRow(text=>{ if(VO.eng) VO.eng.reset(); setText(text); ta.focus(); ta.setSelectionRange(ta.value.length,ta.value.length); });
     $("voEx").addEventListener("click",e=>{ const b=e.target.closest("[data-ex]"); if(b){ if(VO.eng) VO.eng.reset(); setText(VOICE_EX[+b.dataset.ex]); } });
     // микрофон
     const H={

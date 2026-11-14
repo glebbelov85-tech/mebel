@@ -1,3 +1,4 @@
 src/calculator/dist/
 src/configurator/out/
 __pycache__/
+src/calculator/test/shots/
