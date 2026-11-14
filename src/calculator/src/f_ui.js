@@ -148,7 +148,34 @@ function wallAct(act,wi,row,j){
   }
   renderWalls(); calc();
 }
+// Подогнать все ряды под длину стен одной кнопкой: небольшой остаток закрывает планка-заглушка,
+// большой - стандартные шкафы и планка, лишнее снимается с последнего модуля.
+function fitRow(wi,row){
+  const info=CUR.info.walls.find(x=>x.wi===wi); if(!info) return "";
+  const list=S.kit.walls[wi][row], low=row==="lower", free=Math.round(low?info.freeL:info.freeU), nm=low?"низ":"верх";
+  if(!free || (!low && !list.length)) return "";   // пустой верхний ряд - значит верха на этой стене нет
+  const lastMod=()=>{ for(let q=list.length-1;q>=0;q--){ const d=modDef(list[q].t); if(d && !d.gap) return list[q]; } return null; };
+  if(free<0){
+    // лишнее снимаем с обычных шкафов с конца ряда; технику, пеналы и проёмы не трогаем, уже 300 мм шкаф не делаем
+    let need=-free; const cut=[];
+    for(let q=list.length-1;q>=0&&need>0;q--){ const d=modDef(list[q].t); if(!d||d.gap||d.tall||/oven|dish|fridge|hood|micro/.test(list[q].t)) continue;
+      const min=/fill/.test(list[q].t)?20:300, take=Math.min(need,list[q].w-min); if(take>0){ list[q].w-=take; need-=take; cut.push(take); } }
+    return cut.length ? `${nm}: шкафы ужаты на ${-free-need} мм`+(need>0?`, ещё ${need} мм лишние - уберите модуль`:"") : `${nm}: лишние ${-free} мм - уберите модуль`;
+  }
+  if(free<20){ const m=lastMod(); if(m){ m.w+=free; return `${nm}: последний модуль шире на ${free} мм`; } }
+  let rest=free; const added=[];
+  while(rest>=300){ const w=[600,500,450,400,300].find(x=>x<=rest); list.push({t:low?"l_shelf":"u_shelf",w}); added.push(w); rest-=w; }
+  if(rest>=20) list.push({t:low?"l_fill":"u_fill",w:rest});
+  else if(rest>0) list[list.length-1].w+=rest;
+  return `${nm}: `+[added.length?`шкафы ${added.join(", ")}`:"", rest>=20?`заглушка ${rest}`:""].filter(Boolean).join(" и ");
+}
+function fitAll(){
+  const done=[];
+  S.kit.walls.forEach((w,wi)=>{ ["lower","upper"].forEach(row=>{ if(!CUR.info.walls.some(x=>x.wi===wi)) return; const r=fitRow(wi,row); if(r){ done.push(WALL_NAMES[wi].toLowerCase()+", "+r); calc(); } }); });
+  renderWalls(); calc(); toast(done.length?"Подогнано. "+done.join("; "):"Все ряды уже сходятся со стенами");
+}
 function updateKitchenHints(info){
+  const fa=$("fitAll"); if(fa) fa.classList.toggle("hide",!info.walls.some(w=>Math.round(w.freeL)!==0||Math.round(w.freeU)<0||Math.round(w.freeU)>0&&w.up.length));
   info.walls.forEach(w=>{
     const occL=$("occL"+w.wi), occU=$("occU"+w.wi), fitL=$("fitL"+w.wi), fitU=$("fitU"+w.wi), cn=$("cn"+w.wi);
     if(!occL) return;
