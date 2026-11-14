@@ -97,10 +97,10 @@ const WALLS = { "#e9e6df": "Белые", "#d9d3c5": "Бежевые", "#c8cec6":
 const THREE_URLS = ["https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.min.js", "https://unpkg.com/three@0.180.0/build/three.module.min.js"];
 
 const View = (() => {
-  let T, host, renderer, scene, camera, productG, roomG, catcher, sun, dirty = true, photo = null, photoImg = null;
+  let T, host, renderer, scene, camera, productG, roomG, ghostG, selG, catcher, sun, dirty = true, photo = null, photoImg = null;
   let cam = { az: 0.5, el: 0.2, dist: 6000, tx: 0, ty: 1000, tz: 0 }, goal = null, bounds = null, lastKey = "", data = null, open = false;
   const mats = {}, texs = {};
-  const api = { ok: false, onPick: null, onMove: null };
+  const api = { ok: false, onPick: null, onMove: null, canPick: null };
 
   async function load() {
     let err;
@@ -136,7 +136,7 @@ const View = (() => {
     sun.castShadow = true; sun.shadow.mapSize.set(small ? 1024 : 2048, small ? 1024 : 2048);
     sun.shadow.bias = -0.0004; sun.shadow.normalBias = 6; sun.shadow.radius = 3;
     scene.add(sun); scene.add(sun.target);
-    productG = new T.Group(); roomG = new T.Group(); scene.add(productG, roomG);
+    productG = new T.Group(); roomG = new T.Group(); ghostG = new T.Group(); selG = new T.Group(); scene.add(productG, roomG, ghostG, selG);
     catcher = new T.Mesh(new T.PlaneGeometry(30000, 30000), new T.ShadowMaterial({ opacity: 0.32 }));
     catcher.rotation.x = -Math.PI / 2; catcher.receiveShadow = true; catcher.visible = false; scene.add(catcher);
 
@@ -181,8 +181,12 @@ const View = (() => {
       if (pts.size === 2) last = mid();
       goal = null;
     });
+    let hoverT = 0;
     el.addEventListener("pointermove", e => {
-      if (!pts.has(e.pointerId)) return;
+      if (!pts.has(e.pointerId)) {   // мышь без нажатия: рука над шкафом, который можно поменять
+        if (e.pointerType === "mouse" && api.canPick && performance.now() - hoverT > 60) { hoverT = performance.now(); const s = slotAt(e); el.style.cursor = s && api.canPick(s) ? "pointer" : ""; }
+        return;
+      }
       const p = pts.get(e.pointerId), dx = e.clientX - p.x, dy = e.clientY - p.y;
       p.x = e.clientX; p.y = e.clientY;
       if (pts.size === 1) {
@@ -207,14 +211,57 @@ const View = (() => {
     if (!photo) cam.az = Math.max(-1.45, Math.min(1.45, cam.az));
     const d0 = bounds ? bounds.r : 3000; cam.dist = Math.max(d0 * 0.5, Math.min(d0 * 6, cam.dist));
   }
-  function pick(e) {
+  function hitAt(e) {
     const rc = renderer.domElement.getBoundingClientRect(), v = new T.Vector2((e.clientX - rc.left) / rc.width * 2 - 1, -(e.clientY - rc.top) / rc.height * 2 + 1);
     const ray = new T.Raycaster(); ray.setFromCamera(v, camera);
-    const hit = ray.intersectObjects(productG.children, true).find(h => h.object.isMesh);
-    if (!hit) return;
-    if (hit.object.userData.door !== undefined) api.onPick(hit.object.userData.door);
-    else { let o = hit.object; while (o && !o.userData.slot) o = o.parent; if (o && api.onPickMod) api.onPickMod(o.userData.slot); }
+    return ray.intersectObjects(productG.children.concat(ghostG.visible ? ghostG.children : []), true).find(h => h.object.isMesh && !h.object.userData.noPick);
   }
+  function slotOf(o) { while (o && !o.userData.slot) o = o.parent; return o ? o.userData.slot : null; }
+  function slotAt(e) { const h = hitAt(e); return h && h.object.userData.door === undefined ? slotOf(h.object) : null; }
+  function pick(e) {
+    const hit = hitAt(e);
+    if (!hit) { if (api.onPickMod) api.onPickMod(null); return; }
+    if (hit.object.userData.door !== undefined) api.onPick(hit.object.userData.door);
+    else if (api.onPickMod) api.onPickMod(slotOf(hit.object));
+  }
+
+  // ---------- пустые места "+" и подсветка выбранного шкафа ----------
+  let plusTex = null, selSlot = null;
+  function plusTexture() {
+    if (plusTex) return plusTex;
+    const c = document.createElement("canvas"); c.width = c.height = 128; const g = c.getContext("2d");
+    g.fillStyle = "rgba(255,255,255,.95)"; g.beginPath(); g.arc(64, 64, 58, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "#1f6b57"; g.lineWidth = 6; g.stroke();
+    g.fillStyle = "#1f6b57"; g.fillRect(36, 58, 56, 12); g.fillRect(58, 36, 12, 56);
+    plusTex = new T.CanvasTexture(c); plusTex.colorSpace = T.SRGBColorSpace; return plusTex;
+  }
+  const ghostMat = () => plain.ghost || (plain.ghost = new T.MeshBasicMaterial({ color: 0x1f6b57, transparent: true, opacity: 0.1, depthWrite: false }));
+  const dashMat = () => plain.gline || (plain.gline = new T.LineDashedMaterial({ color: 0x1f6b57, dashSize: 40, gapSize: 28, transparent: true, opacity: 0.75 }));
+  function buildGhosts(list) {
+    ghostG.traverse(o => { if (o.geometry) o.geometry.dispose(); }); ghostG.clear();
+    (list || []).forEach(gh => {
+      const g = new T.Group(); g.position.set(gh.pos.x, 0, gh.pos.z); g.rotation.y = (gh.rot || 0) * Math.PI / 180; g.userData.slot = gh.slot; ghostG.add(g);
+      const geo = new T.BoxGeometry(gh.w - 20, gh.h - 20, gh.d - 20), b = new T.Mesh(geo, ghostMat()); b.position.set(gh.w / 2, gh.y + gh.h / 2, gh.d / 2); g.add(b);
+      const l = new T.LineSegments(new T.EdgesGeometry(geo), dashMat()); l.computeLineDistances(); l.position.copy(b.position); l.userData.noPick = true; g.add(l);
+      const sp = new T.Sprite(new T.SpriteMaterial({ map: plusTexture(), depthTest: false, transparent: true })), sz = Math.max(110, Math.min(200, gh.w * 0.4, gh.h * 0.4));
+      sp.scale.set(sz, sz, 1); sp.position.set(gh.w / 2, gh.y + gh.h / 2, gh.d); sp.renderOrder = 5; g.add(sp);
+    });
+  }
+  function drawSel() {
+    selG.traverse(o => { if (o.geometry) o.geometry.dispose(); }); selG.clear();
+    if (!selSlot) return;
+    let grp = null;
+    productG.traverse(o => { if (!grp && o.userData.slot === selSlot) grp = o; });
+    ghostG.children.forEach(o => { if (!grp && o.userData.slot === selSlot) grp = o; });
+    if (!grp) return;
+    const bb = new T.Box3().setFromObject(grp); if (bb.isEmpty()) return;
+    bb.expandByScalar(8);
+    const size = bb.getSize(new T.Vector3()), c = bb.getCenter(new T.Vector3());
+    const m = new T.Mesh(new T.BoxGeometry(size.x, size.y, size.z), plain.sel || (plain.sel = new T.MeshBasicMaterial({ color: 0x2f9e7f, transparent: true, opacity: 0.22, depthWrite: false })));
+    m.position.copy(c); m.renderOrder = 4; selG.add(m);
+    selG.add(new T.Box3Helper(bb, 0x1f6b57));
+  }
+  api.select = function (slot) { selSlot = slot || null; if (api.ok) { drawSel(); dirty = true; } };
 
   // ---------- материалы ----------
   function texture(kind, color, dark, light, mm) {
@@ -415,6 +462,7 @@ const View = (() => {
       });
       if (ctx.type === "kupe") kupeExtras(root, ctx);
     });
+    buildGhosts(ctx.ghosts); drawSel();
     const bb = new T.Box3().setFromObject(productG);
     if (bb.isEmpty()) bb.set(new T.Vector3(0, 0, 0), new T.Vector3(1000, 1000, 500));
     const size = bb.getSize(new T.Vector3());
@@ -453,7 +501,9 @@ const View = (() => {
   };
   api.snapshot = function () {
     if (!api.ok) return null;
+    const gv = ghostG.visible; ghostG.visible = false; selG.visible = false;   // на картинку для клиента "+" и подсветка не попадают
     place(); renderer.render(scene, camera);
+    ghostG.visible = gv; selG.visible = true;
     const src = renderer.domElement, c = document.createElement("canvas"); c.width = src.width; c.height = src.height;
     const g = c.getContext("2d");
     if (photoImg) { const k = Math.max(c.width / photoImg.naturalWidth, c.height / photoImg.naturalHeight), w = photoImg.naturalWidth * k, h = photoImg.naturalHeight * k; g.drawImage(photoImg, (c.width - w) / 2, (c.height - h) / 2, w, h); }

@@ -126,6 +126,26 @@ input[type=range]{width:100%;accent-color:var(--accent);height:30px;margin:0}
 #sheet .card:not(.wide) .shot.sm{max-height:210px;object-fit:cover}
 .toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;z-index:40;max-width:90%;text-align:center}
 .toast.on{opacity:1}
+.plan{display:flex;flex-direction:column;gap:10px}
+.pwall{display:flex;flex-direction:column;gap:4px}
+.pwh{display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;color:var(--muted)}
+.prow2{position:relative;height:92px;background:repeating-linear-gradient(90deg,transparent 0 9px,rgba(0,0,0,.025) 9px 10px);border-bottom:2px solid #c9cfcb;border-radius:4px}
+.pb{position:absolute;display:flex;align-items:center;justify-content:center;border:1.5px solid #b9c2bd;background:#fff;border-radius:6px;font-size:11.5px;font-weight:700;color:var(--ink);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;padding:0 2px}
+.pb span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.pb.up{top:0;height:34px}.pb.lo{top:46px;height:44px}.pb.tall{top:0;height:90px;background:#f3f5f4}
+.pb.key{background:#eef5f2}
+.pb.empty{border-style:dashed;border-color:var(--accent);background:rgba(31,107,87,.05);color:var(--accent);font-size:17px}
+.pb.fixed{background:#eceeed;color:var(--muted)}
+.pb.sel{border-color:var(--accent);background:var(--accent);color:#fff;z-index:2}
+.pb.target{outline:3px solid #e2a23b;outline-offset:-1px;z-index:3}
+.pb.drag{opacity:.35}
+.pb.fly{position:fixed;z-index:60;pointer-events:none;height:40px;box-shadow:0 6px 18px rgba(0,0,0,.25);opacity:.95}
+.pcorner{position:absolute;top:46px;height:44px;background:repeating-linear-gradient(45deg,#e4e7e5 0 5px,#f4f5f4 5px 10px);border-radius:6px}
+.mhead{display:flex;justify-content:space-between;gap:10px}
+.mtitle{display:flex;flex-direction:column;gap:2px}.mtitle b{font-size:18px;font-weight:800}.mtitle span{font-size:13px;color:var(--muted)}
+.chip.danger{color:#b4472f;border-color:#efcfc6;align-self:flex-start}
+.chip[disabled]{opacity:.4;cursor:default}
+.wnote{font-size:12px;color:var(--muted);text-align:center}
 .hide{display:none!important}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -140,7 +160,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:30px;margin:0}
   <div class="stage" id="stage">
     <div class="load" id="load">Загружаем 3D-модель...</div>
     <div class="tools"><button class="pill hide" id="tOpen">Открыть двери</button><button class="pill hide" id="tPan">Двигать</button><button class="pill" id="tPhoto">Примерить на фото</button><button class="pill" id="tFit">Вернуть вид</button><button class="pill" id="tShot">Картинка</button></div>
-    <div class="hint" id="hint">Поверните модель пальцем</div>
+    <div class="hint" id="hint">Поверните модель пальцем. Нажмите на шкаф, чтобы поменять его</div>
     <input type="file" id="photoFile" accept="image/*" class="hide">
   </div>
   <div class="panel">

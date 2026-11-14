@@ -79,7 +79,7 @@ def main():
     # 2. Конфигуратор: та же склейка, что в его build.py, адаптер - внутри его модуля
     src = P("configurator", "src")
     page = rd(os.path.join(src, "page.html"))
-    app = "".join(rd(os.path.join(src, f)) + "\n" for f in ("gen.js", "view.js", "ui.js"))
+    app = "".join(rd(os.path.join(src, f)) + "\n" for f in ("gen.js", "view.js", "edit.js", "ui.js"))
     app += rd(os.path.join(HERE, "adapters", "konfigurator.js")) + "\n"
     assert "</script" not in app
     html = page.replace("/*MEBEL_ORDER*/", ORDER_JS).replace("/*APP*/", '(function(){"use strict";\n' + app + "})();")

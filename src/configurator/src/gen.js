@@ -167,11 +167,28 @@ function parseHandles(text) {
   return out.slice(0, 60);
 }
 function handlesText(L) { const C = { black: "чёрный", steel: "хром", gold: "латунь", bronze: "бронза", white: "белый" }; return L.map(h => [h.name, h.price, HANDLE_KIND[h.kind], C[h.color]].join("; ")).join("\n"); }
-// Какие модули клиент может менять нажатием на шкаф
-const SWAP = {
-  lower: [["shelf", "Дверцы и полка"], ["drawers3", "Три ящика"], ["drawers2", "Два больших ящика"]],
-  upper: [["u_shelf", "Дверцы"], ["u_lift", "Подъёмная дверца"], ["u_open", "Открытая полка"], ["u_gap", "Убрать шкаф"]]
+// Что можно поставить на место модуля: нажатие на шкаф, план кухни, голос.
+// Значение - ключ модуля, у проёма через двоеточие что в нём ("gap:stove").
+const CHOICE = {
+  lower: [["shelf", "Дверцы и полка"], ["drawers3", "Три ящика"], ["drawers2", "Два ящика"], ["sink", "Мойка"], ["oven", "Духовка"], ["dish", "Посудомойка"], ["gap:stove", "Место под плиту"], ["gap:fridge", "Место под холодильник"]],
+  tall: [["tall", "Пенал с полками"], ["fridge", "Пенал с холодильником"], ["tallOven", "Пенал: духовка и СВЧ"]],
+  upper: [["u_shelf", "Дверцы"], ["u_dryer", "С сушкой"], ["u_lift", "Подъёмная дверца"], ["u_open", "Открытая полка"], ["u_hood", "Над вытяжкой"]]
 };
+const EMPTY = { lower: "gap:empty", upper: "u_gap" };
+const SHORT = { shelf: "Шкаф", drawers3: "Ящики", drawers2: "Ящики", sink: "Мойка", oven: "Духовка", dish: "Посудом.", "gap:stove": "Плита", "gap:fridge": "Холод.", "gap:empty": "+", corner: "Угол", tall: "Пенал", fridge: "Холод.", tallOven: "Духовка",
+  u_shelf: "Шкаф", u_dryer: "Сушка", u_lift: "Подъём", u_hood: "Вытяжка", u_corner: "Угол", u_open: "Полка", u_gap: "+" };
+const modKey = m => m.t === "gap" ? "gap:" + (m.what || "empty") : m.t;
+function setMod(m, v) { const [t, what] = String(v).split(":"); m.t = t; if (what) m.what = what; else delete m.what; }
+const isEmptyMod = m => m.t === "u_gap" || (m.t === "gap" && (!m.what || m.what === "empty"));
+const isCorner = m => m.t === "corner" || m.t === "u_corner";
+const isTall = m => !!(LOWER[m.t] && LOWER[m.t].tall);
+function choiceOk(row, v) { return v === EMPTY[row] || (row === "lower" ? CHOICE.lower.concat(CHOICE.tall) : CHOICE.upper).some(c => c[0] === v); }
+function modTitle(m) {
+  const k = modKey(m), c = CHOICE.lower.concat(CHOICE.tall, CHOICE.upper).find(x => x[0] === k);
+  if (isEmptyMod(m)) return "Пустое место";
+  if (k === "corner" || k === "u_corner") return "Угловой шкаф";
+  return c ? c[1] : (LOWER[m.t] || UPPER[m.t] || {}).name || "Модуль";
+}
 
 // Выбранная отделка: { base, decor, color? } -> запись материала каталога
 function pickMat(catalog, sel) {
@@ -268,7 +285,7 @@ function autoUpper(lower, wall) {
   lower.forEach(m => {
     if (LOWER[m.t].tall) { talls += m.w; return; }
     let t = m.t === "sink" ? (m.w >= 500 ? "u_dryer" : "u_shelf") : m.t === "oven" ? "u_hood" : m.t === "corner" ? "u_corner"
-      : m.t === "gap" ? (m.what === "stove" ? "u_hood" : "u_gap") : "u_shelf";
+      : m.t === "gap" ? (m.what === "stove" ? "u_hood" : m.what === "fridge" ? "u_gap" : "u_shelf") : "u_shelf";
     up.push({ t, w: m.w });
   });
   const rem = wall.upLen - talls - up.reduce((a, m) => a + m.w, 0);
@@ -290,21 +307,27 @@ function autoKitchen(k) {
   if (n === 1) seqs = [[F, fl(3), SINK, DISH, fl(1), COOK, fl(2)]];
   if (n === 2) seqs = [[F, fl(2), SINK, DISH, fl(1)], [C(), fl(1), COOK, fl(2)]];
   if (n === 3) seqs = [[F, fl(1)], [C(), fl(2), SINK, DISH, fl(1)], [C(), fl(1), COOK, fl(2)]];
+  // замены клиента (k.over, "стена:ряд:номер" -> модуль): сначала низ, потом верх строится уже по новому низу
+  const ov = (wi, row, list) => Object.keys(k.over || {}).forEach(key => {
+    const p = key.split(":"), m = +p[0] === wi && p[1] === row ? list[+p[2]] : null;
+    if (m && !isCorner(m) && choiceOk(row, k.over[key])) setMod(m, k.over[key]);
+  });
   return W.map((w, i) => {
-    const lower = fillWall(w.lowLen, seqs[i]);
-    return { lower, upper: o.upper ? autoUpper(lower, w) : [] };
+    const lower = fillWall(w.lowLen, seqs[i]); ov(i, "lower", lower);
+    const upper = o.upper ? autoUpper(lower, w) : []; ov(i, "upper", upper);
+    return { lower, upper };
   });
 }
 function kitchenLayout(k) {
   if (k.manual && k.manual.length === kitchenWalls(k).length) return k.manual;
-  const lay = autoKitchen(k);
-  Object.keys(k.over || {}).forEach(key => {
-    const [wi, row, i] = key.split(":"), m = lay[+wi] && lay[+wi][row] && lay[+wi][row][+i];
-    if (m && SWAP[row].some(x => x[0] === m.t) && SWAP[row].some(x => x[0] === k.over[key])) m.t = k.over[key];
-  });
-  return lay;
+  return autoKitchen(k);
 }
 
+// точка на стене: x0 мм от начала стены -> координаты в комнате
+function wallPos(wall, x0) {
+  const r = wall.rot, c = r === 90 ? 0 : r === 180 ? -1 : r === 270 ? 0 : 1, s = r === 90 ? 1 : r === 180 ? 0 : r === 270 ? -1 : 0;
+  return { x: x0 * c + wall.pos[0], y: 0, z: -x0 * s + wall.pos[2] };
+}
 // ---------- Сборщик деталей ----------
 function Maker() {
   let pid = 0, mid = 0;
@@ -313,8 +336,7 @@ function Maker() {
     hw,
     H(item, qty, extra) { if (qty <= 0) return; const key = item || extra.name; if (!hw[key]) hw[key] = Object.assign(item ? { item } : {}, extra || {}, { qty: 0 }); hw[key].qty = Math.round((hw[key].qty + qty) * 100) / 100; },
     module(kind, name, wall, x0, size, params) {
-      const r = wall.rot, c = r === 90 ? 0 : r === 180 ? -1 : r === 270 ? 0 : 1, s = r === 90 ? 1 : r === 180 ? 0 : r === 270 ? -1 : 0;
-      return { id: "m" + (++mid), kind, name, pos: { x: x0 * c + wall.pos[0], y: 0, z: -x0 * s + wall.pos[2] }, rot: r, size, params: params || {}, parts: [], hardware: [], wall: wall.key };
+      return { id: "m" + (++mid), kind, name, pos: wallPos(wall, x0), rot: wall.rot, size, params: params || {}, parts: [], hardware: [], wall: wall.key };
     },
     P(list, name, role, o, x, y, z, a, b, mat, more) {
       const p = { id: "p" + (++pid), name, role, mat: mat || "@corpus", o, x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, z: Math.round(z * 10) / 10, a: Math.round(a * 10) / 10, b: Math.round(b * 10) / 10 };
@@ -335,7 +357,8 @@ function buildKitchen(k, mk, hItem) {
   const upY = TOP_Y + topId + GAP;                 // низ верхних шкафов
   const upTop = upY + Hu;                          // верх кухни
   const Ht = upTop - PL;                           // высота корпуса пенала
-  const modules = [], warns = [];
+  const modules = [], warns = [], ghosts = [];   // ghosts - пустые места "+" для 3D (в заказ не идут)
+  const ghost = (slot, wall, x0, y, w, h, d) => ghosts.push({ slot, pos: wallPos(wall, x0), rot: wall.rot, y, w, h, d });
   let handles = 0, golaMM = 0, topMM = 0, plinthMM = 0, ledMM = 0, nMods = 0, hasSink = false, hasHob = false;
 
   const body = (m, w, y0, h, d, shelves, opt) => {
@@ -371,7 +394,7 @@ function buildKitchen(k, mk, hItem) {
 
   walls.forEach((wall, wi) => {
     const row = lay[wi] || { lower: [], upper: [] };
-    let x = 0; const talls = [], spans = [];
+    let x = 0; const talls = [], spans = [], fridges = [];
     let span = null;
     row.lower.forEach((md, mi) => {
       const def = LOWER[md.t] || LOWER.shelf, w = Math.max(150, Math.min(1400, +md.w || def.w)), t = LOWER[md.t] ? md.t : "shelf";
@@ -380,6 +403,8 @@ function buildKitchen(k, mk, hItem) {
       const isTop = !def.tall && t !== "gap";
       if (isTop) { if (!span) { span = { x0: x, x1: x }; spans.push(span); } span.x1 = x + w; topMM += w; golaMM += w * 1.5; } else span = null;
       if (def.tall) talls.push([x, x + w]);
+      if (t === "gap" && md.what === "fridge") fridges.push([x, x + w]);
+      if (t === "gap" && isEmptyMod(md)) ghost(m.slot, wall, x, 0, w, PL + Hl, Dl);
       if (t !== "gap") plinthMM += w;
       switch (t) {
         case "shelf": body(m, w, PL, Hl, Dl, 1, { stretch: 1 }); doors(m, 0, PL, w, Hl, Dl, "t"); mk.H("leg", 4); break;
@@ -408,6 +433,7 @@ function buildKitchen(k, mk, hItem) {
     const lowSum = x;
     if (lowSum > wall.lowLen + 1) warns.push(WALL_NAME[wall.key] + ": нижний ряд длиннее стены на " + Math.round(lowSum - wall.lowLen) + " мм.");
     else if (wall.lowLen - lowSum >= 50) warns.push(WALL_NAME[wall.key] + ": внизу свободно " + Math.round(wall.lowLen - lowSum) + " мм.");
+    if (wall.lowLen - lowSum >= 150) ghost(wi + ":lower:add", wall, lowSum, 0, wall.lowLen - lowSum, PL + Hl, Dl);
 
     // верхний ряд обходит пеналы
     let ux = 0;
@@ -435,13 +461,22 @@ function buildKitchen(k, mk, hItem) {
         case "u_open": body(m, w, upY, Hu, Du, 1); break;
       }
       if (t !== "u_gap") { ledMM += w; modules.push(m); }
+      else if (!fridges.some(([a, b]) => ux < b - 0.5 && ux + w > a + 0.5)) ghost(m.slot, wall, ux, upY, w, Hu, Du);
       ux += w;
     });
+    if (o.upper) {   // свободное место в конце верхнего ряда
+      const busy = row.upper.reduce((s2, md) => s2 + Math.max(150, Math.min(1400, +md.w || 600)), 0) + talls.reduce((s2, [a, b]) => s2 + b - a, 0), free = wall.upLen - busy;
+      let fx = ux, moved = true;
+      while (moved) { moved = false; for (const [a, b] of talls) if (fx < b - 0.5 && fx + 150 > a + 0.5) { fx = b; moved = true; } }
+      const fw = Math.min(free, wall.upLen - fx);
+      if (fw >= 150) ghost(wi + ":upper:add", wall, fx, upY, fw, Hu, Du);
+    }
     if (ux > wall.upLen + 1) warns.push(WALL_NAME[wall.key] + ": верхний ряд выходит за стену на " + Math.round(ux - wall.upLen) + " мм.");
 
     // столешница и стеновая панель по стене
     if (spans.length) {
       const run = mk.module("wall-run", WALL_NAME[wall.key] + ": столешница", wall, 0, { w: wall.len, h: topId, d: 600 });
+      run.slot = "top";
       spans.forEach((s, si) => {
         const len = s.x1 - s.x0;
         mk.P(run.parts, "Столешница", "countertop", "Y", s.x0, TOP_Y, 0, len, 600, "@top", { grain: "a" });
@@ -467,7 +502,7 @@ function buildKitchen(k, mk, hItem) {
 
   const bx = walls.some(w => w.key === "right") ? k.len.back : Math.max(k.len.back || 0, 600);
   const size = { w: k.shape === "Ll" ? Math.max(k.len.back, 600) : bx, h: upTop, d: Math.max(600, k.shape !== "I" ? Math.max(walls.find(w => w.key === "left") ? k.len.left : 0, walls.find(w => w.key === "right") ? k.len.right : 0) : 600) };
-  return { modules, warns, size, upTop, upY, Ht, walls, lay, topMM };
+  return { modules, warns, size, upTop, upY, Ht, walls, lay, topMM, ghosts };
 }
 
 // ---------- Шкаф-купе ----------
