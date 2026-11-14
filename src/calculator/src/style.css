@@ -247,3 +247,9 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
 .ed-info{background:#eef3fb;color:#2c4a7a}
 .ed-mute{font-size:12px;font-weight:400}
 .ed-hg{margin:4px 0}
+.ed-tts{font-size:12px;padding:6px 10px;border-bottom:1px solid #e8e2da;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.ed-tts[hidden]{display:none}
+.ed-tts select{max-width:220px;font-size:12px;padding:2px 4px;width:auto}
+.ed-tts input[type=range]{width:90px;vertical-align:middle}
+.ed-tts button{font-size:12px;padding:3px 10px;width:auto}
+.ed-tts .mv-tip{flex-basis:100%;color:#7a7068}

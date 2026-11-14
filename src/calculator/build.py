@@ -4,6 +4,10 @@ css=open(d+'/src/style.css').read(); body=open(d+'/src/body.html').read()
 js='\n'.join(open(f).read() for f in sorted(glob.glob(d+'/src/*.js')))
 # общий модуль заказа (валюты, страна, формат) - рядом, в ../order-format
 mo=os.path.join(os.path.dirname(d),'order-format','mebel-order.js')
+# голос ответов - общий с сайтом файл site/shared/golos.js
+for g in (os.path.join(d,'..','..','site','shared','golos.js'), os.path.join(d,'..','site','shared','golos.js')):
+    if os.path.exists(g):
+        js=open(g).read()+'\n'+js; break
 if os.path.exists(mo):
     js='"use strict";\n'+open(mo).read()+'\n'+js
 html=f'''<!DOCTYPE html>

@@ -361,12 +361,10 @@ function edRefresh(){ const keep=SEL; setMode(S.mode); SEL=keep; calc(); }
 
 // ответ вслух - только на вопросы, заданные голосом
 function edSpeak(text){
-  try{ const ss=window.speechSynthesis; if(!ss||LS.get("mk2_ed_mute",0)) return; ss.cancel();
-    const u=new SpeechSynthesisUtterance(String(text).replace(/<[^>]+>/g,"").slice(0,300)); u.lang="ru-RU"; u.rate=1.05;
-    const v=ss.getVoices().find(x=>/^ru/i.test(x.lang)); if(v) u.voice=v;
-    // пока говорит - не слушаем, чтобы не распознать собственный ответ
-    if(ED.eng&&ED.on){ ED.eng.stop(); u.onend=()=>{ if(ED.open&&ED.eng) ED.eng.start(); }; }
-    ss.speak(u); }catch(e){}
+  // голос и запись живого голоса - в site/shared/golos.js (MebelVoice); пока говорит - не слушаем
+  if(!window.MebelVoice) return;
+  const was=ED.eng&&ED.on; if(was) ED.eng.stop();
+  MebelVoice.say(text,()=>{ if(was&&ED.open&&ED.eng) ED.eng.start(); });
 }
 // ---------- панель "Правка голосом" ----------
 const ED_HELP={
@@ -382,7 +380,7 @@ function edInit(){
   const box=document.createElement("div"); box.id="edBar"; box.className="edbar";
   box.innerHTML=`<button class="ed-pill" id="edPill">${MIC_SVG} Голосом</button>
     <div class="ed-panel hide" id="edPanel">
-      <div class="ed-top"><b>Голосовой помощник</b><button class="vo-link ed-mute" id="edMute" title="Отвечать вслух на вопросы"></button><span class="vo-st" id="edSt"></span><button class="bx" id="edX" title="Свернуть">&times;</button></div>
+      <div class="ed-top"><b>Голосовой помощник</b><button class="vo-link ed-mute" id="edVoiceSet" title="Отвечать вслух и каким голосом">звук</button><span class="vo-st" id="edSt"></span><button class="bx" id="edX" title="Свернуть">&times;</button></div>
       <div class="ed-log" id="edLog"></div>
       <div class="vo-live hide" id="edLive"></div>
       <div class="ed-row"><button class="b1 hide" id="edMic" title="Говорить">${MIC_SVG}</button><input id="edIn" placeholder="Правка, вопрос или куда перейти" autocomplete="off"><button class="b1" id="edGo">OK</button></div>
@@ -397,16 +395,15 @@ function edInit(){
     text=String(text||"").trim(); if(!text) return;
     const c=voiceCmd(text); if(c==="stop"){ ED.eng&&ED.eng.stop(); return; }
     const r=editProject(text);
-    if(r.applied){ addLog("ed-q","&laquo;"+esc(text)+"&raquo;"); addLog("ed-ok",r.msg.map(esc).join("<br>")); return; }
+    if(r.applied){ addLog("ed-q","&laquo;"+esc(text)+"&raquo;"); addLog("ed-ok",r.msg.map(esc).join("<br>")); if(byVoice) edSpeak("Готово"); return; }
     if(r.newProject){ if(ED.eng) ED.eng.stop(); openVoice(); const ta=$("voTxt"); if(ta){ ta.value=text.replace(/^(новый проект|новая|новый)\s*/i,""); ta.dispatchEvent(new Event("input")); } return; }
     addLog("ed-q","&laquo;"+esc(text)+"&raquo;");
     if(r.msg.length) addLog(r.info?"ed-info":"ed-ok",r.html?r.msg.join("<br>"):r.msg.map(esc).join("<br>"));
-    if(byVoice && r.say) edSpeak(r.say);
+    if(byVoice) edSpeak(r.say || (r.ok ? (r.undone?"Отменил":"Готово") : (r.errs&&r.errs.length&&!r.msg.length ? "Не понял, скажите иначе" : "")));
     if(r.errs&&r.errs.length) addLog("ed-err",r.errs.map(esc).join("<br>")+(r.ok?"":`<br><span class="note">Примеры - в "Что можно сказать".</span>`));
     if(r.ok){ edRefresh(); if(window.innerWidth<940){ const sk=$("sketch"); if(sk) sk.scrollIntoView({behavior:"smooth",block:"start"}); } }
   };
-  const muteTxt=()=>{ $("edMute").textContent=LS.get("mk2_ed_mute",0)?"звук выкл.":"звук вкл."; };
-  muteTxt(); $("edMute").onclick=()=>{ LS.set("mk2_ed_mute",LS.get("mk2_ed_mute",0)?0:1); muteTxt(); };
+  $("edVoiceSet").onclick=()=>{ let b=$("edTts"); if(!b){ b=document.createElement("div"); b.id="edTts"; b.className="ed-tts"; $("edVoiceSet").closest(".ed-top").insertAdjacentElement("afterend",b); } else if(!b.hidden){ b.hidden=true; return; } b.hidden=false; if(window.MebelVoice) MebelVoice.settings(b); };
   $("edPill").onclick=()=>show(true);
   $("edX").onclick=()=>show(false);
   $("edGo").onclick=()=>{ run(inp.value); inp.value=""; inp.focus(); };
