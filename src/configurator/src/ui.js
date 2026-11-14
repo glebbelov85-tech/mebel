@@ -3,7 +3,9 @@
 // ============================================================
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const money = n => MO.fmtMoney(n).replace(/ /g, " ") + " ₸";
+// Валюта: у своего проекта - S.cur (валюта дизайнера), у открытого чужого заказа - его собственная.
+const curCode = () => (S.type === "ext" && S.ext ? MO.orderCurrency(S.ext) : S.cur || "KZT");
+const money = n => MO.money(n, curCode());
 const cm = mm => (Math.round(mm / 10)) + " см";
 const LSKEY = "mebel-configurator-1";
 
@@ -18,7 +20,7 @@ function merge(base, add) {
   return base;
 }
 function loadState() {
-  try { const t = localStorage.getItem(LSKEY); if (t) { const o = JSON.parse(t); if (o && o.v === 1) { S = merge(defaultState(), o); } } } catch (e) {}
+  try { const t = localStorage.getItem(LSKEY); if (t) { const o = JSON.parse(t); if (o && o.v === 1) { S = merge(defaultState(), o); if (!o.cur) S.cur = "KZT"; } } } catch (e) {}
   if (!S.orderId) S.orderId = MO.uid("o");
   sanitize();
 }
@@ -90,7 +92,7 @@ function slider(key, label, val, min, max, step) {
   return '<div class="slide"><div class="lbl"><span>' + esc(label) + '</span><b id="v_' + key + '">' + cm(val) + '</b></div><button data-a="step" data-k="' + key + '" data-d="-' + step + '" aria-label="Меньше">-</button><input type="range" id="r_' + key + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + val + '" data-k="' + key + '" aria-label="' + esc(label) + '"><button data-a="step" data-k="' + key + '" data-d="' + step + '" aria-label="Больше">+</button></div>';
 }
 function palette(role, groups, sel) {
-  return groups.map(g => '<div class="grp"><div class="gh"><b>' + g.title + "</b><small>" + g.hint + "</small><em>" + TIER[g.tier] + '</em></div><div class="sws">' +
+  return groups.map(g => '<div class="grp"><div class="gh"><b>' + g.title + "</b><small>" + g.hint + "</small><em>" + tierStr(g.tier, curCode()) + '</em></div><div class="sws">' +
     g.decors.map(d => { const D = DECOR[d], on = sel && sel.base === g.base && sel.decor === d && !sel.color; return '<button class="sw' + (on ? " on" : "") + '" data-a="fin" data-role="' + role + '" data-base="' + g.base + '" data-v="' + d + '"><i style="' + swatchCss({ color: D.c, texture: { kind: D.k || "solid", dark: D.d, light: D.l } }) + '"></i>' + D.n + "</button>"; }).join("") +
     (g.custom ? '<label class="sw' + (sel && sel.base === g.base && sel.color ? " on" : "") + '"><i class="rainbow"' + (sel && sel.base === g.base && sel.color ? ' style="background:' + sel.color + '"' : "") + '><input type="color" data-c="' + role + '" data-base="' + g.base + '" value="' + (sel && sel.color || "#7a8f7b") + '" aria-label="Свой цвет"></i>Свой цвет</label>' : "") +
     "</div></div>").join("");
@@ -144,7 +146,7 @@ function kitchenTab() {
   }
   if (tab === 1) {
     const mdf = /film|enamel/.test(k.fin.facade.base);
-    return sec("Вид фасада", mdf && STYLES[o.style] && STYLES[o.style].add ? "+" + money(STYLES[o.style].add) + " за м2" : "", chips("style", Object.keys(STYLES).map(s => [s, STYLES[s].n]), mdf ? o.style : "flat") + (mdf ? "" : '<p class="note">Рамки, рифление и рейки делаются на фасадах МДФ в плёнке и в эмали. Выберите такой материал ниже.</p>')) +
+    return sec("Вид фасада", mdf && STYLES[o.style] && STYLES[o.style].add ? "+" + money(cp(S, STYLES[o.style].add, RUB[o.style])) + " за м2" : "", chips("style", Object.keys(STYLES).map(s => [s, STYLES[s].n]), mdf ? o.style : "flat") + (mdf ? "" : '<p class="note">Рамки, рифление и рейки делаются на фасадах МДФ в плёнке и в эмали. Выберите такой материал ниже.</p>')) +
       sec("Материал и цвет", selName(k.fin.facade), palette("facade", GROUPS.facade, k.fin.facade));
   }
   if (tab === 2) return sec("Столешница", selName(k.fin.top), palette("top", GROUPS.top, k.fin.top)) +
@@ -294,7 +296,7 @@ async function unpack(code) {
 }
 function cfgOf(withClient) {
   if (S.type === "ext") return null;
-  const o = { v: 1, type: S.type, room: S.room, studio: S.studio, lock: S.lock, showPrice: S.showPrice, markup: S.markup, orderId: S.orderId };
+  const o = { v: 1, type: S.type, room: S.room, studio: S.studio, lock: S.lock, showPrice: S.showPrice, markup: S.markup, cur: S.cur, orderId: S.orderId };
   o[S.type] = JSON.parse(JSON.stringify(S[S.type])); delete o[S.type]._topT;
   if (S.handleCat) o.handleCat = S.handleCat;
   if (withClient) o.client = S.client;
@@ -330,9 +332,10 @@ async function openCode(text) {
   const res = await MO.decode(code); adopt(res.order); return "Заказ открыт";
 }
 function applyCfg(d) {
-  const keep = { studio: S.studio, markup: S.markup, showPrice: S.showPrice };
+  const keep = { studio: S.studio, markup: S.markup, showPrice: S.showPrice, cur: S.cur };
   const fromClient = !!d.client && pro.me;
   S = merge(defaultState(), d); S.ext = null; S.extFin = {};
+  if (!d.cur) S.cur = "KZT";   // коды до ноября 2026 - в тенге
   if (fromClient) merge(S, keep);
   if (!S.orderId) S.orderId = MO.uid("o");
   sanitize(); tab = S.lock ? 1 : 0; openDoors = false;
@@ -344,7 +347,7 @@ function requestText(code) {
   const q = cur.order.quote || {}, lines = MO.productSummary(cur.order, cur.product);
   if (S.type === "ext") Object.keys(S.extFin).forEach(r => lines.push(({ facade: "Фасады", top: "Столешница", corpus: "Корпус" }[r] || r) + ": " + selName(S.extFin[r])));
   const c = S.client, out = ["Здравствуйте! Хочу заказать мебель.", "", lines.join("\n")];
-  if (S.showPrice && q.total > 0) out.push("", "Примерная цена: " + MO.fmtMoney(q.total) + " ₸");
+  if (S.showPrice && q.total > 0) out.push("", "Примерная цена: " + money(q.total));
   if (c.name || c.phone) out.push("", [c.name ? "Имя: " + c.name : "", c.phone ? "Телефон: " + c.phone : ""].filter(Boolean).join("\n"));
   if (c.note) out.push("Комментарий: " + c.note);
   if (code) out.push("", "Код проекта: " + code);
@@ -389,7 +392,8 @@ function proSheet() {
   const q = cur.order.quote || {}, k = S.kitchen, kq = S.kupe;
   let h = head("Настройки дизайнера");
   h += sec("Ваши данные", "", '<div class="row2"><label class="f">Название студии<input data-p="studio.name" value="' + esc(S.studio.name) + '"></label><label class="f">Ваш WhatsApp<input data-p="studio.wa" type="tel" placeholder="+7 701 000 00 00" value="' + esc(S.studio.wa) + '"></label></div>' +
-    '<div class="row2"><label class="f">Наценка, %<input data-p="markup" type="number" min="0" max="300" value="' + S.markup + '"></label><label class="f">Цена для клиента<select data-p="showPrice"><option value="1"' + (S.showPrice ? " selected" : "") + '>Показывать</option><option value="0"' + (S.showPrice ? "" : " selected") + ">Скрыть</option></select></label></div>");
+    '<div class="row2"><label class="f">Наценка, %<input data-p="markup" type="number" min="0" max="300" value="' + S.markup + '"></label><label class="f">Цена для клиента<select data-p="showPrice"><option value="1"' + (S.showPrice ? " selected" : "") + '>Показывать</option><option value="0"' + (S.showPrice ? "" : " selected") + ">Скрыть</option></select></label></div>" +
+    '<div class="row2"><label class="f">Валюта цен<select data-p="cur">' + Object.values(MO.CURRENCIES).map(c => '<option value="' + c.code + '"' + (c.code === S.cur ? " selected" : "") + '>' + esc(c.name) + ', ' + esc(c.sign) + '</option>').join("") + '</select></label><p class="note" style="align-self:end;margin:0">Цены материалов - стартовые для этой валюты. Код для клиента передаёт и валюту.</p></div>');
   if (S.type === "kitchen") {
     const W = kitchenWalls(k), lay = kitchenLayout(k);
     h += sec("Точные размеры, мм", "", '<div class="row3">' + W.map(w => '<label class="f">' + WALL_NAME[w.key] + '<input type="number" data-p="k.len.' + w.key + '" value="' + w.len + '"></label>').join("") + "</div>");
@@ -423,6 +427,7 @@ function proField(t) {
   if (p[0] === "studio") S.studio[p[1]] = v;
   else if (p[0] === "markup") S.markup = Math.max(0, Math.min(300, +v || 0));
   else if (p[0] === "showPrice") S.showPrice = v === "1";
+  else if (p[0] === "cur") { S.cur = v; if (S.handleCat) toast("Цены в вашем каталоге ручек остались как были - проверьте их"); }
   else if (p[0] === "k") S.kitchen.len[p[2]] = Math.max(1000, Math.min(8000, Math.round(+v) || 2400));
   else if (p[0] === "q") { if (p[1] === "kind") S.kupe.kind = v; else if (p[1] === "back") S.kupe.back = v === "1"; else { S.kupe[p[1]] = +v; sanitize(); fitKupe(); } }
   else if (p[0] === "mod") { const m = manualize()[+p[1]][p[2]][+p[3]]; if (p[4] === "t") { m.t = v; delete m.what; } else m.w = Math.max(150, Math.min(1400, Math.round(+v) || 600)); }
