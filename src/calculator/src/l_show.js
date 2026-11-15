@@ -61,7 +61,7 @@ function tplCommand(t){
 function clientShow(on){
   document.body.classList.toggle("show-client",on);
   if(on){
-    calc();
+    calc(); showPrice();
     let card=$("clientCard");
     if(!card){ card=document.createElement("div"); card.className="card"; card.id="clientCard"; $("sketchCard").insertAdjacentElement("afterend",card); }
     const lines=lastClient.split("\n").filter(x=>x.trim());

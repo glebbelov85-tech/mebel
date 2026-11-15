@@ -331,6 +331,41 @@ function markFormSel(scroll){
 
 // ================= ОБЩИЙ ИТОГ =================
 let lastClient="", lastParts="";
+
+// ================= ЦЕНА ПО КНОПКЕ "ПОСЧИТАТЬ" =================
+// Цена не показывается, пока мастер не нажмёт "Посчитать". Запоминаем, какая цена была показана:
+// если после этого что-то поменяли и цена стала другой - старая сумма зачёркивается и кнопка "Пересчитать".
+let PRICE_SHOWN = null;
+function priceSig(q){ return q ? [q.total,q.cost,q.pre,CURCODE].join("|") : ""; }
+function priceState(){
+  const q=CUR&&CUR.quote; if(!q || PRICE_SHOWN==null) return "none";
+  return PRICE_SHOWN===priceSig(q) ? "ok" : "stale";
+}
+function showPrice(){
+  if(!CUR||!CUR.quote) calc();
+  PRICE_SHOWN=priceSig(CUR&&CUR.quote); renderPriceState();
+  const t=$("total"); t.classList.remove("pop"); void t.offsetWidth; t.classList.add("pop");
+  return CUR&&CUR.quote;
+}
+function priceReset(){ PRICE_SHOWN=null; renderPriceState(); }
+function renderPriceState(){
+  const st=priceState(), ok=st==="ok", stale=st==="stale";
+  document.body.classList.toggle("price-none",st==="none"); document.body.classList.toggle("price-stale",stale);
+  const bt=$("calcBtn"), hint=$("totalHint");
+  bt.textContent=stale?"Пересчитать":"Посчитать"; bt.classList.toggle("hide",ok);
+  $("total").classList.toggle("hide",st==="none"); $("total").classList.toggle("old",stale);
+  $("totalSub").classList.toggle("hide",!ok);
+  hint.textContent=stale?"Параметры изменились - цена устарела":"Выберите изделие и размеры, потом нажмите";
+  hint.classList.toggle("hide",ok);
+  $("mbarLabel").textContent=ok?"Цена для клиента":stale?"Цена устарела":"Цена ещё не посчитана";
+  $("mbarTotal").classList.toggle("hide",st==="none"); $("mbarTotal").classList.toggle("old",stale);
+  $("mbarBtn").textContent=ok?"К расчёту":stale?"Пересчитать":"Посчитать";
+  $("mbarBtn").classList.toggle("go",!ok);
+  $("costBody").classList.toggle("hide",!ok); $("costWait").classList.toggle("hide",ok);
+  $("costWaitText").textContent=stale?"Параметры изменились - нажмите, чтобы пересчитать цену.":"Цена ещё не посчитана. Когда изделие готово - нажмите кнопку.";
+  $("costCalcBtn").textContent=stale?"Пересчитать":"Посчитать";
+  const mt=$("miniTotal"); if(mt) mt.textContent=ok&&CUR&&CUR.quote?money(CUR.quote.total):"";
+}
 // Результат одного изделия: mode - вид, st - его параметры (S.kupe, S.kit или S.u)
 function resultFor(mode,st){
   if(mode==="kupe"){ const r=genKupe(st); r.type="kupe"; r.install="install"; r.st=st; return r; }
@@ -407,6 +442,7 @@ function calc(){
   $("costs").innerHTML=h;
   $("total").textContent=money(total); $("mbarTotal").textContent=money(total);
   $("totalSub").textContent=`себестоимость ${money(cst)} · прибыль ${money(total-cst)}`;
+  renderPriceState();
   const pm=$("pmInfo"); pm.classList.add("hide");
   if(R0.type==="kitchen"){
     updateKitchenHints(R0.info);
@@ -609,7 +645,7 @@ function drawMini(use3d){
       if(keepV) sk.setAttribute("viewBox",keepV); sk.innerHTML=keepH;
     } else { ms.setAttribute("viewBox",sk.getAttribute("viewBox")||"0 0 100 40"); ms.innerHTML=sk.innerHTML; }
   }
-  $("miniTitle").textContent=CUR.title; $("miniTotal").textContent=CUR.quote?money(CUR.quote.total):"";
+  $("miniTitle").textContent=CUR.title; $("miniTotal").textContent=CUR.quote&&priceState()==="ok"?money(CUR.quote.total):"";
 }
 
 // ================= РЕЖИМЫ И СТРАНИЦЫ =================

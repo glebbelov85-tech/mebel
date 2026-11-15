@@ -39,6 +39,12 @@ summary{cursor:pointer;font-weight:600;color:var(--accent);padding:4px 0;font-si
 .total{background:var(--accent);color:#fff;border-radius:14px;padding:14px;text-align:center;margin-bottom:14px}
 .total .big{font-size:34px;font-weight:700;margin:2px 0;font-variant-numeric:tabular-nums}
 .total small{opacity:.9}
+.total small{display:block}
+.total .big.old,.mbar b.old{text-decoration:line-through;opacity:.6}
+.total .big.pop{animation:pricePop .45s ease-out}
+@keyframes pricePop{0%{transform:scale(.85);opacity:.3}100%{transform:scale(1);opacity:1}}
+.calc-btn{display:block;margin:10px auto 2px;background:#fff;color:var(--accent);font-size:18px;font-weight:700;padding:12px 30px;border-radius:12px;border:0;cursor:pointer}
+.cost-wait{text-align:center;padding:6px 0 4px}.cost-wait p{margin:0 0 10px;color:var(--muted,#7a7068)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 th{font-weight:600;color:var(--muted);font-size:12px}
@@ -112,6 +118,7 @@ button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-
 .mbar b{font-size:20px;font-variant-numeric:tabular-nums}
 .mbar small{display:block;opacity:.85;font-size:11px}
 .mbar button{background:#fff;color:var(--accent);padding:8px 12px}
+.mbar button.go{font-weight:700;padding:10px 22px;font-size:16px}
 @media(min-width:940px){.mbar{display:none}}
 /* телефон: маленький эскиз всегда вверху экрана, пока мастер вводит размеры */
 .mini{position:sticky;top:0;z-index:40;background:var(--card,#fffdf9);border:1px solid var(--line);border-radius:12px;box-shadow:0 4px 14px rgba(40,30,20,.12);padding:6px 8px;display:flex;flex-direction:column;gap:4px}

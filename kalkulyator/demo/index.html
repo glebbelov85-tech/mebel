@@ -47,6 +47,12 @@ summary{cursor:pointer;font-weight:600;color:var(--accent);padding:4px 0;font-si
 .total{background:var(--accent);color:#fff;border-radius:14px;padding:14px;text-align:center;margin-bottom:14px}
 .total .big{font-size:34px;font-weight:700;margin:2px 0;font-variant-numeric:tabular-nums}
 .total small{opacity:.9}
+.total small{display:block}
+.total .big.old,.mbar b.old{text-decoration:line-through;opacity:.6}
+.total .big.pop{animation:pricePop .45s ease-out}
+@keyframes pricePop{0%{transform:scale(.85);opacity:.3}100%{transform:scale(1);opacity:1}}
+.calc-btn{display:block;margin:10px auto 2px;background:#fff;color:var(--accent);font-size:18px;font-weight:700;padding:12px 30px;border-radius:12px;border:0;cursor:pointer}
+.cost-wait{text-align:center;padding:6px 0 4px}.cost-wait p{margin:0 0 10px;color:var(--muted,#7a7068)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
 th{font-weight:600;color:var(--muted);font-size:12px}
@@ -120,6 +126,7 @@ button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-
 .mbar b{font-size:20px;font-variant-numeric:tabular-nums}
 .mbar small{display:block;opacity:.85;font-size:11px}
 .mbar button{background:#fff;color:var(--accent);padding:8px 12px}
+.mbar button.go{font-weight:700;padding:10px 22px;font-size:16px}
 @media(min-width:940px){.mbar{display:none}}
 /* телефон: маленький эскиз всегда вверху экрана, пока мастер вводит размеры */
 .mini{position:sticky;top:0;z-index:40;background:var(--card,#fffdf9);border:1px solid var(--line);border-radius:12px;box-shadow:0 4px 14px rgba(40,30,20,.12);padding:6px 8px;display:flex;flex-direction:column;gap:4px}
@@ -479,6 +486,8 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
     <small>Цена для клиента</small>
     <div class="big" id="total">-</div>
     <small id="totalSub"></small>
+    <small id="totalHint" class="hide"></small>
+    <button type="button" id="calcBtn" class="calc-btn hide">Посчитать</button>
   </div>
 
   <div class="warns" id="warns"></div>
@@ -493,11 +502,14 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
 
   <div class="card" id="costCard">
     <h2>Расчёт стоимости</h2>
+    <div id="costWait" class="cost-wait hide"><p id="costWaitText">Цена ещё не посчитана.</p><button type="button" class="b1" id="costCalcBtn">Посчитать</button></div>
+    <div id="costBody">
     <table id="costs"></table>
     <div class="info hide" id="pmInfo"></div>
     <div class="btns">
       <a class="btn wa" id="wa" href="#" target="_blank" rel="noopener">Отправить в WhatsApp</a>
       <button class="b1" id="copyClient">Скопировать для клиента</button>
+    </div>
     </div>
     <textarea id="fallback" readonly></textarea>
   </div>
@@ -567,7 +579,7 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
   </div>
 </section>
 
-<div class="mbar" id="mbar"><div><small>Цена для клиента</small><b id="mbarTotal">-</b></div><button id="mbarBtn">К расчёту</button></div>
+<div class="mbar" id="mbar"><div><small id="mbarLabel">Цена для клиента</small><b id="mbarTotal">-</b></div><button id="mbarBtn">К расчёту</button></div>
 <div id="modalHost"></div>
 <div class="toast" id="toast"></div>
 
@@ -3443,6 +3455,41 @@ function markFormSel(scroll){
 
 // ================= ОБЩИЙ ИТОГ =================
 let lastClient="", lastParts="";
+
+// ================= ЦЕНА ПО КНОПКЕ "ПОСЧИТАТЬ" =================
+// Цена не показывается, пока мастер не нажмёт "Посчитать". Запоминаем, какая цена была показана:
+// если после этого что-то поменяли и цена стала другой - старая сумма зачёркивается и кнопка "Пересчитать".
+let PRICE_SHOWN = null;
+function priceSig(q){ return q ? [q.total,q.cost,q.pre,CURCODE].join("|") : ""; }
+function priceState(){
+  const q=CUR&&CUR.quote; if(!q || PRICE_SHOWN==null) return "none";
+  return PRICE_SHOWN===priceSig(q) ? "ok" : "stale";
+}
+function showPrice(){
+  if(!CUR||!CUR.quote) calc();
+  PRICE_SHOWN=priceSig(CUR&&CUR.quote); renderPriceState();
+  const t=$("total"); t.classList.remove("pop"); void t.offsetWidth; t.classList.add("pop");
+  return CUR&&CUR.quote;
+}
+function priceReset(){ PRICE_SHOWN=null; renderPriceState(); }
+function renderPriceState(){
+  const st=priceState(), ok=st==="ok", stale=st==="stale";
+  document.body.classList.toggle("price-none",st==="none"); document.body.classList.toggle("price-stale",stale);
+  const bt=$("calcBtn"), hint=$("totalHint");
+  bt.textContent=stale?"Пересчитать":"Посчитать"; bt.classList.toggle("hide",ok);
+  $("total").classList.toggle("hide",st==="none"); $("total").classList.toggle("old",stale);
+  $("totalSub").classList.toggle("hide",!ok);
+  hint.textContent=stale?"Параметры изменились - цена устарела":"Выберите изделие и размеры, потом нажмите";
+  hint.classList.toggle("hide",ok);
+  $("mbarLabel").textContent=ok?"Цена для клиента":stale?"Цена устарела":"Цена ещё не посчитана";
+  $("mbarTotal").classList.toggle("hide",st==="none"); $("mbarTotal").classList.toggle("old",stale);
+  $("mbarBtn").textContent=ok?"К расчёту":stale?"Пересчитать":"Посчитать";
+  $("mbarBtn").classList.toggle("go",!ok);
+  $("costBody").classList.toggle("hide",!ok); $("costWait").classList.toggle("hide",ok);
+  $("costWaitText").textContent=stale?"Параметры изменились - нажмите, чтобы пересчитать цену.":"Цена ещё не посчитана. Когда изделие готово - нажмите кнопку.";
+  $("costCalcBtn").textContent=stale?"Пересчитать":"Посчитать";
+  const mt=$("miniTotal"); if(mt) mt.textContent=ok&&CUR&&CUR.quote?money(CUR.quote.total):"";
+}
 // Результат одного изделия: mode - вид, st - его параметры (S.kupe, S.kit или S.u)
 function resultFor(mode,st){
   if(mode==="kupe"){ const r=genKupe(st); r.type="kupe"; r.install="install"; r.st=st; return r; }
@@ -3519,6 +3566,7 @@ function calc(){
   $("costs").innerHTML=h;
   $("total").textContent=money(total); $("mbarTotal").textContent=money(total);
   $("totalSub").textContent=`себестоимость ${money(cst)} · прибыль ${money(total-cst)}`;
+  renderPriceState();
   const pm=$("pmInfo"); pm.classList.add("hide");
   if(R0.type==="kitchen"){
     updateKitchenHints(R0.info);
@@ -3721,7 +3769,7 @@ function drawMini(use3d){
       if(keepV) sk.setAttribute("viewBox",keepV); sk.innerHTML=keepH;
     } else { ms.setAttribute("viewBox",sk.getAttribute("viewBox")||"0 0 100 40"); ms.innerHTML=sk.innerHTML; }
   }
-  $("miniTitle").textContent=CUR.title; $("miniTotal").textContent=CUR.quote?money(CUR.quote.total):"";
+  $("miniTitle").textContent=CUR.title; $("miniTotal").textContent=CUR.quote&&priceState()==="ok"?money(CUR.quote.total):"";
 }
 
 // ================= РЕЖИМЫ И СТРАНИЦЫ =================
@@ -5670,8 +5718,9 @@ function edWhole(t){
   if(/^(помощь|помоги|что (ты )?умеешь|что можно (сказать|делать)|какие команды|подскажи)/.test(t))
     return edSay(["Можно: "+edHelpText()+".","Ещё: сколько стоит ЛДСП; цена петли 1500; добавь в расчёт смеситель 15000; без монтажа; покажи 3D; открой прайс; покажи клиенту; сохрани расчёт; перейди в раскрой; отмена."],"Говорите правку, вопрос про цену или куда перейти. Например: добавь ящик, сколько стоит ЛДСП, открой прайс.");
   // ---- вопросы про проект ----
+  if(/^((по|рас|пере)счита(й|ть)( (цену|стоимость|проект|заказ|всё|все|итого))?|покажи (цену|стоимость))$/.test(t)) t="сколько стоит";
   if(/^(сколько (стоит|выходит|получается|будет)( (весь )?(проект|заказ|кухня|шкаф|изделие|итого|всего))?$|какая (цена|стоимость|сумма)( (проекта|заказа|для клиента))?$|итого$|общая (сумма|цена)|цена для клиента)/.test(t)){
-    calc(); const q=CUR.quote; if(!q) return edSay("Пока нечего считать");
+    calc(); const q=showPrice(); if(!q) return edSay("Пока нечего считать");
     const m=[`Цена для клиента ${money(q.total)}`+(q.disc?` (со скидкой ${q.disc}%)`:""), `себестоимость ${money(q.cost)}, прибыль ${money(q.total-q.cost)}`, `предоплата ${money(q.pre)}`];
     return edSay(m.join(", "),`Цена для клиента ${fmt(q.total)}. Предоплата ${fmt(q.pre)}.`);
   }
@@ -6012,7 +6061,7 @@ function tplCommand(t){
 function clientShow(on){
   document.body.classList.toggle("show-client",on);
   if(on){
-    calc();
+    calc(); showPrice();
     let card=$("clientCard");
     if(!card){ card=document.createElement("div"); card.className="card"; card.id="clientCard"; $("sketchCard").insertAdjacentElement("afterend",card); }
     const lines=lastClient.split("\n").filter(x=>x.trim());
@@ -6186,13 +6235,15 @@ function initEvents(){
   $("toUniv").onclick=toUniv;
   $("orderOut").onclick=exportOrder;
   $("save").onclick=saveCalc;
-  $("newCalc").onclick=()=>confirmBox("Начать новый расчёт? Несохранённые изменения текущего пропадут.","Новый расчёт",()=>{ const m=S.mode; S=defaultState(); S.mode=m; setMode(m); window.scrollTo({top:0}); });
+  $("newCalc").onclick=()=>confirmBox("Начать новый расчёт? Несохранённые изменения текущего пропадут.","Новый расчёт",()=>{ const m=S.mode; S=defaultState(); S.mode=m; PRICE_SHOWN=null; setMode(m); window.scrollTo({top:0}); });
   $("voiceBtn").innerHTML=MIC_SVG+" Голосом"; $("voiceBtn").style.display="none"; // одна кнопка - плавающая "Голосом" внизу справа
   if($("showBtn")) $("showBtn").style.marginLeft="auto"; $("voiceBtn").title="Опишите проект, правку или вопрос - голосом или текстом";
   const vOpen=()=>window.edOpen?window.edOpen():openVoice(); $("voiceBtn").onclick=vOpen; $("demoVoice").onclick=vOpen;
   if(typeof DEMO!=="undefined" && DEMO && !LS.get("mk2_demo_hidden",0)) $("demoBox").classList.remove("hide");
   $("demoX").onclick=()=>{ $("demoBox").classList.add("hide"); LS.set("mk2_demo_hidden",1); };
-  $("mbarBtn").onclick=()=>$("costCard").scrollIntoView({behavior:"smooth",block:"start"});
+  $("mbarBtn").onclick=()=>{ if(priceState()!=="ok"){ showPrice(); return; } $("costCard").scrollIntoView({behavior:"smooth",block:"start"}); };
+  $("calcBtn").onclick=()=>showPrice();
+  $("costCalcBtn").onclick=()=>showPrice();
 }
 function start(){
   loadPrice(); loadLib();
