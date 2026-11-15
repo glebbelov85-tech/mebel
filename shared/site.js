@@ -262,7 +262,7 @@
       '<div class="msv-tts" id="msvTts" hidden></div>' +
       '<div class="msv-log" id="msvLog"><div class="msv-info">' + (adapter && adapter.voiceHint ? esc(adapter.voiceHint) + " Или куда перейти: \"открой калькулятор\"." : 'Скажите, куда перейти или что нажать: "открой калькулятор", "передай заказ в раскрой", "нажми сохранить", "что здесь можно нажать".') + '</div></div>' +
       '<div class="msv-live" id="msvLive" hidden></div>' +
-      '<div class="msv-row">' + (SR ? '<button type="button" class="msv-mic" id="msvMic" title="Говорить">' + mic + '</button>' : '') + '<input id="msvIn" placeholder="' + (adapter && adapter.voiceHint ? "Что поменять или куда перейти" : "Куда перейти или что нажать") + '" autocomplete="off"><button type="button" class="msv-go" id="msvGo">OK</button></div></div>';
+      '<div class="msv-row">' + (SR ? '<button type="button" class="msv-mic" id="msvMic" title="Включить или выключить микрофон">' + mic + '<span> Говорить</span></button>' : '') + '<input id="msvIn" placeholder="' + (adapter && adapter.voiceHint ? "Что поменять или куда перейти" : "Куда перейти или что нажать") + '" autocomplete="off"><button type="button" class="msv-go" id="msvGo">OK</button></div></div>';
     document.body.appendChild(w);
     var $ = function (id) { return document.getElementById(id); }, log = $("msvLog");
     function add(cls, html) { var d = document.createElement("div"); d.className = cls; d.innerHTML = html; log.appendChild(d); while (log.children.length > 6) log.removeChild(log.firstChild); log.scrollTop = log.scrollHeight; }
@@ -273,22 +273,24 @@
       var r = voiceNav(text);
       if (r) { add("msv-ok", esc(r)); if (byVoice) talk(r); } else { add("msv-err", "Не понял. " + (adapter && adapter.voiceHint ? esc(adapter.voiceHint) : "Скажите, например: \"открой учёт заказов\" или \"нажми сохранить\".")); if (byVoice) talk("Не понял, скажите иначе"); }
     }
-    function talk(t) { var was = VS.want; if (was) { VS.want = false; try { VS.rec && VS.rec.stop(); } catch (e) {} } speak(t, function () { if (was && !$("msvPanel").hidden) start(); }); }
+    function talk(t) { if (!window.MebelVoice || (MebelVoice.muted && MebelVoice.muted())) return; var was = VS.want; if (was) { VS.want = false; try { VS.rec && VS.rec.stop(); } catch (e) {} } speak(t, function () { if (was && !$("msvPanel").hidden) start(); }); }
     function show(o) { $("msvPanel").hidden = !o; $("msvPill").hidden = o; try { localStorage.setItem("ms-voice-open", o ? "1" : "0"); } catch (e) {} if (!o) stop(); }
-    function setOn(o) { VS.on = o; var b = $("msvMic"); if (b) b.className = "msv-mic" + (o ? " on" : ""); $("msvSt").textContent = o ? "Слушаю..." : ""; }
+    function setOn(o) { VS.on = o; var b = $("msvMic"); if (b) { b.className = "msv-mic" + (o ? " on" : ""); b.lastChild.textContent = o ? " Стоп" : " Говорить"; } $("msvSt").textContent = o ? "Микрофон включён" : ""; wait(); }
+    // пока слушает - строка "Говорите..." видна всё время, между фразами не мигает
+    function wait(txt) { var l = $("msvLive"); if (txt) { l.textContent = txt; l.hidden = false; return; } if (VS.want) { l.innerHTML = '<span class="msv-wait">Слушаю - говорите...</span>'; l.hidden = false; } else l.hidden = true; }
     function spawn() {
       var my = ++VS.gen, r = new SR(); VS.rec = r; r.lang = "ru-RU"; r.interimResults = true; r.continuous = !/android/i.test(navigator.userAgent);
       var done = -1;
       r.onresult = function (ev) { if (my !== VS.gen) return; var im = "";
-        for (var i = ev.resultIndex; i < ev.results.length; i++) { var x = ev.results[i]; if (x.isFinal) { if (i > done) { done = i; $("msvLive").hidden = true; run(x[0].transcript, true); } } else im += x[0].transcript; }
-        $("msvLive").textContent = im; $("msvLive").hidden = !im; };
+        for (var i = ev.resultIndex; i < ev.results.length; i++) { var x = ev.results[i]; if (x.isFinal) { if (i > done) { done = i; wait("Принял: " + x[0].transcript.trim()); run(x[0].transcript, true); setTimeout(function () { if (VS.want) wait(); }, 1800); } } else im += x[0].transcript; }
+        if (im) wait(im); };
       r.onerror = function (e) { if (my !== VS.gen) return; if (e.error === "not-allowed" || e.error === "service-not-allowed" || e.error === "audio-capture" || e.error === "network") { VS.want = false; add("msv-err", e.error === "network" ? "Для распознавания речи нужен интернет." : "Нет доступа к микрофону - разрешите его для сайта или пишите текстом."); } };
-      r.onend = function () { if (my !== VS.gen) return; $("msvLive").hidden = true; if (VS.want) setTimeout(function () { if (VS.want && my === VS.gen) spawn(); }, 150); else setOn(false); };
+      r.onend = function () { if (my !== VS.gen) return; if (VS.want) setTimeout(function () { if (VS.want && my === VS.gen) spawn(); }, 150); else setOn(false); };
       try { r.start(); } catch (e) { VS.want = false; setOn(false); }
     }
     function start() { if (!SR) return; VS.want = true; setOn(true); spawn(); }
     function stop() { VS.want = false; try { VS.rec && VS.rec.stop(); } catch (e) {} setOn(false); }
-    $("msvPill").onclick = function () { show(true); };
+    $("msvPill").onclick = function () { show(true); if (SR && !VS.on) start(); else $("msvIn").focus(); };
     $("msvX").onclick = function () { show(false); };
     $("msvSet").onclick = function () { var b = $("msvTts"); b.hidden = !b.hidden; if (!b.hidden && window.MebelVoice) MebelVoice.settings(b); };
     $("msvGo").onclick = function () { run($("msvIn").value); $("msvIn").value = ""; };

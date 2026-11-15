@@ -183,7 +183,7 @@
   }
 
   window.MebelVoice = {
-    say: say, stop: stop, voices: voices, voice: voice, prep: prep, settings: settingsLater, toKeys: toKeys, numKeys: numKeys,
+    say: say, stop: stop, muted: muted, voices: voices, voice: voice, prep: prep, settings: settingsLater, toKeys: toKeys, numKeys: numKeys,
     // полный список того, что нужно записать: [ключ, текст]
     recordList: function () {
       var r = PHRASES.slice(), seen = {};

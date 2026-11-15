@@ -260,3 +260,9 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
 .gd-s .cands{margin-top:6px}
 .gd-s .cands{display:flex;flex-wrap:wrap;gap:6px}
 .gd-s .cands button{width:auto;margin:0;display:inline-block}
+.ed-mic{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.ed-mic.rec{background:#d63c2f;border-color:#d63c2f;color:#fff;animation:edRing 1.4s infinite}
+@keyframes edRing{0%{box-shadow:0 0 0 0 rgba(214,60,47,.55)}70%{box-shadow:0 0 0 10px rgba(214,60,47,0)}100%{box-shadow:0 0 0 0 rgba(214,60,47,0)}}
+.ed-wait{color:#d63c2f;font-weight:600}
+.ed-wait::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#d63c2f;margin-right:6px;animation:voPulse 1s infinite}
+.ed-heard{color:var(--accent);font-weight:600}

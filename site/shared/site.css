@@ -59,7 +59,12 @@ html[data-tool="kp"] input,html[data-tool="kp"] select,html[data-tool="kp"] text
 #msVoice .msv-row{display:flex;gap:6px}
 #msVoice input{flex:1;min-width:0;padding:8px 10px;border:1px solid #e4dbd0;border-radius:10px;font:inherit}
 #msVoice .msv-mic,#msVoice .msv-go{border:0;border-radius:10px;padding:8px 12px;background:#2f6f5e;color:#fff;cursor:pointer;font:600 14px system-ui,sans-serif;width:auto}
-#msVoice .msv-mic.on{background:#25d366}
+#msVoice .msv-mic{display:flex;align-items:center;gap:4px}
+#msVoice .msv-mic.on{background:#d63c2f;animation:msvRing 1.4s infinite}
+@keyframes msvRing{0%{box-shadow:0 0 0 0 rgba(214,60,47,.55)}70%{box-shadow:0 0 0 10px rgba(214,60,47,0)}100%{box-shadow:0 0 0 0 rgba(214,60,47,0)}}
+#msVoice .msv-wait{color:#d63c2f;font-weight:600}
+#msVoice .msv-wait::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#d63c2f;margin-right:6px;animation:msvBlink 1s infinite}
+@keyframes msvBlink{50%{opacity:.25}}
 @media(max-width:600px){#msVoice{left:8px;right:8px;display:flex;justify-content:flex-end}#msVoice .msv-panel{width:100%}}
 #msVoice .msv-set{background:none;border:0;font-size:12px;color:#7a7068;text-decoration:underline;cursor:pointer;width:auto;padding:0 4px;margin-left:auto}
 #msVoice .msv-tts,.ed-tts{font-size:12px;padding:6px 10px;border-bottom:1px solid #e8e2da;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}

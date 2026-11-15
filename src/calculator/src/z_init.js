@@ -33,7 +33,8 @@ function initEvents(){
   $("orderOut").onclick=exportOrder;
   $("save").onclick=saveCalc;
   $("newCalc").onclick=()=>confirmBox("Начать новый расчёт? Несохранённые изменения текущего пропадут.","Новый расчёт",()=>{ const m=S.mode; S=defaultState(); S.mode=m; setMode(m); window.scrollTo({top:0}); });
-  $("voiceBtn").innerHTML=MIC_SVG+" Голосом"; $("voiceBtn").title="Опишите проект, правку или вопрос - голосом или текстом";
+  $("voiceBtn").innerHTML=MIC_SVG+" Голосом"; $("voiceBtn").style.display="none"; // одна кнопка - плавающая "Голосом" внизу справа
+  if($("showBtn")) $("showBtn").style.marginLeft="auto"; $("voiceBtn").title="Опишите проект, правку или вопрос - голосом или текстом";
   const vOpen=()=>window.edOpen?window.edOpen():openVoice(); $("voiceBtn").onclick=vOpen; $("demoVoice").onclick=vOpen;
   if(typeof DEMO!=="undefined" && DEMO && !LS.get("mk2_demo_hidden",0)) $("demoBox").classList.remove("hide");
   $("demoX").onclick=()=>{ $("demoBox").classList.add("hide"); LS.set("mk2_demo_hidden",1); };
