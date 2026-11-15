@@ -200,6 +200,8 @@
     <small>Цена для клиента</small>
     <div class="big" id="total">-</div>
     <small id="totalSub"></small>
+    <small id="totalHint" class="hide"></small>
+    <button type="button" id="calcBtn" class="calc-btn hide">Посчитать</button>
   </div>
 
   <div class="warns" id="warns"></div>
@@ -214,11 +216,14 @@
 
   <div class="card" id="costCard">
     <h2>Расчёт стоимости</h2>
+    <div id="costWait" class="cost-wait hide"><p id="costWaitText">Цена ещё не посчитана.</p><button type="button" class="b1" id="costCalcBtn">Посчитать</button></div>
+    <div id="costBody">
     <table id="costs"></table>
     <div class="info hide" id="pmInfo"></div>
     <div class="btns">
       <a class="btn wa" id="wa" href="#" target="_blank" rel="noopener">Отправить в WhatsApp</a>
       <button class="b1" id="copyClient">Скопировать для клиента</button>
+    </div>
     </div>
     <textarea id="fallback" readonly></textarea>
   </div>
@@ -288,6 +293,6 @@
   </div>
 </section>
 
-<div class="mbar" id="mbar"><div><small>Цена для клиента</small><b id="mbarTotal">-</b></div><button id="mbarBtn">К расчёту</button></div>
+<div class="mbar" id="mbar"><div><small id="mbarLabel">Цена для клиента</small><b id="mbarTotal">-</b></div><button id="mbarBtn">К расчёту</button></div>
 <div id="modalHost"></div>
 <div class="toast" id="toast"></div>
