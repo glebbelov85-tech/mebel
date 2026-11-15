@@ -401,7 +401,8 @@ function edRefresh(){ const keep=SEL; setMode(S.mode); SEL=keep; calc(); }
 // ответ вслух - только на вопросы, заданные голосом
 function edSpeak(text){
   // голос и запись живого голоса - в site/shared/golos.js (MebelVoice); пока говорит - не слушаем
-  if(!window.MebelVoice) return;
+  // звук выключен (по умолчанию) - микрофон не трогаем, иначе он мигает выкл/вкл после каждой фразы
+  if(!text||!window.MebelVoice||(MebelVoice.muted&&MebelVoice.muted())) return;
   const was=ED.eng&&ED.on; if(was) ED.eng.stop();
   MebelVoice.say(text,()=>{ if(was&&ED.open&&ED.eng) ED.eng.start(); });
 }
@@ -422,7 +423,7 @@ function edInit(){
       <div class="ed-top"><b>Голосовой помощник</b><button class="vo-link ed-mute" id="edVoiceSet" title="Отвечать вслух и каким голосом">звук</button><span class="vo-st" id="edSt"></span><button class="bx" id="edX" title="Свернуть">&times;</button></div>
       <div class="ed-log" id="edLog"></div>
       <div class="vo-live hide" id="edLive"></div>
-      <div class="ed-row"><button class="b1 hide" id="edMic" title="Говорить">${MIC_SVG}</button><input id="edIn" placeholder="Опишите проект, правку или вопрос" autocomplete="off"><button class="b1" id="edGo">OK</button></div>
+      <div class="ed-row"><button class="b1 hide ed-mic" id="edMic" title="Включить или выключить микрофон">${MIC_SVG} <span>Говорить</span></button><input id="edIn" placeholder="Опишите проект, правку или вопрос" autocomplete="off"><button class="b1" id="edGo">OK</button></div>
       <div class="ed-tools"><button class="b2 vo-sm" id="edUndo">Отменить правку</button><button class="b1 vo-sm" id="edGuideBtn">Как говорить</button><button class="b2 vo-sm" id="edNew" title="Большое поле: диктовать долго, шаблоны, выжимка">Подробное описание</button><button class="b2 vo-sm" id="edTpl">Сохранить как шаблон</button><button class="b2 vo-sm" id="edShow">Показать клиенту</button><details><summary>Что можно сказать</summary><div class="ed-help" id="edHelp"></div></details></div>
     </div>`;
   document.body.appendChild(box);
@@ -447,7 +448,7 @@ function edInit(){
   hint();
   // кнопка "Голосом" вверху и в демо: открыть помощника и сразу слушать
   window.edOpen=noMic=>{ show(true); if(!noMic&&ED.eng&&!ED.on) ED.eng.start(); else inp.focus(); };
-  $("edPill").onclick=()=>show(true);
+  $("edPill").onclick=()=>window.edOpen();
   $("edX").onclick=()=>show(false);
   $("edGo").onclick=()=>{ run(inp.value); inp.value=""; inp.focus(); };
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); run(inp.value); inp.value=""; } });
@@ -463,9 +464,14 @@ function edInit(){
   log.addEventListener("click",e=>{ const b=e.target.closest("[data-say]"); if(b){ inp.value=b.dataset.say.replace(/\s*$/," "); inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); } });
   $("edHelp").addEventListener("click",e=>{ const b=e.target.closest("[data-h]"); if(b){ inp.value=b.dataset.h; inp.focus(); } });
   // микрофон: каждая договорённая фраза сразу выполняется
-  const H={ final(f){ live.classList.add("hide"); run(f,true); },
-    interim(s){ live.textContent=s; live.classList.toggle("hide",!s); },
-    state(on,m){ ED.on=on; mic.classList.toggle("wa",on); $("edSt").textContent=on?"Слушаю...":""; $("edSt").classList.toggle("rec",on); if(m) addLog("ed-err",esc(m)); } };
+  // состояние видно всегда: пока слушает - красная кнопка "Стоп" и строка "Говорите..." (между фразами не мигает)
+  const listenTxt=()=>`<span class="ed-wait">Слушаю - говорите...</span>`;
+  const H={ final(f){ live.innerHTML=`<span class="ed-heard">Принял: ${esc(f)}</span>`; run(f,true); clearTimeout(ED.heardT); ED.heardT=setTimeout(()=>{ if(ED.on) live.innerHTML=listenTxt(); },1800); },
+    interim(s){ if(s){ live.textContent=s; live.classList.remove("hide"); } else if(ED.on){ if(!live.querySelector(".ed-heard")) live.innerHTML=listenTxt(); } else live.classList.add("hide"); },
+    state(on,m){ ED.on=on; mic.classList.toggle("rec",on); mic.querySelector("span").textContent=on?"Стоп":"Говорить";
+      $("edSt").textContent=on?"Микрофон включён":""; $("edSt").classList.toggle("rec",on);
+      if(on){ live.innerHTML=listenTxt(); live.classList.remove("hide"); } else live.classList.add("hide");
+      if(m) addLog("ed-err",esc(m)); } };
   const SR=!window.claude && (window.SpeechRecognition||window.webkitSpeechRecognition);
   if(window.claude&&window.claude.use) Promise.resolve(window.claude.use("dictation")).then(d=>{ if(d){ ED.eng=claudeEngine(d,H); mic.classList.remove("hide"); } }).catch(()=>{});
   else if(SR){ ED.eng=webSpeechEngine(SR,H); mic.classList.remove("hide"); }
