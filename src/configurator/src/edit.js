@@ -199,6 +199,12 @@ function planHtml(sel) {
     if (d.over) { pushUndo(); const r = swapSlots(d.slot, d.over.dataset.slot); if (r) { selSlot = r; render(); rebuild(); toast("Поменяли местами"); } else undoStack.pop(); }
   };
   document.addEventListener("pointerup", end); document.addEventListener("pointercancel", end);
+  // правый клик мышью и долгое нажатие пальцем на плане - то же меню шкафа
+  document.addEventListener("contextmenu", e => {
+    const b = e.target.closest(".plan .pb"); if (!b) return;
+    e.preventDefault(); if (drag && drag.ghost) drag.ghost.remove(); drag = null;
+    selSlot = b.dataset.slot; tab = 0; render(); $("body").scrollTop = 0;
+  });
 })();
 
 // панель выбранного шкафа (вместо вкладки)

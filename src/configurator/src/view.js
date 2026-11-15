@@ -199,7 +199,8 @@ const View = (() => {
       clamp(); dirty = true; if (api.onMove) api.onMove();
     });
     const up = e => {
-      if (pts.size === 1 && down && !moved && performance.now() - down.t < 400) pick(e);
+      // короткое нажатие, долгое нажатие и правый клик без сдвига - открыть меню шкафа
+      if (pts.size === 1 && down && !moved) pick(e);
       pts.delete(e.pointerId); last = null; if (!pts.size) down = null;
     };
     el.addEventListener("pointerup", up); el.addEventListener("pointercancel", e => { pts.delete(e.pointerId); last = null; });

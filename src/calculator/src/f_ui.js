@@ -137,10 +137,11 @@ function renderWalls(){
 }
 function wallAct(act,wi,row,j){
   const K=S.kit, list=K.walls[+wi][row]; j=+j;
-  if(act==="rm") list.splice(j,1);
+  if(act!=="add") snapUndo();
+  if(act==="rm"){ const md=list.splice(j,1)[0], d=md&&modDef(md.t); toastA(`Убрано: ${d?d.name:"модуль"}`,"Вернуть",undoLast); }
   else if(act==="up" && j>0) [list[j-1],list[j]]=[list[j],list[j-1]];
   else if(act==="down" && j<list.length-1) [list[j+1],list[j]]=[list[j],list[j+1]];
-  else if(act==="add"){ openPicker(row,t=>{ list.push({t,w:modDefW(t)}); renderWalls(); calc(); }); return; }
+  else if(act==="add"){ openPicker(row,t=>{ snapUndo(); list.push({t,w:modDefW(t)}); renderWalls(); calc(); }); return; }
   else if(act==="fill"||act==="grow"||act==="shrink"){
     const info=CUR.info.walls.find(x=>x.wi===+wi), free=Math.round(row==="lower"?info.freeL:info.freeU);
     if(act==="fill") list.push({t:row==="lower"?"l_fill":"u_fill",w:free});
@@ -294,8 +295,8 @@ function renderPanels(){
 function panelsClick(e){
   const u=S.u, t=e.target;
   const del=t.closest("[data-del]"), dup=t.closest("[data-dup]"), sel=t.closest("[data-sel]");
-  if(del){ u.panels.splice(+del.dataset.del,1); SEL.part=-1; markManual(); renderPanels(); calc(); }
-  else if(dup){ const i=+dup.dataset.dup, c=clone(u.panels[i]); c.name+=" (копия)"; c.y+=100; u.panels.splice(i+1,0,c); SEL.part=i+1; markManual(); renderPanels(); calc(); }
+  if(del) removePart(+del.dataset.del);
+  else if(dup) dupPart(+dup.dataset.dup);
   else if(sel) selectPart(+sel.dataset.sel,false);
 }
 function renderHw(){
@@ -305,7 +306,7 @@ function renderHw(){
       <input type="number" value="${hwPrice(h)}" data-i="${i}" data-f="p" title="${h.id&&h.p===undefined?"Цена из прайса. Если изменить здесь - будет своя цена только для этого изделия":""}">
       <button class="bx" data-del="${i}">&times;</button></div>`).join("");
   box.querySelectorAll("input").forEach(el=>el.addEventListener("input",e=>{ const t=e.target, h=u.hw[+t.dataset.i]; h[t.dataset.f]=t.dataset.f==="name"?t.value:(+t.value||0); markManual(); calc(); }));
-  box.querySelectorAll("[data-del]").forEach(el=>el.onclick=()=>{ u.hw.splice(+el.dataset.del,1); markManual(); renderHw(); calc(); });
+  box.querySelectorAll("[data-del]").forEach(el=>el.onclick=()=>{ snapUndo(); const h=u.hw.splice(+el.dataset.del,1)[0]; markManual(); renderHw(); calc(); toastA(`Убрано: ${h&&h.name||"позиция"}`,"Вернуть",undoLast); });
 }
 function markManual(){ if(!S.u.manual){ S.u.manual=true; $("u_manual").classList.remove("hide"); } }
 
@@ -596,7 +597,7 @@ function drawKitchenElev(){
     if(wi===0 && info.has.L) cz(0,info.c.TD);
     const lbl=(m,y)=>{ if(m.gap && m.t!=="l_gap") return ""; return `<text x="${ox+m.s+m.w/2}" y="${y}" text-anchor="middle" font-size="${fs*0.62}" fill="${m.key===SEL.mod?"#b5651d":"#7a7068"}">${m.w}</text>`; };
     w.low.forEach(m=>{ g+=lbl(m,fs*0.85);
-      if(m.t==="l_gap") g+=`<rect x="${ox+m.s+12}" y="${-(info.c.PL+info.c.Hl+info.c.topT)}" width="${m.w-24}" height="${info.c.PL+info.c.Hl+info.c.topT}" fill="none" stroke="#9a8f84" stroke-width="${sw}" stroke-dasharray="${sw*5} ${sw*4}"/><text x="${ox+m.s+m.w/2}" y="${-(info.c.PL+info.c.Hl)/2}" text-anchor="middle" font-size="${fs*0.6}" fill="#9a8f84">проём</text>`; });
+      if(m.t==="l_gap") g+=`<rect data-gap="${m.key}" pointer-events="all" x="${ox+m.s+12}" y="${-(info.c.PL+info.c.Hl+info.c.topT)}" width="${m.w-24}" height="${info.c.PL+info.c.Hl+info.c.topT}" fill="none" stroke="#9a8f84" stroke-width="${sw}" stroke-dasharray="${sw*5} ${sw*4}"/><text x="${ox+m.s+m.w/2}" y="${-(info.c.PL+info.c.Hl)/2}" text-anchor="middle" font-size="${fs*0.6}" fill="#9a8f84">проём</text>`; });
     w.up.forEach(m=>g+=lbl(m,-(info.yUp+info.c.Hu)-fs*0.3));
     ox+=Lw+GAP;
   });
@@ -627,7 +628,7 @@ function drawSketch(){
   const p=CUR.parts[SEL.part], si=$("selInfo");
   if(p){ let mn=""; if(mode==="kitchen"&&p.mod){ const all=CUR.info.walls.flatMap(w=>w.low.concat(w.up)), m=all.find(x=>x.key===p.mod); mn = m?`${m.name} ${m.w} · `:/^c/.test(p.mod)?"Угловой модуль · ":""; }
     si.innerHTML=`<b>${esc(mn)}${esc(p.name)}</b> · ${esc(matName(p.mat))} · ${p.a}×${p.b} мм`; }
-  else si.textContent = mode==="univ" ? "" : "Нажмите на деталь, чтобы увидеть её размер.";
+  else si.textContent = "Нажмите на деталь, чтобы увидеть размер. Правый клик (на телефоне - долгое нажатие) - меню: "+(mode==="univ"?"убрать, поставить дверь, полку, ящик.":mode==="kitchen"?"заменить, убрать, дверцы или ящики.":"полки, ящики, двери.");
   const used=[...new Set(CUR.parts.filter(p=>!MAT(p.mat).virt).map(p=>p.mat))];
   $("legend").innerHTML=used.map(m=>`<span><i style="background:${MAT(m).css}"></i>${esc(matName(m))}</span>`).join("")+
     (use3d?`<span>оси: <b style="color:#d33">X</b> <b style="color:#3a3">Y</b> <b style="color:#33d">Z</b></span>`:"");

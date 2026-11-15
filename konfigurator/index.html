@@ -130,7 +130,7 @@ input[type=range]{width:100%;accent-color:var(--accent);height:30px;margin:0}
 .pwall{display:flex;flex-direction:column;gap:4px}
 .pwh{display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;color:var(--muted)}
 .prow2{position:relative;height:92px;background:repeating-linear-gradient(90deg,transparent 0 9px,rgba(0,0,0,.025) 9px 10px);border-bottom:2px solid #c9cfcb;border-radius:4px}
-.pb{position:absolute;display:flex;align-items:center;justify-content:center;border:1.5px solid #b9c2bd;background:#fff;border-radius:6px;font-size:11.5px;font-weight:700;color:var(--ink);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;padding:0 2px}
+.pb{-webkit-touch-callout:none;position:absolute;display:flex;align-items:center;justify-content:center;border:1.5px solid #b9c2bd;background:#fff;border-radius:6px;font-size:11.5px;font-weight:700;color:var(--ink);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;padding:0 2px}
 .pb span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
 .pb.up{top:0;height:34px}.pb.lo{top:46px;height:44px}.pb.tall{top:0;height:90px;background:#f3f5f4}
 .pb.key{background:#eef5f2}
@@ -2564,7 +2564,8 @@ const View = (() => {
       clamp(); dirty = true; if (api.onMove) api.onMove();
     });
     const up = e => {
-      if (pts.size === 1 && down && !moved && performance.now() - down.t < 400) pick(e);
+      // короткое нажатие, долгое нажатие и правый клик без сдвига - открыть меню шкафа
+      if (pts.size === 1 && down && !moved) pick(e);
       pts.delete(e.pointerId); last = null; if (!pts.size) down = null;
     };
     el.addEventListener("pointerup", up); el.addEventListener("pointercancel", e => { pts.delete(e.pointerId); last = null; });
@@ -3082,6 +3083,12 @@ function planHtml(sel) {
     if (d.over) { pushUndo(); const r = swapSlots(d.slot, d.over.dataset.slot); if (r) { selSlot = r; render(); rebuild(); toast("Поменяли местами"); } else undoStack.pop(); }
   };
   document.addEventListener("pointerup", end); document.addEventListener("pointercancel", end);
+  // правый клик мышью и долгое нажатие пальцем на плане - то же меню шкафа
+  document.addEventListener("contextmenu", e => {
+    const b = e.target.closest(".plan .pb"); if (!b) return;
+    e.preventDefault(); if (drag && drag.ghost) drag.ghost.remove(); drag = null;
+    selSlot = b.dataset.slot; tab = 0; render(); $("body").scrollTop = 0;
+  });
 })();
 
 // панель выбранного шкафа (вместо вкладки)
@@ -3367,7 +3374,7 @@ function kitchenTab() {
     h += sec("Форма кухни", "", chips("shape", Object.keys(SHAPES).map(s => [s, SHAPES[s], SHAPE_SVG[s]]), k.shape, "shape"));
     h += sec("Длина стен", "", W.map(w => slider("k." + w.key, WALL_NAME[w.key], w.len, W.length === 1 ? 1600 : 1400, 5000, 50)).join(""));
     h += sec("Расстановка шкафов", undoStack.length ? '<button class="linkbtn" data-a="undo">Отменить</button>' : "", planHtml() +
-      '<p class="note">Нажмите на шкаф - здесь или на 3D-модели, - чтобы поменять его, убрать или сдвинуть. Перетащите шкаф на другое место, чтобы поменять их местами. Пустое место с "+" - туда можно поставить шкаф.</p>' +
+      '<p class="note">Нажмите на шкаф - здесь или на 3D-модели (можно и правой кнопкой мыши или долгим нажатием), - чтобы поменять его, убрать или сдвинуть. Убранный шкаф оставляет пустое место "+": нажмите на него, чтобы поставить шкаф обратно, или "Отменить". Перетащите шкаф на другое место, чтобы поменять их местами. Пустое место с "+" - туда можно поставить шкаф.</p>' +
       (k.manual ? '<button class="linkbtn" data-a="modAuto">Расставить все шкафы заново автоматически</button>' : (Object.keys(k.over || {}).length ? '<button class="linkbtn" data-a="overReset">Вернуть шкафы как было</button>' : "")));
     h += sec("Верхние шкафы", "", chips("upper", [["0", "Без верхних"], ["720", "Обычные, 72 см"], ["920", "Высокие, 92 см"]], o.upper ? o.Hu : 0));
     if (!k.manual) {

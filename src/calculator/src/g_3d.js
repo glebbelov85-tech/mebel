@@ -28,9 +28,10 @@ function init3d(){
   (function loop(){ requestAnimationFrame(loop); if(host.offsetParent===null) return; ctl.update(); r.render(scene,cam); })();
   window.addEventListener("resize",size3d);
   const ray=new T.Raycaster(), mv=new T.Vector2(); let down=null;
-  r.domElement.addEventListener("pointerdown",e=>down=[e.clientX,e.clientY]);
+  r.domElement.addEventListener("pointerdown",e=>down=[e.clientX,e.clientY,performance.now()]);
   r.domElement.addEventListener("pointerup",e=>{
-    if(!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>6) return;
+    // правая кнопка и долгое нажатие открывают меню (n_menu.js), а не выделяют
+    if(!down||e.button===2||performance.now()-down[2]>500||Math.hypot(e.clientX-down[0],e.clientY-down[1])>6) return;
     const rc=r.domElement.getBoundingClientRect();
     mv.x=((e.clientX-rc.left)/rc.width)*2-1; mv.y=-((e.clientY-rc.top)/rc.height)*2+1;
     ray.setFromCamera(mv,cam);

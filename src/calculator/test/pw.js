@@ -1,5 +1,5 @@
 const { chromium } = require('playwright'); const fs=require('fs'), path=require('path');
-const LIBS='/tmp/claude-0/-home-user/77058368-1894-5923-a618-faca5e9284bc/scratchpad/w/libs';
+const LIBS=process.env.MK_LIBS||'/tmp/claude-0/-home-user/e33109b0-3592-52f7-a649-5b53ae5c1d44/scratchpad/libs';
 const OUT=__dirname+'/shots'; fs.mkdirSync(OUT,{recursive:true});
 async function open(browser,opts={}){
   const ctx=await browser.newContext({viewport:opts.vp||{width:1280,height:900},deviceScaleFactor:1,acceptDownloads:true});
