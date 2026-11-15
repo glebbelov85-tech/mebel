@@ -25,7 +25,7 @@ function init3d(){
   const room=new T.Group(); scene.add(room);
   scene.add(new T.AxesHelper(400));
   R3={r,scene,cam,ctl,grp,room,host,needFit:true};
-  (function loop(){ requestAnimationFrame(loop); if(host.offsetParent===null) return; ctl.update(); r.render(scene,cam); })();
+  (function loop(){ requestAnimationFrame(loop); if(host.offsetParent===null) return; expTick(); ctl.update(); r.render(scene,cam); })();
   window.addEventListener("resize",size3d);
   const ray=new T.Raycaster(), mv=new T.Vector2(); let down=null;
   r.domElement.addEventListener("pointerdown",e=>down=[e.clientX,e.clientY,performance.now()]);
@@ -55,10 +55,11 @@ function build3d(){
     const geo=new T.BoxGeometry(dx,dy,dz);
     const glassy=/^mirror/.test(p.mat);
     const mat=new T.MeshLambertMaterial({color:sel?0xff9a3c:msel?0xffcf9e:m.css, transparent:glassy||p.mat==="_apron", opacity:glassy?0.8:p.mat==="_apron"?0.6:1});
-    const mesh=new T.Mesh(geo,mat); mesh.position.set(p.x+dx/2,p.y+dy/2,p.z+dz/2); mesh.userData.i=i;
+    const mesh=new T.Mesh(geo,mat); mesh.position.set(p.x+dx/2,p.y+dy/2,p.z+dz/2); mesh.userData.i=i; mesh.userData.base=mesh.position.clone(); mesh.userData.o=p.o; mesh.userData.f=!!p.f;
     mesh.add(new T.LineSegments(new T.EdgesGeometry(geo),lineMat()));
     g.add(mesh);
   });
+  expPrepare();
   // пол и стены
   const bb=bounds(CUR.parts), R=Math.max(bb.W,bb.D,1500), wallMat=()=>new T.MeshBasicMaterial({color:0xe9e2d8,side:T.DoubleSide,transparent:true,opacity:0.55});
   const grid=new T.GridHelper(Math.ceil(R*2.4/1000)*1000,Math.ceil(R*2.4/1000)*5,0xcdbfb0,0xe4dbd0); grid.position.set(bb.x0+bb.W/2,0,bb.z0+bb.D/2); R3.room.add(grid);

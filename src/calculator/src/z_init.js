@@ -16,6 +16,7 @@ function initEvents(){
     const b=e.target.closest("[data-v]");
     if(b){ S.view[S.mode]=b.dataset.v; renderViewTabs(); if(b.dataset.v==="3d"&&R3) R3.needFit=true; drawSketch(); LS.set("mk2_current",S); }
     if(e.target.id==="fit3d" && R3){ R3.needFit=true; fit3d(); }
+    if(e.target.id==="exp3d") expToggle();
   });
   $("viewTabs").addEventListener("input",e=>{ if(e.target.id==="hideFac"){ S.hideFac=e.target.checked; drawSketch(); } });
   $("sketch").addEventListener("click",e=>{ const r=e.target.closest("[data-i]"); if(r && +r.dataset.i>=0) selectPart(+r.dataset.i); });

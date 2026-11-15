@@ -307,6 +307,7 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
 .addp b{font-size:15px}
 .addp small{color:var(--muted);font-size:12px;line-height:1.3}
 #u_undo:disabled{opacity:.45}
+#exp3d.on{background:var(--accent);color:#fff}
 </style>
 </head>
 <body>
@@ -3667,7 +3668,7 @@ const VIEWS = {kupe:[["in","Начинка"],["door","Двери"],["3d","3D"],[
 function renderViewTabs(){
   const v=S.view[S.mode];
   $("viewTabs").innerHTML=VIEWS[S.mode].map(([k,n])=>`<button data-v="${k}" class="${k===v?"on":"off"}">${n}</button>`).join("")+
-    `<label class="chk" style="margin:0 0 0 6px"><input type="checkbox" id="hideFac" ${S.hideFac?"checked":""}>Скрыть фасады</label><button class="b2 hide" id="fit3d">По центру</button>`;
+    `<label class="chk" style="margin:0 0 0 6px"><input type="checkbox" id="hideFac" ${S.hideFac?"checked":""}>Скрыть фасады</label><button class="b2 hide" id="fit3d">По центру</button><button class="b2 hide" id="exp3d" title="Разложить изделие на детали и посмотреть каждую">${EXP.on?"Собрать":"Разобрать по деталям"}</button>`;
 }
 // прямоугольники для вида: u - по горизонтали, s - по вертикали (вверх), d - глубина (дальние рисуются первыми)
 function projItems(parts,view,keep){
@@ -3760,6 +3761,7 @@ function drawSketch(){
   $("u3d").classList.toggle("hide",!use3d);
   $("sketch").style.display = use3d ? "none" : "";
   const fb=$("fit3d"); if(fb) fb.classList.toggle("hide",!use3d);
+  const eb=$("exp3d"); if(eb){ eb.classList.toggle("hide",!use3d); eb.textContent=EXP.on?"Собрать":"Разобрать по деталям"; eb.classList.toggle("on",EXP.on); }
   const noFac=p=>!(S.hideFac&&p.f);
   if(use3d) show3d();
   else if(mode==="kupe"){
@@ -3846,7 +3848,7 @@ function init3d(){
   const room=new T.Group(); scene.add(room);
   scene.add(new T.AxesHelper(400));
   R3={r,scene,cam,ctl,grp,room,host,needFit:true};
-  (function loop(){ requestAnimationFrame(loop); if(host.offsetParent===null) return; ctl.update(); r.render(scene,cam); })();
+  (function loop(){ requestAnimationFrame(loop); if(host.offsetParent===null) return; expTick(); ctl.update(); r.render(scene,cam); })();
   window.addEventListener("resize",size3d);
   const ray=new T.Raycaster(), mv=new T.Vector2(); let down=null;
   r.domElement.addEventListener("pointerdown",e=>down=[e.clientX,e.clientY,performance.now()]);
@@ -3876,10 +3878,11 @@ function build3d(){
     const geo=new T.BoxGeometry(dx,dy,dz);
     const glassy=/^mirror/.test(p.mat);
     const mat=new T.MeshLambertMaterial({color:sel?0xff9a3c:msel?0xffcf9e:m.css, transparent:glassy||p.mat==="_apron", opacity:glassy?0.8:p.mat==="_apron"?0.6:1});
-    const mesh=new T.Mesh(geo,mat); mesh.position.set(p.x+dx/2,p.y+dy/2,p.z+dz/2); mesh.userData.i=i;
+    const mesh=new T.Mesh(geo,mat); mesh.position.set(p.x+dx/2,p.y+dy/2,p.z+dz/2); mesh.userData.i=i; mesh.userData.base=mesh.position.clone(); mesh.userData.o=p.o; mesh.userData.f=!!p.f;
     mesh.add(new T.LineSegments(new T.EdgesGeometry(geo),lineMat()));
     g.add(mesh);
   });
+  expPrepare();
   // пол и стены
   const bb=bounds(CUR.parts), R=Math.max(bb.W,bb.D,1500), wallMat=()=>new T.MeshBasicMaterial({color:0xe9e2d8,side:T.DoubleSide,transparent:true,opacity:0.55});
   const grid=new T.GridHelper(Math.ceil(R*2.4/1000)*1000,Math.ceil(R*2.4/1000)*5,0xcdbfb0,0xe4dbd0); grid.position.set(bb.x0+bb.W/2,0,bb.z0+bb.D/2); R3.room.add(grid);
@@ -6435,8 +6438,11 @@ function addByKind(k,at){
 
 // ---------- всплывающее меню ----------
 function closePMenu(){ const m=$("pmenu"); if(m) m.remove(); }
+let PM_3D=-1;
 function showPMenu(x,y,title,sub,items){
   closePMenu();
+  // в 3D: приблизить деталь, разобрать/собрать
+  if(PM_3D!==-1){ const zi=PM_3D; items=[zi>=0?{t:"Приблизить эту деталь",fn:()=>zoomPart(zi)}:null, {t:EXP.on?"Собрать изделие":"Разобрать по деталям",fn:expToggle}, "-", ...items]; PM_3D=-1; }
   const m=document.createElement("div"); m.id="pmenu"; m.className="pmenu";
   m.innerHTML=`<div class="pmh"><b>${esc(title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</div>`+
     items.filter(Boolean).map((it,k)=>it==="-"?`<hr>`:`<button type="button" data-k="${k}" class="${it.danger?"dng":""}" ${it.off?"disabled":""}>${esc(it.t)}</button>`).join("")+
@@ -6465,6 +6471,7 @@ document.addEventListener("keydown",e=>{
 function openPartMenu(i,cx,cy,at,mod){
   if(PAGE!=="calc" || !CUR) return;
   at=at||{};
+  PM_3D = S.view[S.mode]==="3d" ? (CUR.parts[i]?i:-2) : -1;
   const p=CUR.parts[i] || (mod?{mod}:null), undo={t:"Отменить последнее", fn:undoLast, off:!ED.undo.length};
   if(S.mode==="univ") return univMenu(i,p,cx,cy,at,undo);
   if(S.mode==="kitchen") return kitMenu(p,cx,cy,undo);
@@ -6578,8 +6585,80 @@ function initPartMenu(){
   bindPartMenu($("sketch"),sketchHit);
   // 3D-холст появляется позже - вешаем на контейнер
   bindPartMenu($("u3d"),hit3d);
+  initExpDrag();
   const ub=$("u_undo"); if(ub) ub.onclick=undoLast;
   updUndo();
+}
+
+// ================= РАЗБОР ПО ДЕТАЛЯМ (3D) =================
+// Изделие разлетается на детали: каждую можно нажать (меню, размер), приблизить и потянуть в сторону.
+// Перетаскивание только для просмотра - размеры и положение деталей в проекте не меняются. "Собрать" - всё на место.
+const EXP={on:false, amt:0, drag:{}, n:-1};
+function expToggle(){
+  EXP.on=!EXP.on;
+  if(!EXP.on) EXP.drag={};
+  if(R3 && EXP.on) R3.fitAfterExp=true;
+  drawSketch();
+  toast(EXP.on?"Детали разобраны. Нажмите на деталь - меню, тяните - подвинуть, \"Приблизить\" - крупно":"Собрано");
+}
+// направление разлёта: от центра изделия + вдоль толщины детали (фасады - вперёд)
+function expPrepare(){
+  if(!R3) return;
+  const T=T3, ms=R3.grp.children; if(!ms.length) return;
+  if(EXP.n!==CUR.parts.length){ EXP.drag={}; EXP.n=CUR.parts.length; }
+  const box=new T.Box3(); ms.forEach(m=>box.expandByPoint(m.userData.base));
+  const c=box.getCenter(new T.Vector3()), s=box.getSize(new T.Vector3()), R=Math.max(s.x,s.y,s.z,600);
+  ms.forEach(m=>{
+    const v=m.userData.base.clone().sub(c), d=new T.Vector3(v.x*0.55,v.y*0.45,v.z*0.55);
+    const ax={X:"x",Y:"y",Z:"z"}[m.userData.o], sg=Math.sign(v[ax])||1;
+    d[ax]+=sg*R*(m.userData.f?0.45:0.18);
+    m.userData.dir=d;
+  });
+  expApply();
+}
+function expApply(){
+  if(!R3) return;
+  R3.grp.children.forEach(m=>{ const u=m.userData; if(!u.base) return; m.position.copy(u.base); if(u.dir) m.position.addScaledVector(u.dir,EXP.amt); const g=EXP.drag[u.i]; if(g&&EXP.amt>0) m.position.add(g); });
+}
+function expTick(){
+  const goal=EXP.on?1:0;
+  if(Math.abs(EXP.amt-goal)>0.001){ EXP.amt+= (goal-EXP.amt)*0.18; if(Math.abs(EXP.amt-goal)<0.01) EXP.amt=goal; expApply(); if(EXP.amt===goal && R3.fitAfterExp){ R3.fitAfterExp=false; fit3d(); } }
+  const tw=R3&&R3.tween;
+  if(tw){ const k=Math.min(1,(performance.now()-tw.t0)/350), e=k*(2-k);
+    R3.cam.position.lerpVectors(tw.p0,tw.p1,e); R3.ctl.target.lerpVectors(tw.c0,tw.c1,e); if(k>=1) R3.tween=null; }
+}
+// приблизить деталь (камера плавно подлетает)
+function zoomPart(i){
+  if(!R3||!T3) return;
+  const m=R3.grp.children.find(o=>o.userData.i===i); if(!m) return;
+  const T=T3, b=new T.Box3().setFromObject(m), c=b.getCenter(new T.Vector3()), s=b.getSize(new T.Vector3()), r=Math.max(s.x,s.y,s.z,250);
+  const dir=R3.cam.position.clone().sub(R3.ctl.target).normalize();
+  R3.tween={t0:performance.now(), p0:R3.cam.position.clone(), c0:R3.ctl.target.clone(), p1:c.clone().addScaledVector(dir,r*1.9), c1:c};
+}
+// перетаскивание детали в разобранном виде
+function initExpDrag(){
+  const host=$("u3d"); let dr=null;
+  host.addEventListener("pointerdown",e=>{
+    if(!EXP.on||!R3||(e.pointerType==="mouse"&&e.button!==0)) return;
+    const h=hit3d(e); if(h.i<0) return;
+    const m=R3.grp.children.find(o=>o.userData.i===h.i), T=T3;
+    const n=R3.cam.getWorldDirection(new T.Vector3()), pl=new T.Plane().setFromNormalAndCoplanarPoint(n,m.position.clone());
+    dr={i:h.i, m, pl, id:e.pointerId, x:e.clientX, y:e.clientY, on:false, start:rayOnPlane(e,pl), g0:(EXP.drag[h.i]||new T.Vector3()).clone()};
+    R3.ctl.enabled=false;
+  },true);
+  host.addEventListener("pointermove",e=>{
+    if(!dr||e.pointerId!==dr.id) return;
+    if(!dr.on && Math.hypot(e.clientX-dr.x,e.clientY-dr.y)<6) return;
+    dr.on=true; const p=rayOnPlane(e,dr.pl); if(!p||!dr.start) return;
+    EXP.drag[dr.i]=dr.g0.clone().add(p.sub(dr.start)); expApply();
+  },true);
+  const end=e=>{ if(!dr||e.pointerId!==dr.id) return; dr=null; if(R3) R3.ctl.enabled=true; };
+  host.addEventListener("pointerup",end,true); host.addEventListener("pointercancel",end,true);
+  host.addEventListener("dblclick",e=>{ const h=hit3d(e); if(h.i>=0) zoomPart(h.i); });
+}
+function rayOnPlane(e,pl){
+  const T=T3, rc=R3.r.domElement.getBoundingClientRect(), v=new T.Vector2(((e.clientX-rc.left)/rc.width)*2-1, -((e.clientY-rc.top)/rc.height)*2+1);
+  const ray=new T.Raycaster(); ray.setFromCamera(v,R3.cam); return ray.ray.intersectPlane(pl,new T.Vector3());
 }
 
 // ================= ЗАПУСК =================
@@ -6600,6 +6679,7 @@ function initEvents(){
     const b=e.target.closest("[data-v]");
     if(b){ S.view[S.mode]=b.dataset.v; renderViewTabs(); if(b.dataset.v==="3d"&&R3) R3.needFit=true; drawSketch(); LS.set("mk2_current",S); }
     if(e.target.id==="fit3d" && R3){ R3.needFit=true; fit3d(); }
+    if(e.target.id==="exp3d") expToggle();
   });
   $("viewTabs").addEventListener("input",e=>{ if(e.target.id==="hideFac"){ S.hideFac=e.target.checked; drawSketch(); } });
   $("sketch").addEventListener("click",e=>{ const r=e.target.closest("[data-i]"); if(r && +r.dataset.i>=0) selectPart(+r.dataset.i); });

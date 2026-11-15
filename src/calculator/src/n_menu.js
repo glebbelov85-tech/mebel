@@ -204,8 +204,11 @@ function addByKind(k,at){
 
 // ---------- всплывающее меню ----------
 function closePMenu(){ const m=$("pmenu"); if(m) m.remove(); }
+let PM_3D=-1;
 function showPMenu(x,y,title,sub,items){
   closePMenu();
+  // в 3D: приблизить деталь, разобрать/собрать
+  if(PM_3D!==-1){ const zi=PM_3D; items=[zi>=0?{t:"Приблизить эту деталь",fn:()=>zoomPart(zi)}:null, {t:EXP.on?"Собрать изделие":"Разобрать по деталям",fn:expToggle}, "-", ...items]; PM_3D=-1; }
   const m=document.createElement("div"); m.id="pmenu"; m.className="pmenu";
   m.innerHTML=`<div class="pmh"><b>${esc(title)}</b>${sub?`<small>${esc(sub)}</small>`:""}</div>`+
     items.filter(Boolean).map((it,k)=>it==="-"?`<hr>`:`<button type="button" data-k="${k}" class="${it.danger?"dng":""}" ${it.off?"disabled":""}>${esc(it.t)}</button>`).join("")+
@@ -234,6 +237,7 @@ document.addEventListener("keydown",e=>{
 function openPartMenu(i,cx,cy,at,mod){
   if(PAGE!=="calc" || !CUR) return;
   at=at||{};
+  PM_3D = S.view[S.mode]==="3d" ? (CUR.parts[i]?i:-2) : -1;
   const p=CUR.parts[i] || (mod?{mod}:null), undo={t:"Отменить последнее", fn:undoLast, off:!ED.undo.length};
   if(S.mode==="univ") return univMenu(i,p,cx,cy,at,undo);
   if(S.mode==="kitchen") return kitMenu(p,cx,cy,undo);
@@ -347,6 +351,7 @@ function initPartMenu(){
   bindPartMenu($("sketch"),sketchHit);
   // 3D-холст появляется позже - вешаем на контейнер
   bindPartMenu($("u3d"),hit3d);
+  initExpDrag();
   const ub=$("u_undo"); if(ub) ub.onclick=undoLast;
   updUndo();
 }

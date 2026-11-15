@@ -517,7 +517,7 @@ const VIEWS = {kupe:[["in","Начинка"],["door","Двери"],["3d","3D"],[
 function renderViewTabs(){
   const v=S.view[S.mode];
   $("viewTabs").innerHTML=VIEWS[S.mode].map(([k,n])=>`<button data-v="${k}" class="${k===v?"on":"off"}">${n}</button>`).join("")+
-    `<label class="chk" style="margin:0 0 0 6px"><input type="checkbox" id="hideFac" ${S.hideFac?"checked":""}>Скрыть фасады</label><button class="b2 hide" id="fit3d">По центру</button>`;
+    `<label class="chk" style="margin:0 0 0 6px"><input type="checkbox" id="hideFac" ${S.hideFac?"checked":""}>Скрыть фасады</label><button class="b2 hide" id="fit3d">По центру</button><button class="b2 hide" id="exp3d" title="Разложить изделие на детали и посмотреть каждую">${EXP.on?"Собрать":"Разобрать по деталям"}</button>`;
 }
 // прямоугольники для вида: u - по горизонтали, s - по вертикали (вверх), d - глубина (дальние рисуются первыми)
 function projItems(parts,view,keep){
@@ -610,6 +610,7 @@ function drawSketch(){
   $("u3d").classList.toggle("hide",!use3d);
   $("sketch").style.display = use3d ? "none" : "";
   const fb=$("fit3d"); if(fb) fb.classList.toggle("hide",!use3d);
+  const eb=$("exp3d"); if(eb){ eb.classList.toggle("hide",!use3d); eb.textContent=EXP.on?"Собрать":"Разобрать по деталям"; eb.classList.toggle("on",EXP.on); }
   const noFac=p=>!(S.hideFac&&p.f);
   if(use3d) show3d();
   else if(mode==="kupe"){
