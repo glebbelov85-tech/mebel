@@ -23,7 +23,8 @@ function initEvents(){
   $("u_tpl").addEventListener("input",e=>{ S.u.tpl=e.target.value; if(!S.u.manual) buildFromTpl(); else { renderUniv(); $("u_manual").classList.remove("hide"); } });
   $("u_rebuild").onclick=buildFromTpl;
   $("u_saveMod").onclick=saveAsModule;
-  $("u_add").onclick=()=>{ S.u.panels.push({name:"Новая деталь",mat:"ldsp16",o:"Y",x:0,y:0,z:0,a:600,b:400,edge:1}); SEL.part=S.u.panels.length-1; markManual(); renderPanels(); calc(); const c=$("pc"+SEL.part); if(c) c.scrollIntoView({behavior:"smooth",block:"center"}); };
+  $("u_add").onclick=openAddPart;
+  initPartMenu();
   $("u_addhw").onclick=()=>{ S.u.hw.push({name:"",q:1,p:0}); markManual(); renderHw(); calc(); };
   $("u_addhwSel").addEventListener("input",e=>{ const id=e.target.value; if(!id) return; S.u.hw.push({id,name:hwName(id),q:1}); e.target.value=""; markManual(); renderHw(); calc(); });
   $("copyClient").onclick=()=>copy(lastClient);
