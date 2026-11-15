@@ -299,3 +299,4 @@ body.show-client #sketch,body.show-client #u3d{min-height:min(70vh,640px)}
 .addp b{font-size:15px}
 .addp small{color:var(--muted);font-size:12px;line-height:1.3}
 #u_undo:disabled{opacity:.45}
+#exp3d.on{background:var(--accent);color:#fff}

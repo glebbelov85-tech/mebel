@@ -64,3 +64,23 @@ const {open,OUT,chromium}=require('./pw.js');
   console.log('errors:',errs.concat(m.errs).filter(e=>!/ERR_FAILED|net::|favicon/.test(e)));
   await browser.close();
 })();
+// разбор по деталям
+(async()=>{
+  const browser=await chromium.launch({args:['--use-gl=swiftshader','--enable-unsafe-swiftshader']});
+  const {page,errs}=await open(browser,{vp:{width:1280,height:900}});
+  await page.click('[data-mode=univ]'); await page.waitForTimeout(1500);
+  await page.click('#exp3d'); await page.waitForTimeout(1200);
+  const pos=()=>page.evaluate(()=>{ const i=S.u.panels.findIndex(p=>p.name==='Дверь 1'), m=R3.grp.children.find(o=>o.userData.i===i); return [Math.round(m.position.x),Math.round(m.position.y),Math.round(m.position.z)]; });
+  console.log('exploded door1',await pos(), await page.textContent('#exp3d'));
+  await page.screenshot({path:OUT+'/explode.png'});
+  const pt=await page.evaluate(()=>{ const i=S.u.panels.findIndex(p=>p.name==='Дверь 1'), m=R3.grp.children.find(o=>o.userData.i===i), v=m.position.clone().project(R3.cam), r=R3.r.domElement.getBoundingClientRect(); return {x:r.left+(v.x+1)/2*r.width, y:r.top+(1-v.y)/2*r.height}; });
+  await page.mouse.move(pt.x,pt.y); await page.mouse.down(); await page.mouse.move(pt.x-120,pt.y,{steps:6}); await page.mouse.up(); await page.waitForTimeout(100);
+  console.log('dragged door1',await pos());
+  await page.mouse.click(pt.x-120,pt.y,{button:'right'}); await page.waitForTimeout(150);
+  console.log('menu',await page.$$eval('#pmenu button',b=>b.slice(0,3).map(x=>x.textContent).join(' | ')));
+  await page.click('#pmenu button:has-text("Приблизить")'); await page.waitForTimeout(600);
+  await page.screenshot({path:OUT+'/explode-zoom.png'});
+  await page.click('#exp3d'); await page.waitForTimeout(1200); console.log('assembled door1',await pos());
+  console.log('explode errors:',errs.filter(e=>!/ERR_FAILED|net::|favicon/.test(e)));
+  await browser.close();
+})();
