@@ -73,3 +73,13 @@ html[data-tool="kp"] input,html[data-tool="kp"] select,html[data-tool="kp"] text
 #msVoice .msv-tts input[type=range],.ed-tts input[type=range]{width:90px;vertical-align:middle}
 #msVoice .msv-tts button,.ed-tts button{font-size:12px;padding:3px 10px;width:auto}
 .mv-tip{flex-basis:100%;color:#7a7068}
+
+/* подсказка "Доступно обновление" - сверху по центру, поверх всего */
+#msNew{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:1200;display:flex;align-items:center;gap:10px;width:max-content;max-width:calc(100vw - 20px);box-sizing:border-box;background:#24302c;color:#fff;padding:10px 10px 10px 16px;border-radius:14px;box-shadow:0 6px 22px rgba(0,0,0,.25);font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#msNew .msn-t{min-width:0}
+#msNew .msn-t span{display:block;font-size:13px;opacity:.8;margin-top:2px}
+#msNew button{font:inherit;cursor:pointer;width:auto;margin:0}
+#msNew .msn-go{background:#3d8a73;color:#fff;border:0;border-radius:10px;padding:9px 14px;font-weight:600;white-space:nowrap}
+#msNew .msn-go:hover{background:#4a9b83}
+#msNew .msn-x{background:none;border:0;color:#fff;opacity:.7;font-size:22px;line-height:1;padding:0 4px}
+#msMenu .ms-ver{margin:8px 0 0;font-size:12px;color:#7a7068}

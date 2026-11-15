@@ -79,6 +79,65 @@
     clearTimeout(toastT); toastT = setTimeout(function () { el.className = ""; }, 3200);
   }
 
+  // --- пометка "Обновление" и подсказка "Доступно обновление" ---
+  // VER вшивает build.py при сборке; version.json на сервере - номер самой свежей сборки.
+  var VER = /*SITE_VERSION*/null;
+  var MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+  function verDate(v, withTime) {
+    var d = v && new Date(v.at);
+    if (!d || isNaN(d)) return "";
+    var s = d.getDate() + " " + MONTHS[d.getMonth()];
+    if (d.getFullYear() !== new Date().getFullYear()) s += " " + d.getFullYear();
+    if (withTime) s += ", " + d.getHours() + ":" + ("0" + d.getMinutes()).slice(-2);
+    return s;
+  }
+  // на главной - видная строка "Обновление: 15 ноября, 23:40" и что нового
+  function updLabel() {
+    var el = document.getElementById("msUpd");
+    if (!el || !VER) return;
+    el.innerHTML = '<b>Обновление: ' + esc(verDate(VER, true)) + "</b>" + (VER.note ? "<span>" + esc(VER.note) + "</span>" : "");
+    el.hidden = false;
+  }
+  var lastCheck = 0;
+  function checkUpdate() {
+    if (!VER || !window.fetch || location.protocol === "file:" || document.getElementById("msNew")) return;
+    if (Date.now() - lastCheck < 60000) return;
+    lastCheck = Date.now();
+    fetch(root() + "version.json?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (nv) { if (nv && nv.v && nv.v > VER.v) showNew(nv); })
+      .catch(function () {});
+  }
+  function showNew(nv) {
+    try { if (sessionStorage.getItem("ms-new-skip") === nv.v) return; } catch (e) {}
+    if (document.getElementById("msNew")) return;
+    var el = document.createElement("div");
+    el.id = "msNew"; el.setAttribute("role", "status");
+    el.innerHTML = '<div class="msn-t"><b>Доступно обновление сайта</b> от ' + esc(verDate(nv, true)) + (nv.note ? "<span>" + esc(nv.note) + "</span>" : "") + "</div>" +
+      '<button type="button" class="msn-go">Обновить</button><button type="button" class="msn-x" aria-label="Позже">×</button>';
+    el.querySelector(".msn-go").onclick = function () { reloadFresh(this); };
+    el.querySelector(".msn-x").onclick = function () { try { sessionStorage.setItem("ms-new-skip", nv.v); } catch (e) {} el.remove(); };
+    // под верхней полоской сайта, чтобы не закрывать "Передать заказ"
+    var bar = document.getElementById("msBar"), r = bar && bar.getBoundingClientRect();
+    if (r && r.bottom > 0) el.style.top = Math.round(r.bottom + 8) + "px";
+    document.body.appendChild(el);
+  }
+  // Браузер мог запомнить старую страницу (GitHub Pages разрешает хранить её 10 минут),
+  // поэтому сначала просим свежие файлы с сервера, потом перезагружаем.
+  function reloadFresh(btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "Обновляю..."; }
+    var urls = [location.href.split("#")[0], root() + "shared/site.js", root() + "shared/site.css", root() + "shared/golos.js"];
+    var done = function () { location.reload(); };
+    Promise.all(urls.map(function (u) { return fetch(u, { cache: "reload" }).catch(function () {}); })).then(done, done);
+    setTimeout(done, 4000);
+  }
+  function watchUpdates() {
+    updLabel();
+    setTimeout(checkUpdate, 2500);
+    document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") checkUpdate(); });
+    setInterval(checkUpdate, 10 * 60000);
+  }
+
   // --- передача ---
   function currentOrder() {
     // свежий заказ из инструмента; если инструмент сам заказ не собирает - тот, что в него пришёл
@@ -160,6 +219,7 @@
     extra.forEach(function (x, i) { h += '<button type="button" data-extra="' + i + '">' + esc(x.label) + "</button>"; });
     h += '<button type="button" data-dl>Скачать файл заказа (.mebel.json)</button>';
     h += '<a class="ms-fb" href="' + root() + 'otzyv/">Оставить отзыв о тестовой версии</a>';
+    if (VER) h += '<p class="ms-ver">Обновление сайта: ' + esc(verDate(VER, true)) + "</p>";
     if (rec && rec.from !== me && adapter && adapter.put) {
       var s = summary(rec.order);
       h += '<button type="button" data-last>Открыть здесь последний переданный заказ: ' + esc(s.title) + (s.client ? ", " + esc(s.client) : "") + " (" + esc(toolName(rec.from)) + ", " + esc(ago(rec.at)) + ")</button>";
@@ -301,6 +361,7 @@
 
   // --- запуск ---
   function start() {
+    watchUpdates();
     if (me === "home") { setStaff(); voicePanel(); return; }
     var fromHub = /[?&]from=/.test(location.search);
     // конфигуратор - страница для клиента: полоску видит только мастер (кто уже заходил на сайт)
@@ -311,7 +372,7 @@
   window.MebelSite = {
     TOOLS: TOOLS, tool: tool, toolName: toolName, read: read, write: write, clear: clear,
     summary: summary, ago: ago, money: money, toast: toast, saveFile: saveFile, urlOf: urlOf, isStaff: isStaff,
-    voiceNav: voiceNav,
+    voiceNav: voiceNav, version: VER, checkUpdate: checkUpdate,
     register: function (a) {
       adapter = a || {};
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);

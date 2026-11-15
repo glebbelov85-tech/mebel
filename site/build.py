@@ -11,7 +11,7 @@ uchet-zakazov/, order-format/). По умолчанию /mnt/project-files, а �
 добавляет общую полоску сайта (shared/site.js, site.css) и адаптер из adapters/ -
 маленький кусок кода, который учит инструмент отдавать и принимать заказ.
 """
-import os, re, shutil, subprocess, sys
+import datetime, json, os, re, shutil, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 args = [a for a in sys.argv[1:]]
@@ -48,6 +48,17 @@ def inject(html, tool, adapter=True):
     return html
 
 
+def version():
+    now = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)
+    note = ""
+    f = os.path.join(HERE, "obnovlenie.txt")
+    if os.path.exists(f):
+        for line in rd(f).splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"): note = line; break
+    return {"v": now.strftime("%Y%m%d%H%M%S"), "at": now.isoformat().replace("+00:00", "Z"), "note": note}
+
+
 def run_build(folder):
     subprocess.run([sys.executable, "build.py"], cwd=P(folder), check=True, stdout=subprocess.DEVNULL)
 
@@ -62,9 +73,17 @@ def main():
     os.makedirs(OUT, exist_ok=True)
 
     # общая часть и главная
-    for f in ("site.js", "site.css", "golos.js"):
+    for f in ("site.css", "golos.js"):
         os.makedirs(os.path.join(OUT, "shared"), exist_ok=True)
         shutil.copy(os.path.join(HERE, "shared", f), os.path.join(OUT, "shared", f))
+    # пометка "Обновление": время сборки + что нового (первая строка obnovlenie.txt).
+    # Тот же номер вшивается в site.js, а version.json сайт перечитывает, чтобы
+    # подсказать "Доступно обновление", если открыта старая страница.
+    ver = version()
+    wr(os.path.join(OUT, "version.json"), json.dumps(ver, ensure_ascii=False) + "\n")
+    sj = rd(os.path.join(HERE, "shared", "site.js"))
+    assert "/*SITE_VERSION*/null" in sj
+    wr(os.path.join(OUT, "shared", "site.js"), sj.replace("/*SITE_VERSION*/null", json.dumps(ver, ensure_ascii=False)))
     wr(os.path.join(OUT, "shared", "mebel-order.js"), ORDER_JS)
     wr(os.path.join(OUT, "index.html"), rd(os.path.join(HERE, "home", "index.html")))
     wr(os.path.join(OUT, ".nojekyll"), "")
