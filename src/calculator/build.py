@@ -8,6 +8,10 @@ mo=os.path.join(os.path.dirname(d),'order-format','mebel-order.js')
 for g in (os.path.join(d,'..','..','site','shared','golos.js'), os.path.join(d,'..','site','shared','golos.js')):
     if os.path.exists(g):
         js=open(g).read()+'\n'+js; break
+# движок раскроя - тот же, что в инструменте "Карта раскроя": нужен для раскладки листов прямо на замере
+rk=os.path.join(os.path.dirname(d),'raskroy','engine.js')
+if os.path.exists(rk):
+    js='\n'.join(l for l in open(rk).read().split('\n') if 'module.exports' not in l)+'\n'+js
 if os.path.exists(mo):
     js='"use strict";\n'+open(mo).read()+'\n'+js
 html=f'''<!DOCTYPE html>

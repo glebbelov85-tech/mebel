@@ -403,8 +403,34 @@ function renderItems(R0){
     (R0.others.length ? `<div class="saved"><span>${R0.others.length+1}. ${cur?esc(R0.title):"Новое изделие"}<small>сейчас на экране</small></span></div>` : "");
   $("itemsNote").textContent = R0.others.length ? "Цена, материалы и листы считаются на весь заказ сразу. Эскиз - у изделия, которое на экране." : "В один заказ можно сложить несколько изделий: кухню, шкаф, тумбу. Цена и раскрой будут общими.";
 }
-function calc(){
-  const R0=currentResult(); CUR=R0;
+// Доставка, подъём и монтаж. Своя сумма (S.install) - как есть. Если заданы условия доставки (S.dlv) - считаем по строкам:
+// монтаж, рейс по городу, километры за городом, второй цех, подъём. Иначе - одна сумма из прайса, как раньше.
+function installCalc(prods,mat){
+  if(!(mat>0)) return {sum:0, rows:[]};
+  if(S.install!=null && S.install!=="") return {sum:Math.max(0,+S.install||0), rows:[], own:true};
+  const d=S.dlv;
+  if(!d || typeof d!=="object") return {sum:prods.reduce((s,r)=>s+(P[r.install]||0),0), rows:[]};
+  const rows=[], add=(n,q,v)=>{ if(v>0) rows.push([n,q,Math.round(v)]); };
+  if(d.mount!==false) prods.forEach(r=>{ const v = r.type==="kitchen" ? (P.kmount||0) : Math.max(0,(P[r.install]||0)-(P.dlv_city||0)); add(r.type==="kitchen"?hwName("kmount"):"Сборка на месте: "+r.title,"",v); });
+  if(d.mode!=="self"){
+    add(hwName("dlv_city"),"1 рейс",P.dlv_city||0);
+    if(d.mode==="out" && d.km>0) add(hwName("dlv_km"),d.km+" км",d.km*(P.dlv_km||0));
+    if(d.pick2) add(hwName("dlv_pick"),"1 рейс",P.dlv_pick||0);
+    if(d.lift===true) add(hwName("lift_elev"),d.floor>0?d.floor+" этаж":"",P.lift_elev||0);
+    else if(d.floor>1) add(hwName("lift_floor"),d.floor+" этаж",(d.floor-1)*(P.lift_floor||0));
+  }
+  return {sum:rows.reduce((s,r)=>s+r[2],0), rows, dlv:true};
+}
+function dlvText(d){
+  d=d||S.dlv; if(!d) return "";
+  const a=[d.mode==="self"?"самовывоз":d.mode==="out"?"за город"+(d.km?" "+d.km+" км":""):"по городу"];
+  if(d.mode!=="self"){ if(d.floor>0) a.push(d.floor+" этаж"); if(d.lift===true) a.push("лифт есть"); else if(d.lift===false) a.push("без лифта"); if(d.pick2) a.push("фасады из второго цеха"); }
+  if(d.mount===false) a.push("без монтажа");
+  return a.join(", ");
+}
+// Расчёт без экрана: изделия, детали, материалы, цена. Его же используют "что будет, если" (варианты подешевле).
+function calcCore(){
+  const R0=currentResult();
   if(R0.type!=="univ") R0.warns=[...new Set(R0.warns.concat(checkParts(R0.parts)))];
   if(!Array.isArray(S.items)) S.items=[];
   // остальные изделия заказа считаются заново при каждом расчёте - так на них действуют текущие цены
@@ -414,27 +440,33 @@ function calc(){
   if(others.length){ const byId={}; prods.forEach(r=>r.hw.forEach(h=>{ if(!(h.q>0)) return; if(h.id&&h.p===undefined){ if(byId[h.id]) byId[h.id].q+=h.q; else allHw.push(byId[h.id]=Object.assign({},h)); } else allHw.push(h); })); }
   R0.allParts=allParts; R0.allHw=others.length?allHw:R0.hw;
   R0.orderTitle=prods.length>1?prods.map(r=>r.title).join(" + "):R0.title;
-  renderItems(R0);
   const cost=costParts(allParts,R0.allHw); R0.cost=cost;
   const rows=cost.rows.filter(r=>r[2]>0);
   S.extras.forEach(x=>{ if(x.q*x.p>0) rows.push([x.name||"Своя позиция", x.q+" шт.", x.q*x.p]); });
   const disc=clamp(+S.disc||0,0,90), prepay=clamp(+S.prepay||0,0,100), days=Math.max(1,+S.days||1);
-  // доставка и монтаж: своя сумма для этого заказа или из прайса; у пустого изделия - ноль
-  const mat=rows.reduce((s,r)=>s+r[2],0), installName=prods.length>1?"Доставка и монтаж":hwName(R0.install);
-  const install = mat>0 ? (S.install!=null && S.install!=="" ? Math.max(0,+S.install||0) : prods.reduce((s,r)=>s+(P[r.install]||0),0)) : 0;
+  // доставка и монтаж: своя сумма для этого заказа, условия доставки или одна сумма из прайса; у пустого изделия - ноль
+  const mat=rows.reduce((s,r)=>s+r[2],0), ins=installCalc(prods,mat), install=ins.sum;
+  const installName=ins.dlv?"Доставка, подъём и монтаж":prods.length>1?"Доставка и монтаж":hwName(R0.install);
   const work=Math.round(mat*P.work/100), cst=mat+work+install;
   const markup=Math.round((S.instNoMk ? cst-install : cst)*P.markup/100), beforeDisc=cst+markup, discSum=beforeDisc*disc/100;
   const R=Math.max(1,P.round||1);
   const total=Math.ceil((beforeDisc-discSum)/R-1e-9)*R;
   const pre=Math.min(total,Math.ceil(total*prepay/100/R-1e-9)*R);
   const daysKind=S.daysKind==="calendar"?"calendar":"work";
-  R0.quote={rows,mat,work,install,installName,cost:cst,markup,disc,discSum,total,prepay,pre,days,daysKind,instNoMk:!!S.instNoMk};
+  R0.quote={rows,mat,work,install,installName,installRows:ins.rows,cost:cst,markup,disc,discSum,total,prepay,pre,days,daysKind,instNoMk:!!S.instNoMk};
+  return R0;
+}
+function calc(){
+  const R0=calcCore(); CUR=R0;
+  renderItems(R0);
+  const {rows,mat,work,install,installName,installRows,cost:cst,markup,disc,discSum,total,prepay,pre,days,daysKind}=R0.quote, prods=R0.prods;
 
   let h=`<tr><th>Позиция</th><th class="n">Кол-во</th><th class="n">${CS()}</th></tr>`;
   rows.forEach(r=>h+=`<tr><td>${esc(r[0])}</td><td class="n">${esc(r[1])}</td><td class="n">${fmt(r[2])}</td></tr>`);
   h+=`<tr class="sum"><td>Материалы и фурнитура</td><td></td><td class="n">${fmt(mat)}</td></tr>`;
   h+=`<tr><td>Сборка (${P.work}%)</td><td></td><td class="n">${fmt(work)}</td></tr>`;
   h+=`<tr><td>${esc(installName)}${S.install!=null&&S.install!==""?" (для этого заказа)":""}</td><td></td><td class="n">${fmt(install)}</td></tr>`;
+  (installRows||[]).forEach(r=>h+=`<tr class="sub"><td>&nbsp;&nbsp;- ${esc(r[0])}</td><td class="n">${esc(r[1])}</td><td class="n">${fmt(r[2])}</td></tr>`);
   h+=`<tr class="sum"><td>Себестоимость</td><td></td><td class="n">${fmt(cst)}</td></tr>`;
   h+=`<tr><td>Наценка (${P.markup}%${S.instNoMk&&install?", без доставки и монтажа":""})</td><td></td><td class="n">${fmt(markup)}</td></tr>`;
   if(disc) h+=`<tr class="disc"><td>Скидка клиенту (${disc}%)</td><td></td><td class="n">-${fmt(discSum)}</td></tr>`;
@@ -456,7 +488,7 @@ function calc(){
   renderPartsCard(R0);
   const ex=S.extras.filter(x=>x.name&&x.q).map(x=>`\n- ${x.name}: ${x.q} шт.`).join("");
   lastClient=`${prods.length>1?prods.map((r,i)=>(i+1)+". "+r.desc).join("\n\n"):R0.desc}${S.decor.trim()?"\nЦвет: "+S.decor.trim():""}${ex?"\nДополнительно:"+ex:""}
-${install>0?"Доставка и монтаж включены":"Доставка и монтаж в стоимость не входят"}
+${install>0?(S.dlv&&(S.install==null||S.install==="")?"Включено: доставка ("+dlvText()+")"+(S.dlv.mount===false?"":" и монтаж"):"Доставка и монтаж включены"):"Доставка и монтаж в стоимость не входят"}
 
 Стоимость: ${money(total)}${disc?` (со скидкой ${disc}%)`:""}
 Предоплата: ${money(pre)}

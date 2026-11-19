@@ -3,6 +3,7 @@ const WALL_NAMES = ["Основная стена","Правая стена","Л�
 const LAYOUTS = {"1":{name:"Прямая (1 стена)",walls:[0],corners:[]}, "2R":{name:"Угловая, вторая стена справа",walls:[0,1],corners:["R"]},
   "2L":{name:"Угловая, вторая стена слева",walls:[2,0],corners:["L"]}, "3":{name:"П-образная (3 стены)",walls:[2,0,1],corners:["L","R"]}};
 const HANDLES = {std:"ручки", gola:"профиль Gola", push:"без ручек (push-to-open)"};
+const GUIDES = ["guide_r","guide","kguide","tbox"];      // от простых к дорогим
 const STD_W = [150,200,300,400,450,500,600,700,800,900,1000];
 
 // --- помощники для модулей. c - общие размеры кухни (см. kitCtx)
@@ -14,7 +15,7 @@ function kFac(b,c,name,x,y,w,h,z,hd){     // фасад в ячейке x..x+w, 
 function kDoors(b,c,x,y,w,h,z,opt){
   opt=opt||{}; const n=opt.n||(w>500?2:1), side=opt.up?"vb":"vt";
   for(let i=0;i<n;i++) kFac(b,c,n>1?`Дверь ${i+1}`:"Дверь",x+i*w/n,y,w/n,h,z, h>1200?(i===0&&n>1?"vm-r":n>1?"vm-l":"vm-r") : side+(n>1?(i===0?"-r":"-l"):"-r"));
-  b.H("hinge",n*hingesFor(h));
+  b.H(c.hinge,n*hingesFor(h));
 }
 function kDrawer(b,c,x,y,w,h,D,name){
   const T=c.T, bz=3;
@@ -23,9 +24,9 @@ function kDrawer(b,c,x,y,w,h,D,name){
   b.X(`Ящик${name||""}: бок`,bx,y+25,bz+10,bh,bd,c.body); b.X(`Ящик${name||""}: бок`,bx+bw-T,y+25,bz+10,bh,bd,c.body);
   b.Z(`Ящик${name||""}: перед`,bx+T,y+25,bz+10+bd-T,bw-2*T,bh,c.body,1); b.Z(`Ящик${name||""}: зад`,bx+T,y+25,bz+10,bw-2*T,bh,c.body,1);
   b.Y(`Ящик${name||""}: дно`,bx,y+22,bz+10,bw,bd,"dvp",0);
-  b.H("kguide",1);
+  b.H(c.guide,1);
 }
-function kShelves(b,c,x,w,y0,y1,D,n){ for(let i=1;i<=n;i++) b.Y(n>1?`Полка ${i}`:"Полка",x,Math.round(y0+(y1-y0)*i/(n+1)-c.T/2),3,w,D-3-20,c.body); }
+function kShelves(b,c,x,w,y0,y1,D,n){ for(let i=1;i<=n;i++) b.Y(n>1?`Полка ${i}`:"Полка",x,Math.round(y0+(y1-y0)*i/(n+1)-c.T/2),3,w,D-3-20,c.body); if(n>0) b.H("shpin",4*n); }
 function kPlinth(b,c,w){ b.Z("Цоколь",0,-c.PL,c.Dl-50,w,c.PL,"_plinth",0); c.acc.plinth+=w; }
 function lowBody(b,c,w,o){
   o=o||{}; const T=c.T, D=c.Dl, H=c.Hl, bz=3;
@@ -34,7 +35,7 @@ function lowBody(b,c,w,o){
   b.Y("Царга",T,H-T,bz,w-2*T,100,c.body); b.Y("Царга",T,H-T,D-100,w-2*T,100,c.body);
   if(!o.noBack) b.Z("Задняя стенка",0,0,0,w,H,"dvp",0);
   if(o.sh) kShelves(b,c,T,w-2*T,T,H-T,D,o.sh);
-  b.H("leg",4); b.H("kmisc",1); kPlinth(b,c,w);
+  b.H("leg",w>=900?6:4); b.H("kmisc",1); kPlinth(b,c,w);
 }
 function tallBody(b,c,w,o){
   o=o||{}; const T=c.T, D=c.Dl, H=c.Ht, bz=3;
@@ -63,6 +64,12 @@ const MODLIB = {
   l_dr3:   {cat:"low", name:"Ящики: 1 малый + 2 глубоких", w:600, top:1, drawers:1, gen(b,c,w){ lowBody(b,c,w); const H=c.Hl, h1=Math.round(H*0.4);
              kDrawer(b,c,0,0,w,h1,c.Dl," 1"); kDrawer(b,c,0,h1,w,h1,c.Dl," 2"); kDrawer(b,c,0,2*h1,w,H-2*h1,c.Dl," 3"); gola(c,2*w); }},
   l_dr2:   {cat:"low", name:"Ящики: 2 глубоких", w:800, top:1, drawers:1, gen(b,c,w){ lowBody(b,c,w); const h=c.Hl/2; kDrawer(b,c,0,0,w,h,c.Dl," 1"); kDrawer(b,c,0,h,w,h,c.Dl," 2"); gola(c,2*w); }},
+  l_dr3b:  {cat:"low", name:"Ящики: 2 малых + 1 глубокий", w:600, top:1, drawers:1, gen(b,c,w){ lowBody(b,c,w); const H=c.Hl, h1=Math.round(H*0.25);
+             kDrawer(b,c,0,0,w,H-2*h1,c.Dl," 1"); kDrawer(b,c,0,H-2*h1,w,h1,c.Dl," 2"); kDrawer(b,c,0,H-h1,w,h1,c.Dl," 3"); gola(c,2*w); }},
+  l_dr4:   {cat:"low", name:"Ящики: 4 одинаковых", w:600, top:1, drawers:1, gen(b,c,w){ lowBody(b,c,w); const h=c.Hl/4; for(let i=0;i<4;i++) kDrawer(b,c,0,i*h,w,h,c.Dl," "+(i+1)); gola(c,2*w); }},
+  l_drd:   {cat:"low", name:"Ящик сверху + дверцы", w:600, top:1, gen(b,c,w){ lowBody(b,c,w,{sh:1}); const h1=Math.round(c.Hl*0.2); kDoors(b,c,0,0,w,c.Hl-h1,c.Dl); kDrawer(b,c,0,c.Hl-h1,w,h1,c.Dl,""); gola(c,2*w); }},
+  l_hob:   {cat:"low", name:"Под варочную панель", w:600, top:1, gen(b,c,w){ lowBody(b,c,w,{sh:1}); kDoors(b,c,0,0,w,c.Hl,c.Dl); gola(c,w); }},
+  l_open:  {cat:"low", name:"Открытые полки (низ)", w:300, top:1, gen(b,c,w){ lowBody(b,c,w,{sh:2}); }},
   l_oven:  {cat:"low", name:"Под духовку", w:600, top:1, gen(b,c,w){ lowBody(b,c,w,{noBack:1}); const fh=c.Hl-600;
              if(fh>=100){ kDrawer(b,c,0,0,w,fh,c.Dl,""); gola(c,w); } else if(fh>20) kFac(b,c,"Планка под духовкой",0,0,w,fh,c.Dl);
              if(fh>=30) b.Y("Полка под духовку",c.T,fh-c.T,3,w-2*c.T,c.Dl-3,c.body);
@@ -147,7 +154,7 @@ function genCornerL(b,c,A,B,up){
   // два фасада во внутреннем углу
   b.Z("Дверь угловая A",D+ft+g/2,g/2,D,A-D-ft-g,H-g,c.fac,undefined,{f:1,hd:up?"vb-l":"vt-l"});
   b.X("Дверь угловая B",D,g/2,D+ft+g/2,H-g,B-D-ft-g,c.fac,facEdge(c.fac),{f:1});
-  b.H("hinge",2*hingesFor(H),"Петли угловые"); 
+  b.H(c.hinge,2*hingesFor(H),c.hinge==="hinge"?"Петли угловые":"Петли угловые без доводчика"); 
   if(c.hnd==="std") b.H("handle",1); else if(c.hnd==="push") b.H("push",1); else if(!up) c.acc.gola+=A+B-2*D;
   b.H("kmisc",1);
   if(!up){ b.H("leg",6); b.Z("Цоколь",D-50,-c.PL,D-50,A-D+50,c.PL,"_plinth",0); b.X("Цоколь",D-50,-c.PL,D-34,c.PL,B-D+34,"_plinth",0,{t:16}); c.acc.plinth+=A+B-2*D; }
@@ -156,7 +163,7 @@ function genCornerBlind(b,c,W){   // прямой корпус вдоль пле
   const z0=c.TD, pl=50;
   lowBody(b,c,W,{sh:1});
   b.Z("Планка глухого угла",z0,c.gap/2,c.Dl,pl,c.Hl-c.gap,c.fac,undefined,{f:1});
-  kFac(b,c,"Дверь глухого угла",z0+pl,0,W-z0-pl,c.Hl,c.Dl,"vt-l"); b.H("hinge",2); gola(c,W-z0-pl);
+  kFac(b,c,"Дверь глухого угла",z0+pl,0,W-z0-pl,c.Hl,c.Dl,"vt-l"); b.H(c.hinge,2); gola(c,W-z0-pl);
 }
 function genCorner(c,cr,up){
   const b=Builder(), s=cornerSize(cr,c,up);
@@ -167,7 +174,7 @@ function genCorner(c,cr,up){
 }
 
 function kitDefaults(){
-  return {layout:"2R", body:"ldsp16", fac:"mdf", top:"top38", handles:"std", Hl:720, Hu:720, Ht:2078, PL:100, Dl:560, Du:300, apronH:600, gap:3, TD:600,
+  return {layout:"2R", body:"ldsp16", fac:"mdf", top:"top38", handles:"std", Hl:720, Hu:720, Ht:2078, PL:100, Dl:560, Du:300, apronH:600, gap:3, TD:600, guides:"kguide", hinges:"hinge",
     cutSink:1, cutHob:1, apron:true, tplinth:true, led:false,
     walls:[
       {len:3300, lower:[{t:"l_dr3",w:400},{t:"l_sink",w:800},{t:"l_dish",w:600},{t:"l_oven",w:600}], upper:[{t:"u_shelf",w:400},{t:"u_dryer",w:800},{t:"u_shelf",w:600},{t:"u_hood",w:600},{t:"u_shelf",w:300}]},
@@ -177,7 +184,7 @@ function kitDefaults(){
 }
 function kitCtx(K){
   const body=MATS[K.body]?K.body:"ldsp16", fac=MATS[K.fac]?K.fac:"mdf", top=MATS[K.top]?K.top:"top38";
-  return {body, fac, top, T:MAT(body).t, ft:MAT(fac).t, topT:MAT(top).t, hnd:HANDLES[K.handles]?K.handles:"std",
+  return {body, fac, top, T:MAT(body).t, ft:MAT(fac).t, topT:MAT(top).t, hnd:HANDLES[K.handles]?K.handles:"std", guide:GUIDES.includes(K.guides)&&PI[K.guides]?K.guides:"kguide", hinge:K.hinges==="hinge0"&&PI.hinge0?"hinge0":"hinge",
     Hl:clamp(+K.Hl||720,500,950), Hu:clamp(+K.Hu||720,300,1200), Ht:clamp(+K.Ht||2078,1400,2740), PL:clamp(+K.PL||0,0,200),
     Dl:clamp(+K.Dl||560,300,700), Du:clamp(+K.Du||300,200,450), apronH:clamp(+K.apronH||600,300,900), gap:clamp(+K.gap||0,0,8), TD:clamp(+K.TD||600,400,900),
     acc:{plinth:0,gola:0}};
@@ -305,7 +312,7 @@ function genKitchen(K){
 Фасады: ${matName(c.fac)}, ${HANDLES[c.hnd]}
 Модули: нижних ${lowN}, верхних ${upN}${tallN?", пеналов "+tallN:""}${lay.corners.length?", угловых "+lay.corners.reduce((n,s)=>n+(K.corners[s].low.t!=="none")+(K.corners[s].up.t!=="none"),0):""}
 Столешница: ${matName(c.top)}, ${topM} п.м.${K.apron?"\nСтеновая панель":""}${K.led?"\nПодсветка под верхними шкафами":""}
-Фурнитура: петли с доводчиком${hw.some(h=>h.id==="kguide")?", ящики полного выдвижения":""}${hw.some(h=>h.id==="lift")?", подъёмные механизмы":""}
+Фурнитура: ${c.hinge==="hinge0"?"петли без доводчика":"петли с доводчиком"}${hw.some(h=>GUIDES.includes(h.id))?", ящики: "+hwName(c.guide).toLowerCase():""}${hw.some(h=>h.id==="lift")?", подъёмные механизмы":""}
 Техника, мойка и смеситель в стоимость не входят`;
   return {parts:roundParts(parts), hw, warns, desc, title:`Кухня ${lens.join("+")}`, info:{c,L,walls,cs,has,topM,topPieces,joints,yUp,lay,lowRunMM:topMM+walls.reduce((s,w)=>s+w.low.filter(m=>m.tall).reduce((a,m)=>a+m.w,0),0)}};
 }

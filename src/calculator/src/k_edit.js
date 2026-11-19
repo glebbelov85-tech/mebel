@@ -9,7 +9,7 @@ const ED_MODS=[
   [/бутылочн|карго/,"l_bottle"],
   [/заглушк|планк|доборн/,(f,row)=>row==="upper"?"u_fill":"l_fill"],
   [/пенал[а-я ]*холодил|холодильник[а-я ]*встро|встроен[а-я ]*холодил/,"t_fridge"],
-  [/пенал[а-я ]*(духов|свч)|духов[а-я ]*(в|на) пенал|свч|микроволн/,"t_oven"],
+  [/пенал[а-я ]*(духов|свч|техник|встро)|духов[а-я ]*(в|на) пенал|свч|микроволн/,"t_oven"],
   [/пенал|колонн/,"t_shelf"],
   [/сушк/,"u_dryer"],
   [/подъемн|подъемник|лифт/,"u_lift"],
@@ -24,7 +24,7 @@ const ED_MODS=[
   [/верхн[а-я]* (шкаф|модул)|навесн|верхн[а-я]*$|верхн[а-я]* /,"u_shelf"],
   [/шкаф|тумб|модул/,(f,row)=>row==="upper"?"u_shelf":"l_shelf"]
 ];
-const ED_FAM={t_shelf:["t_shelf","t_fridge","t_oven"], l_dr3:["l_dr3","l_dr2"], l_dr2:["l_dr2","l_dr3"], l_gap:["l_gap","t_fridge"], t_fridge:["t_fridge","l_gap"], l_oven:["l_oven","t_oven"], t_oven:["t_oven","l_oven"], u_shelf:["u_shelf","u_lift","u_open"], u_lift:["u_lift","u_shelf"]};
+const ED_FAM={t_shelf:["t_shelf","t_fridge","t_oven"], l_dr3:["l_dr3","l_dr2","l_dr3b","l_dr4","l_drd"], l_dr2:["l_dr2","l_dr3","l_dr3b","l_dr4","l_drd"], l_gap:["l_gap","t_fridge"], t_fridge:["t_fridge","l_gap"], l_oven:["l_oven","t_oven"], t_oven:["t_oven","l_oven"], u_shelf:["u_shelf","u_lift","u_open"], u_lift:["u_lift","u_shelf"]};
 const ED_FIXED=new Set(["l_dish","l_oven","l_sink","l_gap","t_fridge","t_oven","t_shelf"]);
 const WALL_ACC=["основную стену","правую стену","левую стену"];
 const ED_ORD={перв:1,втор:2,трет:3,четверт:4,пят:5,шест:6,седьм:7};
@@ -73,6 +73,7 @@ const edName = t => { const d=modDef(t); return d?d.name.toLowerCase():t; };
 function edGen(){ return genKitchen(S.kit).info; }
 // подогнать ряд по длине стены: лишнее - забрать у простых шкафов, свободное - отдать им или добавить шкафы
 function edBalance(wi,row,keep){
+  if(ED.noBalance) return [];     // идёт замер по шагам: ряд ещё диктуют, подгонять рано
   const K=S.kit, list=K.walls[wi][row], plain=ED_PLAIN[row], fill=row==="lower"?"l_fill":"u_fill", notes=[];
   const freeNow=()=>{ const iw=edGen().walls.find(x=>x.wi===wi); return iw?Math.round(row==="lower"?iw.freeL:iw.freeU):0; };
   for(let it=0;it<8;it++){
@@ -110,7 +111,7 @@ function edBalanceWall(wi,keep){
 }
 // ---------- свойства (размеры, отделка, заказ) ----------
 function edMat(f){
-  return /эмал|крашен/.test(f)?"mdf_enamel" : /пластик/.test(f)?"mdf_plastic" : /лдсп/.test(f)?"ldsp16f" : /мдф|пленк/.test(f)?"mdf" : null;
+  return /эмал|крашен|краск/.test(f)?"mdf_enamel" : /шпон/.test(f)&&MATS.mdf_veneer?"mdf_veneer" : /акрил/.test(f)&&MATS.mdf_acryl?"mdf_acryl" : /массив|рамочн/.test(f)&&MATS.mdf_wood?"mdf_wood" : /пластик/.test(f)?"mdf_plastic" : /лдсп/.test(f)?"ldsp16f" : /мдф|пленк/.test(f)?"mdf" : null;
 }
 function edProps(f){
   const msg=[], m1=edWidth(f), K=S.kit;
@@ -336,6 +337,7 @@ function edLooksNew(t){ if(!edNoun(t)) return false;
   const key=S.mode==="kitchen"?"kit":S.mode==="kupe"?"kupe":"u", d=defaultState();
   return JSON.stringify(d[key])===JSON.stringify(S[key]); }
 function edBuild(text, more){
+  if(ED.noBuild) return null;     // идёт замер по шагам: новый проект поверх не собираем
   const ps=parseSpeech(text); if(!ps||!ps.mode||!ps.apply) return null;
   ED.undo.push({s:JSON.stringify(S),p:JSON.stringify(PRICE)}); if(ED.undo.length>40) ED.undo.shift();
   ps.apply(S); SEL={part:-1,mod:null}; ED.wantDesc=false; ED.desc={text, live:true};
@@ -370,6 +372,7 @@ function editProject(text){
   const VERB=/^(добав|постав|встав|убер|удал|убрат|сними|замен|поменя|перенес|передвин|подвин|сдела)[а-я]*/;
   let prevVerb="";
   const one=c0=>{ let r=null; const c=typeof edSyn==="function"?edSyn(c0):c0;
+    if(typeof edHw==="function"){ r=edHw(c); if(r&&r.length) return r; }
     if(typeof edCeil==="function"){ r=edCeil(c); if(r) return r; r=edRel(c); if(r&&r.length) return r; r=edKitWords(c); if(r&&r.length) return r; }
     if(typeof edMore==="function") r=edMore(c); if(r&&r.length) return r; if(S.mode==="kitchen") r=edKitchen(c); if(!r||!r.length) r=edProps(c); if((!r||!r.length)&&typeof edNote==="function") r=edNote(c); return r&&r.length?r:null; };
   for(const c0 of parts){ const c=c0.trim(); let r=null, err=null;
@@ -479,7 +482,7 @@ function edInit(){
   if(LS.get("mk2_ed_open",0)) show(true);
 }
 // панель видна только на странице расчёта; модальное окно голоса не должно конфликтовать с панелью за микрофон
-if(typeof setMode==="function"){
+if(typeof setMode==="function" && typeof document!=="undefined"){
 const _edSetMode=setMode;
 setMode=function(m){ _edSetMode(m); if($("edHelp")) $("edHelp").innerHTML=edHelpHtml(); };
 const _edOpenVoice=openVoice;
