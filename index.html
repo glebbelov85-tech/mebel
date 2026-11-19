@@ -31,7 +31,7 @@ button{font:inherit;color:inherit}
 .beta:hover{background:rgba(217,180,138,.3)}
 .hero h1{margin:22px 0 2px;font-size:30px;line-height:1.15;letter-spacing:-.015em}
 .hero .sub{margin:0;opacity:.75;font-size:16px}
-.quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:18px}
+.quick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:18px}
 .q{position:relative;display:flex;flex-direction:column;gap:2px;text-align:left;text-decoration:none;color:#fff;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:14px;min-height:118px;cursor:pointer;transition:background .15s,transform .15s,border-color .15s}
 .q:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);transform:translateY(-2px)}
 .q:active{transform:scale(.98)}
@@ -171,7 +171,7 @@ footer p{margin:0 0 6px}
   .hero h1{font-size:26px;margin-top:18px}
   .brand{flex-wrap:nowrap;font-size:15px}
   .beta .bl{display:none}
-  .quick{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .quick{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
   .q{min-height:0;padding:12px 6px 10px;border-radius:16px;align-items:center;text-align:center}
   .q .qi{margin:0}
   .q b{font-size:13.5px;margin-top:8px;line-height:1.2}
@@ -230,6 +230,10 @@ footer p{margin:0 0 6px}
       <a class="q main" href="kalkulyator/">
         <span class="qi"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg></span>
         <div><b>Новый расчёт</b><span>Шкаф-купе, кухня или любое изделие - можно голосом</span></div>
+      </a>
+      <a class="q" href="kalkulyator/?zamer=1">
+        <span class="qi"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V22h2v-3.1A7 7 0 0 0 19 12z"/></svg></span>
+        <div><b>Замер голосом</b><span>Кухня по шагам: диктуете модули - цена сразу</span></div>
       </a>
       <button class="q" type="button" data-a="file" id="qOpen">
         <span class="qi"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 4h6l2 2h8v3H8.5l-2.5 9H4zm4.4 7H22l-3 9H5.6z"/></svg></span>
