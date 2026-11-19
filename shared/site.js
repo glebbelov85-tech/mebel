@@ -81,7 +81,7 @@
 
   // --- пометка "Обновление" и подсказка "Доступно обновление" ---
   // VER вшивает build.py при сборке; version.json на сервере - номер самой свежей сборки.
-  var VER = {"v": "20261119201630", "at": "2026-11-19T20:16:30Z", "note": "Замер голосом: кухня по шагам - приложение спрашивает, вы диктуете модули от угла, а листы, петли, направляющие и цена считаются сразу. Замер можно загрузить из PDF или фото."};
+  var VER = {"v": "20261119205452", "at": "2026-11-19T20:54:52Z", "note": "Подпись автора разработки и окно \"Условия использования\": на главной, внизу страницы и в меню каждого инструмента."};
   var MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
   function verDate(v, withTime) {
     var d = v && new Date(v.at);
@@ -224,12 +224,14 @@
       var s = summary(rec.order);
       h += '<button type="button" data-last>Открыть здесь последний переданный заказ: ' + esc(s.title) + (s.client ? ", " + esc(s.client) : "") + " (" + esc(toolName(rec.from)) + ", " + esc(ago(rec.at)) + ")</button>";
     }
+    h += '<p class="ms-author">' + authorHTML(true) + "</p>";
     h += "</div></div>";
     var wrap = document.createElement("div");
     wrap.id = "msMenu"; wrap.innerHTML = h;
     wrap.addEventListener("click", function (e) {
       if (e.target === wrap || e.target.closest("[data-x]")) return closeMenu();
       var b = e.target.closest("button"); if (!b) return;
+      if (b.hasAttribute("data-terms")) return; // окно условий откроет общий обработчик, меню закроется само
       if (b.dataset.to) { closeMenu(); send(b.dataset.to); }
       else if (b.hasAttribute("data-dl")) { closeMenu(); download(); }
       else if (b.hasAttribute("data-last")) { closeMenu(); receive(read()); }
@@ -241,6 +243,42 @@
   function escClose(e) { if (e.key === "Escape") closeMenu(); }
   function closeMenu() { var m = document.getElementById("msMenu"); if (m) m.remove(); document.removeEventListener("keydown", escClose); }
 
+
+  // --- автор и условия использования ---
+  // Любой элемент с атрибутом data-terms открывает окно условий (на главной, в меню инструментов).
+  var AUTHOR = "Александр Наумов", YEAR = "2026", AUTHOR_WA = "79994573210";
+  function authorHTML(full) {
+    return 'Автор разработки: ' + AUTHOR + ", " + YEAR + '. <button type="button" class="ms-tlink" data-terms>' + (full ? "Условия использования" : "Условия") + "</button>";
+  }
+  var TERMS = [
+    'Сайт "Мебельный конструктор" и его инструменты - калькулятор, замер голосом, конфигуратор для клиента, КП и договор, карта раскроя, учёт заказов - авторская работа. Автор разработки: ' + AUTHOR + ", " + YEAR + ".",
+    "Автору принадлежат тексты, расчёты и формулы, дизайн, интерфейс и код.",
+    "<b>Можно:</b> пользоваться инструментами в работе, давать клиентам ссылку на конфигуратор, делиться ссылкой на сайт.",
+    "<b>Нельзя без письменного разрешения:</b> копировать, переделывать и выкладывать у себя, выдавать за своё и убирать имя автора, продавать инструменты или доступ к ним.",
+    'Хотите взять инструменты для своей мастерской или компании - <a href="https://wa.me/' + AUTHOR_WA + "?text=" + encodeURIComponent("Здравствуйте! Пишу по поводу инструментов \"Мебельный конструктор\".") + '" target="_blank" rel="noopener">напишите автору</a>, договоримся.',
+    "Ваши заказы, цены и клиенты хранятся в вашем браузере и остаются вашими.",
+    "Сторонние части остаются под своими лицензиями: three.js (MIT) - 3D, pdfmake (MIT) - PDF документов, pdf.js (Apache 2.0) - чтение PDF, Tesseract.js (Apache 2.0) - чтение текста с фото, SheetJS (Apache 2.0) - таблицы Excel, шрифты Inter, Golos Text, Manrope и JetBrains Mono (SIL Open Font License 1.1).",
+    "История создания с датами правок хранится в репозитории автора."
+  ];
+  function openTerms() {
+    closeTerms(); closeMenu();
+    var w = document.createElement("div");
+    w.id = "msTerms";
+    w.innerHTML = '<div class="ms-card" role="dialog" aria-modal="true" aria-labelledby="msTermsH"><div class="ms-head"><b id="msTermsH">Условия использования</b><button type="button" class="ms-x" data-tx aria-label="Закрыть">×</button></div>' +
+      "<ul>" + TERMS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>" +
+      '<p class="ms-copy">© ' + YEAR + " " + AUTHOR + ". Все права защищены.</p>" +
+      '<button type="button" class="ms-ok" data-tx>Понятно</button></div>';
+    w.addEventListener("click", function (e) { if (e.target === w || e.target.closest("[data-tx]")) closeTerms(); });
+    document.body.appendChild(w);
+    document.addEventListener("keydown", termsEsc, true);
+    try { w.querySelector(".ms-ok").focus({ preventScroll: true }); } catch (e) {}
+  }
+  function termsEsc(e) { if (e.key === "Escape") { e.stopPropagation(); closeTerms(); } }
+  function closeTerms() { var m = document.getElementById("msTerms"); if (m) m.remove(); document.removeEventListener("keydown", termsEsc, true); }
+  document.addEventListener("click", function (e) {
+    var t = e.target && e.target.closest ? e.target.closest("[data-terms]") : null;
+    if (t) { e.preventDefault(); openTerms(); }
+  });
 
   // --- голос по всему сайту: переходы между инструментами, кнопки по названию ---
   // Работает в браузере (Web Speech API). Сам разбор фраз - здесь, на странице, без серверов.
@@ -300,6 +338,7 @@
       setTimeout(function () { location.href = id === "home" ? root() : urlOf(id); }, 400);
       return "Открываю: " + toolName(id);
     }
+    if (/^(открой |покажи )?(условия( использования)?|лицензи[а-я]*|об авторе|кто автор[а-я ]*|автор[а-я]* (сайта|разработки))$/.test(t)) { setTimeout(openTerms, 300); return "Открываю условия использования"; }
     if (/^отзыв|оставить отзыв|написать отзыв/.test(t)) { setTimeout(function () { location.href = root() + "otzyv/"; }, 400); return "Открываю отзыв"; }
     // кнопка по названию на текущей странице
     if ((m = t.match(/^(нажми|нажать|кликни|открой|выбери|включи|покажи|перейди)[а-я]*( на)?\s+(.+)$/)) || t.split(" ").length <= 3) {
@@ -372,7 +411,7 @@
   window.MebelSite = {
     TOOLS: TOOLS, tool: tool, toolName: toolName, read: read, write: write, clear: clear,
     summary: summary, ago: ago, money: money, toast: toast, saveFile: saveFile, urlOf: urlOf, isStaff: isStaff,
-    voiceNav: voiceNav, version: VER, checkUpdate: checkUpdate,
+    voiceNav: voiceNav, version: VER, checkUpdate: checkUpdate, terms: openTerms, author: { name: AUTHOR, year: YEAR },
     register: function (a) {
       adapter = a || {};
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
