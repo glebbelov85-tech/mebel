@@ -338,6 +338,13 @@ body.zm-open #edBar,body.zm-open .mbar,body.zm-open #msBar,body.zm-open #msVoice
 button.zm-c{cursor:pointer;border-color:var(--accent);background:var(--accent-l)}
 button.zm-c i{color:var(--accent)}
 .zm-c-fac{border-color:#d9c3a8}
+.zm-empty{flex:none;display:flex;flex-direction:column;justify-content:center;gap:4px;min-height:110px;height:21vh;padding:12px 16px;background:var(--card);border:1px dashed var(--line);border-radius:12px;text-align:center}
+.zm-empty b{font-size:16px}.zm-empty span{font-size:13px;color:var(--muted)}
+.zm-c-t{flex:none;align-self:center;font-size:12px;color:var(--muted);white-space:nowrap}
+.zm-need{display:block;margin-top:4px;font-size:14px;font-weight:600;color:#b3261e}
+.zm-how{flex:none;font-size:12px;color:var(--muted);text-align:center}
+.zm-pulse .zm-chip{animation:zmPulse .9s ease 2}
+@keyframes zmPulse{50%{border-color:var(--accent);box-shadow:0 0 0 3px rgba(46,110,94,.25);transform:scale(1.04)}}
 .zm-c0{font-size:12px;color:var(--muted);padding:6px 2px}
 .zm-total{background:var(--card);border:2px solid var(--accent);border-radius:12px;padding:10px;flex:none}
 .zm-tot-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
@@ -362,7 +369,7 @@ button.zm-c i{color:var(--accent)}
 .zm-q small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
 .zm-status{display:inline-block;margin-top:4px;font-size:13px;font-weight:600;color:var(--wood-d)}
 .zm-status.bad{color:#b3261e}.zm-status.ok{color:var(--accent)}
-.zm-chips{flex:none;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.zm-chips{flex:none;display:flex;flex-wrap:wrap;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .zm-chips::-webkit-scrollbar{display:none}
 .zm-chips:empty{display:none}
 .zm-chip{flex:none;padding:9px 12px;font-size:14px;background:#fff;border:1px solid var(--line);font-weight:500;white-space:nowrap}
@@ -395,6 +402,7 @@ button.zm-c i{color:var(--accent)}
   .zm-left{flex:1 1 56%;max-height:none}
   .zm-right{flex:1 1 44%;max-width:520px}
   .zm-svg{height:auto;flex:1 1 240px;min-height:220px;max-height:52vh}
+  .zm-empty{height:auto;flex:1 1 240px;min-height:220px;max-height:52vh}
   .zm-cnt,.zm-chips{flex-wrap:wrap;overflow:visible}
   .zm-chip{padding:8px 11px}
 }
@@ -5938,7 +5946,8 @@ function editProject(text){
   // или описание нового изделия ("комод 90 на 90, 4 ящика")
   if(!changed && edNoun(t)){ const b=edBuild(text); if(b) return b; }
   // ничего не понял - может, это переход по сайту или кнопка на экране ("перейди в раскрой", "нажми сохранить")
-  if(!changed && window.MebelSite && MebelSite.voiceNav){ const nv=MebelSite.voiceNav(text); if(nv) return {ok:false, msg:[nv], errs:[], info:true, say:nv}; }
+  // в замере по шагам кнопки страницы голосом не нажимаем: "дальше" нажимало бы кнопку "Дальше" самого замера - и так по кругу
+  if(!changed && !ED.noNav && window.MebelSite && MebelSite.voiceNav){ const nv=MebelSite.voiceNav(text); if(nv) return {ok:false, msg:[nv], errs:[], info:true, say:nv}; }
   return {ok:changed, msg, errs};
 }
 function edUndo(){
@@ -7438,6 +7447,7 @@ function zmRun(text){
   const R={out};
   // --- подтверждения особых вопросов ---
   if(z.sub && z.sub.k==="have"){
+    if(/^(дальше|далее|следующ[а-я]*|пропус[а-я]*|готово|ок|окей|хорошо|да|нет|ладно)$/.test(t)){ R.need="Выберите: новая кухня или продолжить эту."; return R; }
     if(/продолж|эт[уо]|текущ|остав/.test(t)){ z.sub=null; z.step="total"; S.mode="kitchen"; say("Продолжаем с текущей кухней."); return R; }
     zmFresh(); say("Начинаем новую кухню."); return R;
   }
@@ -7454,7 +7464,7 @@ function zmRun(text){
     if(named){ const v=sub.vals=sub.vals||{}; if(sc[0]) v.len0=sc[0]; if(sc[1]) v.len1=sc[1]; if(sc[2]) v.len2=sc[2]; if(cm){ const c=zmFit(vMeasures(" "+cm[1]+" ")[0],1800,4000); if(c) v.ceil=c; } say("Поправил."); return R; }
     if(Object.keys(lens).length || cm){ const v=sub.vals=sub.vals||{}; if(lens[0]) v.len0=lens[0]; if(lens[1]||lens[2]) v.len1=lens[1]||lens[2]; if(lens[1]&&lens[2]) v.len2=lens[2];
       if(cm){ const c=zmFit(vMeasures(" "+cm[1]+" ")[0],1800,4000); if(c) v.ceil=c; } say("Поправил."); return R; }
-    say("Скажите \"да\", если размеры верные, или назовите правильный: \"основная стена 3200\".","zm-note"); return R;
+    R.need="Скажите \"да\", если размеры верные, или назовите правильный: \"основная стена 3200\"."; return R;
   }
   // --- общие команды ---
   if(/^(назад|вернись|вернуться|верни назад|предыдущ[а-я]* (шаг|вопрос))$/.test(t)){ if(z.sub) z.sub=null; else zmPrevStep(); z.queue=[]; return R; }
@@ -7511,7 +7521,10 @@ function zmRun(text){
     const nl=/слева/.test(t)?"2L":"2R"; if(nl!==K.layout){ const a=K.layout==="2R"?1:2, b=nl==="2R"?1:2; K.walls[b].len=K.walls[a].len; if(z.len[a]){ z.len[b]=1; delete z.len[a]; } K.layout=nl; if(/^(len|low|up)/.test(z.step)) zmGo(zmKind(z.step)+(zmWi(z.step)===a?b:zmWi(z.step))); }
     say(`Вторая стена <b>${nl==="2L"?"слева":"справа"}</b>.`); return R; }
   // --- "дальше" ---
-  if(NEXT.test(t) && !(kind==="layout")){
+  // форма кухни нужна для всех следующих шагов: без неё дальше не идём, а подсказываем, что выбрать (без новых строк в ленте)
+  if(kind==="layout" && !z.sub && NEXT.test(t)){ R.need="Сначала выберите форму кухни: нажмите вариант ниже или скажите, например, \"прямая\"."; return R; }
+  if(kind==="len" && HARD.test(t)){ say(`Длину не назвали - пока беру ${fmt(K.walls[wi].len)} мм. Поправить: "${ZM_WALL[wi]} 3200".`,"zm-note"); z.len[wi]=1; zmAfterLens(); return R; }
+  if(NEXT.test(t)){
     if(row){ zmEndRow(say,false); return R; }
     zmNextStep(); return R;
   }
@@ -7585,12 +7598,13 @@ function zmRun(text){
     if(errs.length){ say(esc(errs[0]),"zm-err"); return R; }
   }
   // --- всё остальное понимает обычный помощник: правки, цены, вопросы ---
+  if(HARD.test(t)||SOFT.test(t)){ R.need=kind==="layout"?"Сначала выберите форму кухни: нажмите вариант ниже или скажите, например, \"прямая\".":"Ответьте на вопрос: нажмите вариант или назовите его голосом."; return R; }
   if(edNewBody(t)!=null){ say("Сейчас идёт замер по шагам. Чтобы начать с начала, скажите \"начать заново\".","zm-note"); return R; }
-  ED.noBuild=true; ED.noBalance=zmSteps().indexOf(z.step)<zmSteps().indexOf("fac");
+  ED.noBuild=true; ED.noNav=true; ED.noBalance=zmSteps().indexOf(z.step)<zmSteps().indexOf("fac");
   let r; try{ r=editProject(text);
     // "пенал под технику" без глагола, когда ряды уже названы - значит добавить
     if(!(r&&(r.ok||r.info)) && !row && !/^(добав|постав|убер|удал|замен)/.test(t)){ const mm=zmMods(t,"lower"); if(mm&&mm.length&&mm.every(x=>x.spec)){ const r2=editProject("добавь "+text); if(r2&&r2.ok) r=r2; } }
-  }finally{ ED.noBuild=false; ED.noBalance=false; }
+  }finally{ ED.noBuild=false; ED.noNav=false; ED.noBalance=false; }
   if(r && (r.ok || r.info) ){ (r.msg||[]).forEach(x=>say(r.html?x:esc(x))); (r.errs||[]).forEach(x=>say(esc(x),"zm-err")); if(/сколько стоит|цена для клиента/i.test((r.msg||[]).join(" "))) R.price=true; return R; }
   if(r && r.errs && r.errs.length && !/^Не понял/.test(r.errs[0])){ say(esc(r.errs[0]),"zm-err"); return R; }
   say("Не понял. "+(row?"Назовите модуль и ширину, например \"ящики 600\", или скажите \"дальше\".":"Ответьте на вопрос или скажите \"дальше\"."),"zm-err");
@@ -7609,19 +7623,27 @@ function zmSpeak(text){
 function zmUser(text,byVoice){
   text=String(text||"").trim(); if(!text||!ZM.on) return;
   if(voiceCmd(text)==="stop"){ if(ZM.eng) ZM.eng.stop(); return; }
-  const t=zmNormT(text); zmLog("zm-u",esc(text));
+  const t=zmNormT(text);
+  if(!/^(отмена|отмени(ть)?( последн[а-я]*)?|верни( как было)?|не то|не так|ошибка|убери это|сотри)$/.test(t)){
+    const before=zmSnapKey(); let r;
+    try{ r=zmRun(text); }catch(e){ r={out:[{cls:"zm-err",html:esc(e.message||String(e))}]}; }
+    if(zmSnapKey()!==before){ ZM.undo.push(before); if(ZM.undo.length>30) ZM.undo.shift(); }
+    // ответ не дан: подсказку показываем в карточке вопроса и подсвечиваем варианты, в ленту ничего не пишем - сколько ни нажимай
+    if(r.need && !r.out.length){ ZM.need=r.need; zmRender(); zmPulse(); if(byVoice) zmSpeak(r.need); return; }
+    ZM.need=null; zmLog("zm-u",esc(text));
+    r.out.forEach(o=>zmLog(o.cls,o.html));
+    zmAfter(r,byVoice); return;
+  }
+  ZM.need=null; zmLog("zm-u",esc(text));
   if(/^(отмена|отмени(ть)?( последн[а-я]*)?|верни( как было)?|не то|не так|ошибка|убери это|сотри)$/.test(t)){
     const e=ZM.undo.pop();
     if(e){ const i=e.indexOf("\u0001"), st=migrateState(JSON.parse(e.slice(0,i))); if(st) S=st; const p=e.slice(i+1); if(p!==JSON.stringify(PRICE)){ PRICE=JSON.parse(p); savePrice(); } SEL={part:-1,mod:null}; zmLog("zm-a","Отменил - вернул, как было."); }
     else zmLog("zm-err","Отменять нечего.");
     zmAfter({},byVoice); return;
   }
-  const before=zmSnapKey(); let r;
-  try{ r=zmRun(text); }catch(e){ r={out:[{cls:"zm-err",html:esc(e.message||String(e))}]}; }
-  if(zmSnapKey()!==before){ ZM.undo.push(before); if(ZM.undo.length>30) ZM.undo.shift(); }
-  r.out.forEach(o=>zmLog(o.cls,o.html));
-  zmAfter(r,byVoice);
 }
+// подсветить варианты ответа (после "Дальше" без ответа)
+function zmPulse(){ const c=$("zmChips"); if(!c) return; c.classList.remove("zm-pulse"); void c.offsetWidth; c.classList.add("zm-pulse"); try{ c.scrollLeft=0; }catch(e){} }
 function zmAfter(r,byVoice){
   if(r.close){ zmClose(); return; }
   const z=zmS(); S.mode="kitchen";
@@ -7659,16 +7681,21 @@ function zmRender(){
   const z=zmS(), ss=zmSteps(), i=Math.max(0,ss.indexOf(z.step)), kinds=[...new Set(ss.map(zmKind))], ki=kinds.indexOf(zmKind(z.step)), a=zmAsk();
   $("zmStep").textContent=`Шаг ${ki+1} из ${kinds.length}: ${ZM_STEP_NAMES[zmKind(z.step)]||""}`;
   $("zmBarFill").style.width=Math.round((i+1)/ss.length*100)+"%";
-  zmSketch();
+  // пока форма кухни не выбрана - ни плана, ни счёта: показывать нечего
+  const empty=z.step==="layout"&&!(z.sub&&z.sub.k==="have");
+  $("zmSvg").classList.toggle("hide",empty); $("zmEmpty").classList.toggle("hide",!empty);
+  if(!empty) zmSketch();
   if(typeof SCAN!=="undefined" && SCAN.fresh && !(z.sub&&z.sub.k==="scan")){ SCAN.fresh=false; const dd=$("zmDoc").querySelector("details"); if(dd && window.innerWidth<940) dd.open=false; }   // на телефоне после подтверждения замер сворачиваем - откроется нажатием
-  const cnt=CUR?zmCounts(CUR):[];
-  $("zmCnt").innerHTML=cnt.length ? cnt.map(c=>`<${c.k==="sheet"?'button type="button" data-za="map"':"span"} class="zm-c zm-c-${c.k}"><i>${esc(c.label)}</i><b>${esc(c.val)}</b></${c.k==="sheet"?"button":"span"}>`).join("") : `<span class="zm-c0">Здесь сразу будет счёт: листы по раскрою, петли, направляющие, ножки, кромка</span>`;
+  const cnt=CUR&&!empty?zmCounts(CUR):[];
+  $("zmCnt").innerHTML=cnt.length ? `<span class="zm-c-t">Итог по названному:</span>`+cnt.map(c=>`<${c.k==="sheet"?'button type="button" data-za="map"':"span"} class="zm-c zm-c-${c.k}"><i>${esc(c.label)}</i><b>${esc(c.val)}</b></${c.k==="sheet"?"button":"span"}>`).join("") : (empty?"":`<span class="zm-c0">Счёт появится, когда назовёте модули: листы по раскрою, петли, направляющие, кромка</span>`);
   const tot=$("zmTotal"); tot.classList.toggle("hide",!z.price); if(z.price) tot.innerHTML=zmTotalHtml();
   const log=$("zmLog"); log.innerHTML=ZM.log.map(x=>`<div class="${x.cls}">${x.html}</div>`).join(""); log.scrollTop=log.scrollHeight;
-  $("zmQ").innerHTML=`<b>${esc(a.q)}</b>`+(a.status?`<span class="zm-status ${/Не помещ/.test(a.status)?"bad":/ровно/.test(a.status)?"ok":""}">${esc(a.status)}</span>`:"")+(a.hint?`<small>${esc(a.hint)}</small>`:"");
+  $("zmQ").innerHTML=`<b>${esc(a.q)}</b>`+(a.status?`<span class="zm-status ${/Не помещ/.test(a.status)?"bad":/ровно/.test(a.status)?"ok":""}">${esc(a.status)}</span>`:"")+(ZM.need?`<span class="zm-need">${esc(ZM.need)}</span>`:a.hint?`<small>${esc(a.hint)}</small>`:"");
   $("zmChips").innerHTML=(a.chips||[]).map(c=>`<button type="button" class="zm-chip" data-say="${esc(c[1])}">${esc(c[0])}</button>`).join("");
   $("zmBack").disabled=i===0&&!z.sub;
-  $("zmNext").textContent=z.step==="total"?"Готово":"Дальше";
+  const must=z.step==="layout"&&!z.sub, nx=$("zmNext");
+  nx.textContent=z.step==="total"?"Готово":"Дальше"; nx.classList.toggle("b1",!must); nx.classList.toggle("b2",must);
+  $("zmHow").textContent=(a.chips||[]).length?'Нажмите вариант или нажмите "Говорить" и скажите ответ':'Нажмите "Говорить" и скажите ответ, или напишите его ниже';
 }
 // карта раскроя: как детали лягут на листы (движок - тот же, что в инструменте "Карта раскроя")
 function zmCutMap(){
@@ -7697,7 +7724,8 @@ function zmOpen(fresh,noMic){
   if(ED.eng&&ED.on) ED.eng.stop();
   if(typeof closeModal==="function") closeModal();
   if(PAGE!=="calc") setMode(S.mode);
-  const had=S.zm&&typeof S.zm==="object"&&S.zm.step;
+  // замер, остановленный на первом вопросе, не продолжаем: ответов ещё нет, а кухня в расчёте может быть чужой (из калькулятора)
+  const had=S.zm&&typeof S.zm==="object"&&S.zm.step&&!(S.zm.step==="layout"&&!S.zm.sub);
   if(fresh || !had){
     const touched=S.mode==="kitchen" && JSON.stringify(defaultState().kit)!==JSON.stringify(S.kit);
     ED.undo.push({s:JSON.stringify(S),p:JSON.stringify(PRICE)});
@@ -7705,9 +7733,9 @@ function zmOpen(fresh,noMic){
     else zmFresh();
     ZM.log=[]; ZM.undo=[]; ZM.lastTotal=null;
   }
-  S.mode="kitchen"; ZM.on=true;
+  S.mode="kitchen"; ZM.on=true; ZM.need=null;
   document.body.classList.add("zm-open"); $("zm").classList.remove("hide");
-  if(!ZM.log.length) zmLog("zm-a",had&&!fresh?"Продолжаем замер с того же места.":"Я спрашиваю - вы отвечаете. Нажмите на микрофон и говорите, или нажимайте подсказки. В любой момент: \"дальше\", \"назад\", \"отмена\", \"сколько стоит\".");
+  if(!ZM.log.length) zmLog("zm-a",had&&!fresh?"Продолжаем замер с того же места.":"Я спрашиваю - вы отвечаете: нажмите вариант или скажите его голосом. Слова \"назад\", \"отмена\", \"сколько стоит\" работают в любой момент.");
   const keep=SEL; setMode("kitchen"); SEL=keep; calc();
   if(zmS().price){ const q=showPrice(); if(q) ZM.lastTotal=q.total; }
   ZM.askKey=zmAskKey(); zmRender();
@@ -7732,6 +7760,7 @@ function zmInit(){
       <div class="zm-left">
         <div class="zm-doc hide" id="zmDoc"></div>
         <svg id="zmSvg" class="zm-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="zm-empty hide" id="zmEmpty"><b>Тут появится ваша кухня</b><span>Выберите форму - дальше приложение спросит размеры и модули. Листы и фурнитура считаются по тому, что вы назовёте.</span></div>
         <div class="zm-cnt" id="zmCnt"></div>
         <div class="zm-total hide" id="zmTotal"></div>
       </div>
@@ -7739,6 +7768,7 @@ function zmInit(){
         <div class="zm-log" id="zmLog"></div>
         <div class="zm-q" id="zmQ"></div>
         <div class="zm-chips" id="zmChips"></div>
+        <div class="zm-how" id="zmHow"></div>
         <div class="zm-live hide" id="zmLive"></div>
         <div class="zm-ctl"><button class="b2" id="zmBack">Назад</button>
           <button class="zm-mic" id="zmMic" title="Включить или выключить микрофон">${MIC_SVG.replace('width="18" height="18"','width="34" height="34"')}<span>Говорить</span></button>
@@ -7751,8 +7781,10 @@ function zmInit(){
   const inp=$("zmIn"), live=$("zmLive"), mic=$("zmMic");
   $("zmX").onclick=()=>zmClose();
   $("zmRestart").onclick=()=>confirmBox("Начать новую кухню с первого вопроса? Текущую можно вернуть кнопкой \"Отменить\" в калькуляторе.","Начать заново",()=>zmOpen(true,true));
-  $("zmBack").onclick=()=>zmUser("назад");
-  $("zmNext").onclick=()=>{ if(zmS().step==="total"&&!zmS().sub) zmClose(); else zmUser("дальше"); };
+  // защита от двойного нажатия: второе нажатие в течение 0,4 с не считается
+  const once=fn=>()=>{ const n=Date.now(); if(n-(ZM.tap||0)<400) return; ZM.tap=n; fn(); };
+  $("zmBack").onclick=once(()=>zmUser("назад"));
+  $("zmNext").onclick=once(()=>{ if(zmS().step==="total"&&!zmS().sub) zmClose(); else zmUser("дальше"); });
   $("zmGo").onclick=()=>{ const v=inp.value; inp.value=""; zmUser(v); };
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); const v=inp.value; inp.value=""; zmUser(v); } });
   box.addEventListener("click",e=>{

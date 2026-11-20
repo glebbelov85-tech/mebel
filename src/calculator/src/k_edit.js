@@ -389,7 +389,8 @@ function editProject(text){
   // или описание нового изделия ("комод 90 на 90, 4 ящика")
   if(!changed && edNoun(t)){ const b=edBuild(text); if(b) return b; }
   // ничего не понял - может, это переход по сайту или кнопка на экране ("перейди в раскрой", "нажми сохранить")
-  if(!changed && window.MebelSite && MebelSite.voiceNav){ const nv=MebelSite.voiceNav(text); if(nv) return {ok:false, msg:[nv], errs:[], info:true, say:nv}; }
+  // в замере по шагам кнопки страницы голосом не нажимаем: "дальше" нажимало бы кнопку "Дальше" самого замера - и так по кругу
+  if(!changed && !ED.noNav && window.MebelSite && MebelSite.voiceNav){ const nv=MebelSite.voiceNav(text); if(nv) return {ok:false, msg:[nv], errs:[], info:true, say:nv}; }
   return {ok:changed, msg, errs};
 }
 function edUndo(){
