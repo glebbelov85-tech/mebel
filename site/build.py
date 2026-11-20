@@ -89,6 +89,8 @@ def main():
     wr(os.path.join(OUT, ".nojekyll"), "")
     wr(os.path.join(OUT, "404.html"), rd(os.path.join(HERE, "home", "404.html")))
     wr(os.path.join(OUT, "otzyv", "index.html"), rd(os.path.join(HERE, "home", "otzyv.html")))
+    # Блокнот мастера - второй продукт: отдельная страница со своими файлами, общий site.js
+    shutil.copytree(os.path.join(HERE, "bloknot"), os.path.join(OUT, "bloknot"))
 
     # 1. Калькулятор (+ демо для коллег без полоски сайта)
     run_build("calculator")

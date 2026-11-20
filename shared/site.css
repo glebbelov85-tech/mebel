@@ -99,3 +99,15 @@ html[data-tool="kp"] input,html[data-tool="kp"] select,html[data-tool="kp"] text
 #msTerms .ms-ok{display:block;width:100%;margin:0;border:0;border-radius:12px;padding:12px;background:#2f6f5e;color:#fff;font:600 15px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;cursor:pointer}
 #msTerms .ms-ok:hover{background:#3d8a73}
 @media(max-width:560px){#msTerms{align-items:flex-end;padding:0}#msTerms .ms-card{border-radius:16px 16px 0 0;max-height:92vh;font-size:14.5px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}}
+
+/* ===== Переключатель вариантов продукта (заполняет site.js в <nav data-variants>), в тёмной шапке ===== */
+.ms-prod{display:inline-flex;gap:2px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px;max-width:100%;font:600 14px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:40px}
+.ms-prod a{display:flex;align-items:center;gap:7px;color:rgba(255,255,255,.78);text-decoration:none;padding:6px 14px 6px 7px;border-radius:999px;white-space:nowrap;transition:background .15s,color .15s;min-width:0}
+.ms-prod a:hover{color:#fff;background:rgba(255,255,255,.08)}
+.ms-prod a.on{background:#fff;color:#24302c}
+.ms-prod b{flex:none;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;background:rgba(255,255,255,.14);color:#fff}
+.ms-prod a.on b{background:#24302c;color:#fff}
+.ms-prod .ms-s{display:none}
+.ms-prod i{font-style:normal;font-size:11px;font-weight:700;background:#e8b878;color:#2a2622;border-radius:999px;padding:1px 7px}
+@media(max-width:600px){.ms-prod{font-size:13px}.ms-prod .ms-l{display:none}.ms-prod .ms-s{display:inline}.ms-prod a{padding:6px 11px 6px 6px}}
+@media(max-width:360px){.ms-prod i{display:none}}
