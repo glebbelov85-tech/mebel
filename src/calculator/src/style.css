@@ -330,6 +330,13 @@ body.zm-open #edBar,body.zm-open .mbar,body.zm-open #msBar,body.zm-open #msVoice
 button.zm-c{cursor:pointer;border-color:var(--accent);background:var(--accent-l)}
 button.zm-c i{color:var(--accent)}
 .zm-c-fac{border-color:#d9c3a8}
+.zm-empty{flex:none;display:flex;flex-direction:column;justify-content:center;gap:4px;min-height:110px;height:21vh;padding:12px 16px;background:var(--card);border:1px dashed var(--line);border-radius:12px;text-align:center}
+.zm-empty b{font-size:16px}.zm-empty span{font-size:13px;color:var(--muted)}
+.zm-c-t{flex:none;align-self:center;font-size:12px;color:var(--muted);white-space:nowrap}
+.zm-need{display:block;margin-top:4px;font-size:14px;font-weight:600;color:#b3261e}
+.zm-how{flex:none;font-size:12px;color:var(--muted);text-align:center}
+.zm-pulse .zm-chip{animation:zmPulse .9s ease 2}
+@keyframes zmPulse{50%{border-color:var(--accent);box-shadow:0 0 0 3px rgba(46,110,94,.25);transform:scale(1.04)}}
 .zm-c0{font-size:12px;color:var(--muted);padding:6px 2px}
 .zm-total{background:var(--card);border:2px solid var(--accent);border-radius:12px;padding:10px;flex:none}
 .zm-tot-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
@@ -354,7 +361,7 @@ button.zm-c i{color:var(--accent)}
 .zm-q small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
 .zm-status{display:inline-block;margin-top:4px;font-size:13px;font-weight:600;color:var(--wood-d)}
 .zm-status.bad{color:#b3261e}.zm-status.ok{color:var(--accent)}
-.zm-chips{flex:none;display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.zm-chips{flex:none;display:flex;flex-wrap:wrap;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .zm-chips::-webkit-scrollbar{display:none}
 .zm-chips:empty{display:none}
 .zm-chip{flex:none;padding:9px 12px;font-size:14px;background:#fff;border:1px solid var(--line);font-weight:500;white-space:nowrap}
@@ -387,6 +394,7 @@ button.zm-c i{color:var(--accent)}
   .zm-left{flex:1 1 56%;max-height:none}
   .zm-right{flex:1 1 44%;max-width:520px}
   .zm-svg{height:auto;flex:1 1 240px;min-height:220px;max-height:52vh}
+  .zm-empty{height:auto;flex:1 1 240px;min-height:220px;max-height:52vh}
   .zm-cnt,.zm-chips{flex-wrap:wrap;overflow:visible}
   .zm-chip{padding:8px 11px}
 }
