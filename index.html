@@ -160,6 +160,23 @@ footer .copy{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);f
 .author{margin:12px 0 0;font-size:12px;color:#cfe3db;opacity:.8}
 .about{margin:14px 2px 0;font-size:12.5px;color:var(--muted)}
 
+
+/* два продукта сайта */
+.prods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.prod{display:flex;flex-direction:column;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;text-decoration:none;color:inherit;transition:border-color .15s,transform .15s,box-shadow .15s}
+a.prod:hover{border-color:var(--wood);transform:translateY(-2px);box-shadow:0 8px 22px rgba(40,30,20,.08)}
+.prod .ph{display:flex;align-items:center;gap:10px}
+.prod .ph i{flex:none;width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:var(--accent-l);color:var(--accent)}
+.prod:not(.here) .ph i{background:var(--wood-l);color:var(--wood)}
+.prod .ph i{font-style:normal}.prod .ph i b{font-size:20px}
+.prod h3{margin:0;font-size:17px}
+.prod .who{font-size:12.5px;color:var(--muted)}
+.prod p{margin:0;font-size:14px;color:var(--muted);flex:1}
+.prod ul{margin:2px 0 0;padding-left:18px;font-size:13.5px;display:grid;gap:3px}
+.prod .go{font-weight:600;color:var(--accent);font-size:14px;margin-top:6px}
+.prod:not(.here) .go{color:#9a6224}
+.prod .hr{font-size:12px;font-weight:700;color:var(--accent);background:var(--accent-l);border-radius:999px;padding:2px 9px;margin-left:auto;white-space:nowrap}
+@media(max-width:720px){.prods{grid-template-columns:minmax(0,1fr)}}
 /* ---------- планшет ---------- */
 @media(max-width:960px){
   .path{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -172,7 +189,8 @@ footer .copy{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);f
   body{padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom))}
   .hero{padding:14px 0 22px}
   .hero h1{font-size:26px;margin-top:18px}
-  .brand{flex-wrap:nowrap;font-size:15px}
+  .brand{flex-wrap:wrap;font-size:15px;row-gap:8px}
+  .brand>svg{display:none}
   .beta .bl{display:none}
   .quick{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
   .q{min-height:0;padding:12px 6px 10px;border-radius:16px;align-items:center;text-align:center}
@@ -228,7 +246,7 @@ footer .copy{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);f
   <div class="in">
     <div class="brand">
       <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="#d9b48a" d="M3 4h8v7H3zM13 4h8v4h-8zM13 10h8v10h-8zM3 13h8v7H3z"/></svg>
-      Мебельный конструктор
+      <nav data-variants aria-label="Варианты продукта"></nav>
       <a class="beta" href="otzyv/"><span class="bl">Тестовая версия - </span>ваш отзыв</a>
     </div>
     <h1 id="hello">Здравствуйте!</h1>
@@ -285,6 +303,11 @@ footer .copy{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);f
     <section id="tools">
       <div class="sh"><h2>Путь заказа</h2><p>Пять шагов от расчёта до сдачи. Каждый инструмент работает и сам по себе, а заказ переходит дальше одной кнопкой "Передать заказ".</p></div>
       <ol class="path rv" id="path"></ol>
+    </section>
+
+    <section id="products">
+      <div class="sh"><h2>Варианты продукта</h2><p>Каждый вариант собран по пожеланиям своего мастера. Смотрите и сравнивайте - потом из всех соберём одно, самое полезное.</p></div>
+      <div class="prods rv" id="variants"></div>
     </section>
 
     <section id="more">
@@ -514,7 +537,17 @@ footer .copy{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);f
     rv.forEach(function (el) { io.observe(el); });
   } else rv.forEach(function (el) { el.classList.add("seen"); });
 
-  tools(); order(); board(); region(); spy();
+  // ---------- варианты продукта (список - в shared/site.js, VARIANTS) ----------
+  function variants() {
+    var cur = S.variantOf("home");
+    $("variants").innerHTML = S.VARIANTS.map(function (v) {
+      var here = v === cur, tag = here ? "div" : "a";
+      return "<" + tag + ' class="prod' + (here ? " here" : "") + '"' + (here ? "" : ' href="' + esc(S.variantUrl(v)) + '"') + '><div class="ph"><i><b>' + v.n + "</b></i><div><h3>Вариант " + v.n + ": " + esc(v.name) + '</h3><div class="who">' + esc(v.who) + "</div></div>" + (here ? '<span class="hr">Вы здесь</span>' : "") + "</div>" +
+        "<ul>" + v.points.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" + (here ? "" : '<div class="go">Открыть вариант ' + v.n + " →</div>") + "</" + tag + ">";
+    }).join("");
+  }
+
+  tools(); order(); board(); region(); variants(); spy();
 })();
 </script>
 </body>

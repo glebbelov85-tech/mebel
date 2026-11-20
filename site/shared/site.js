@@ -29,6 +29,20 @@
     { id: "zakazy", name: "Учёт заказов", full: "Учёт заказов", desc: "Все заказы по этапам: замер, договор, производство, монтаж. Оплаты, расходы и напоминания." }
   ];
 
+  // Варианты продукта на одном сайте. Каждый собран по пожеланиям своего мастера; потом из всех
+  // соберём одно итоговое. Новый вариант = одна запись здесь + его папка в site/ (см. build.py).
+  // pages - какие страницы сайта относятся к варианту (по MEBEL_TOOL), path - адрес от корня сайта.
+  var VARIANTS = [
+    { id: "v1", n: 1, name: "Мебельный конструктор", short: "Конструктор", path: "",
+      pages: ["home", "kalkulyator", "konfigurator", "kp", "raskroy", "zakazy"],
+      who: "Полный набор для мастерской: точный расчёт и документы",
+      points: ["Точный расчёт деталей и листов", "Конфигуратор 3D для клиента", "КП и договор в PDF, карта раскроя", "Учёт заказов, оплаты, напоминания"] },
+    { id: "v2", n: 2, name: "Блокнот мастера", short: "Блокнот", path: "bloknot/", isNew: true,
+      pages: ["bloknot"],
+      who: "Для мастера, который работает по эскизу: гибко и без бухгалтерии",
+      points: ["Любые замеры и нюансы голосом: выступы, тайники, ящик длиннее", "Вопросы по нюансам: бок, подсветка, вентиляция, фрезеровка", "Правки клиента списком и как менялась цена", "ТЗ для цеха с \"Внимание\", запрос для ИИ-рендера"] }
+  ];
+
   var me = window.MEBEL_TOOL || "home";
   // единый вид сайта: общая палитра из site.css (всегда светлая) и метка инструмента для точечных правок
   try { document.documentElement.setAttribute("data-theme", "light"); document.documentElement.setAttribute("data-tool", me); } catch (e) {}
@@ -47,7 +61,7 @@
 
   // --- мелочи ---
   function tool(id) { for (var i = 0; i < TOOLS.length; i++) if (TOOLS[i].id === id) return TOOLS[i]; return null; }
-  function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Главная" : id === "file" ? "Файл" : id; }
+  function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Главная" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function root() { return me === "home" ? "./" : "../"; }
   function urlOf(id) { return root() + id + "/"; }
@@ -251,7 +265,7 @@
     return 'Автор разработки: ' + AUTHOR + ", " + YEAR + '. <button type="button" class="ms-tlink" data-terms>' + (full ? "Условия использования" : "Условия") + "</button>";
   }
   var TERMS = [
-    'Сайт "Мебельный конструктор" и его инструменты - калькулятор, замер голосом, конфигуратор для клиента, КП и договор, карта раскроя, учёт заказов - авторская работа. Автор разработки: ' + AUTHOR + ", " + YEAR + ".",
+    'Сайт "Мебельный конструктор" и его инструменты - калькулятор, замер голосом, конфигуратор для клиента, КП и договор, карта раскроя, учёт заказов, Блокнот мастера - авторская работа. Автор разработки: ' + AUTHOR + ", " + YEAR + ".",
     "Автору принадлежат тексты, расчёты и формулы, дизайн, интерфейс и код.",
     "<b>Можно:</b> пользоваться инструментами в работе, давать клиентам ссылку на конфигуратор, делиться ссылкой на сайт.",
     "<b>Нельзя без письменного разрешения:</b> копировать, переделывать и выкладывать у себя, выдавать за своё и убирать имя автора, продавать инструменты или доступ к ним.",
@@ -285,7 +299,7 @@
   var NAV = [
     [/калькулятор|расчет|посчитать|смет/, "kalkulyator"], [/конфигуратор/, "konfigurator"],
     [/(^|\s)кп(\s|$)|коммерческ|договор|pdf|пдф/, "kp"], [/раскро|распил|раскладк/, "raskroy"],
-    [/учет|заказы|список заказов|журнал/, "zakazy"], [/главн|(^|\s)домой|все инструменты|меню сайта|начальн/, "home"]
+    [/учет|заказы|список заказов|журнал/, "zakazy"], [/блокнот|вариант (2|два)|второй вариант/, "bloknot"], [/главн|(^|\s)домой|все инструменты|меню сайта|начальн|конструктор|основно[йм] продукт|вариант (1|один)|первый вариант/, "home"]
   ];
   var VSTOP = { "нажми": 1, "нажать": 1, "кликни": 1, "кнопку": 1, "кнопка": 1, "на": 1, "открой": 1, "вкладку": 1, "вкладка": 1, "перейди": 1, "в": 1, "во": 1, "выбери": 1, "включи": 1, "пожалуйста": 1, "давай": 1, "покажи": 1, "раздел": 1, "пункт": 1 };
   function vn(t) { return String(t || "").toLowerCase().replace(/ё/g, "е").replace(/[.,!?;:"«»]/g, " ").replace(/\s+/g, " ").trim(); }
@@ -359,7 +373,7 @@
     w.innerHTML = '<button type="button" class="msv-pill" id="msvPill">' + mic + ' Голосом</button>' +
       '<div class="msv-panel" id="msvPanel" hidden><div class="msv-top"><b>Голосовой помощник</b><span id="msvSt"></span><button type="button" class="msv-set" id="msvSet" title="Отвечать вслух и каким голосом">звук</button><button type="button" class="msv-x" id="msvX" aria-label="Свернуть">&times;</button></div>' +
       '<div class="msv-tts" id="msvTts" hidden></div>' +
-      '<div class="msv-log" id="msvLog"><div class="msv-info">' + (adapter && adapter.voiceHint ? esc(adapter.voiceHint) + " Или куда перейти: \"открой калькулятор\"." : 'Скажите, куда перейти или что нажать: "открой калькулятор", "передай заказ в раскрой", "нажми сохранить", "что здесь можно нажать".') + '</div></div>' +
+      '<div class="msv-log" id="msvLog"><div class="msv-info">' + (adapter && adapter.voiceHint ? esc(adapter.voiceHint) + " Или куда перейти: \"открой " + (me === "bloknot" ? "конструктор" : "калькулятор") + "\"." : 'Скажите, куда перейти или что нажать: "открой калькулятор", "передай заказ в раскрой", "нажми сохранить", "что здесь можно нажать".') + '</div></div>' +
       '<div class="msv-live" id="msvLive" hidden></div>' +
       '<div class="msv-row">' + (SR ? '<button type="button" class="msv-mic" id="msvMic" title="Включить или выключить микрофон">' + mic + '<span> Говорить</span></button>' : '') + '<input id="msvIn" placeholder="' + (adapter && adapter.voiceHint ? "Что поменять или куда перейти" : "Куда перейти или что нажать") + '" autocomplete="off"><button type="button" class="msv-go" id="msvGo">OK</button></div></div>';
     document.body.appendChild(w);
@@ -398,10 +412,28 @@
     try { if (localStorage.getItem("ms-voice-open") === "1") show(true); } catch (e) {}
   }
 
+  // --- переключатель вариантов: любой <nav data-variants> заполняется сам ---
+  function variantOf(page) { for (var i = 0; i < VARIANTS.length; i++) if (VARIANTS[i].pages.indexOf(page) >= 0) return VARIANTS[i]; return VARIANTS[0]; }
+  function variantUrl(v) { return root() + v.path; }
+  function variantsNav() {
+    var cur = variantOf(me);
+    [].forEach.call(document.querySelectorAll("[data-variants]"), function (el) {
+      el.classList.add("ms-prod");
+      if (!el.getAttribute("aria-label")) el.setAttribute("aria-label", "Варианты продукта");
+      el.innerHTML = VARIANTS.map(function (v) {
+        var on = v === cur;
+        return '<a href="' + esc(variantUrl(v)) + '"' + (on ? ' class="on" aria-current="page"' : "") + ' title="Вариант ' + v.n + ": " + esc(v.name) + '"><b>' + v.n + '</b><span class="ms-l">' + esc(v.name) + '</span><span class="ms-s">' + esc(v.short) + "</span>" + (v.isNew && !on ? "<i>новое</i>" : "") + "</a>";
+      }).join("");
+    });
+  }
+
   // --- запуск ---
   function start() {
+    variantsNav();
     watchUpdates();
     if (me === "home") { setStaff(); voicePanel(); return; }
+    // Блокнот мастера - отдельный продукт со своей шапкой: без полоски "Передать заказ", голос - общий
+    if (me === "bloknot") { setStaff(); voicePanel(); return; }
     var fromHub = /[?&]from=/.test(location.search);
     // конфигуратор - страница для клиента: полоску видит только мастер (кто уже заходил на сайт)
     if (me !== "konfigurator" || isStaff() || fromHub) { setStaff(); bar(); if (!(adapter && adapter.voicePanel)) voicePanel(); }
@@ -411,7 +443,7 @@
   window.MebelSite = {
     TOOLS: TOOLS, tool: tool, toolName: toolName, read: read, write: write, clear: clear,
     summary: summary, ago: ago, money: money, toast: toast, saveFile: saveFile, urlOf: urlOf, isStaff: isStaff,
-    voiceNav: voiceNav, version: VER, checkUpdate: checkUpdate, terms: openTerms, author: { name: AUTHOR, year: YEAR },
+    voiceNav: voiceNav, version: VER, VARIANTS: VARIANTS, variantOf: variantOf, variantUrl: variantUrl, checkUpdate: checkUpdate, terms: openTerms, author: { name: AUTHOR, year: YEAR },
     register: function (a) {
       adapter = a || {};
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
