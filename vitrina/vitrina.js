@@ -457,8 +457,17 @@
     });
   }
 
+  // кнопка назад в "Путешествие по дому": закрытая витрина - всегда (дом рядом, ../dom/),
+  // открытая - если в этой вкладке заходили в путешествие (puteshestvie.js запоминает свой адрес)
+  function renderToDom() {
+    var href = "";
+    if (window.MEBEL_TOOL === "kr-vitrina") href = "../dom/";
+    else { try { href = sessionStorage.getItem("vp-dom") || ""; } catch (e) {} }
+    if (!href) return;
+    var a = $("toDom"); a.href = href; a.hidden = false;
+  }
   function start() {
-    renderStaff(); renderHero(); renderWorks(); renderWhy(); renderCalc(); renderReviews(); renderContacts();
+    renderToDom(); renderStaff(); renderHero(); renderWorks(); renderWhy(); renderCalc(); renderReviews(); renderContacts();
     if (location.hash) route();
   }
   // данные черновика читаем до отрисовки (WM и K берутся из D)
