@@ -170,6 +170,7 @@ input.t:focus,textarea.t:focus{outline:2px solid rgba(185,122,55,.35);border-col
 /* подвал */
 footer{margin-top:48px;padding:26px 0 96px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted)}
 footer p{margin:4px 0}
+footer .copy{font-size:11px;opacity:.75}
 .ms-tlink{background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit}
 /* панель на телефоне */
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:35;display:none;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(246,242,236,.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line)}
@@ -372,7 +373,7 @@ footer p{margin:4px 0}
 <footer><div class="in">
   <p id="fUpd"></p>
   <p>Фото на сайте защищены водяным знаком. Копирование работ без разрешения мастера запрещено.</p>
-  <p>Шаблон витрины: © 2026 Александр Наумов. <button type="button" class="ms-tlink" data-terms>Условия использования</button></p>
+  <p class="copy" data-sign>Разработка в тестовом режиме. Все права защищены. <button type="button" class="ms-tlink" data-terms>Условия использования</button></p>
 </div></footer>
 
 <div class="dock" id="dock"></div>
