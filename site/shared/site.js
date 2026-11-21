@@ -40,7 +40,11 @@
     { id: "v2", n: 2, name: "Блокнот мастера", short: "Блокнот", path: "bloknot/", isNew: true,
       pages: ["bloknot"],
       who: "Для мастера, который работает по эскизу: гибко и без бухгалтерии",
-      points: ["Любые замеры и нюансы голосом: выступы, тайники, ящик длиннее", "Вопросы по нюансам: бок, подсветка, вентиляция, фрезеровка", "Правки клиента списком и как менялась цена", "ТЗ для цеха с \"Внимание\", запрос для ИИ-рендера"] }
+      points: ["Любые замеры и нюансы голосом: выступы, тайники, ящик длиннее", "Вопросы по нюансам: бок, подсветка, вентиляция, фрезеровка", "Правки клиента списком и как менялась цена", "ТЗ для цеха с \"Внимание\", запрос для ИИ-рендера"] },
+    { id: "v3", n: 3, name: "Витрина мастера", short: "Витрина", path: "vitrina/", isNew: true,
+      pages: ["vitrina", "vitrina-red"],
+      who: "Сайт для клиентов: работы, отзывы и расчёт по одной ссылке из мессенджера",
+      points: ["Работы как сторис: фото с водяным знаком и рассказ", "Отзывы с кодом заказа и ссылкой на фото работы", "Быстрый расчёт вилки цены и заявка в WhatsApp", "Мастерская: фото и рассказ голосом с телефона"] }
   ];
 
   var me = window.MEBEL_TOOL || "home";
@@ -61,9 +65,9 @@
 
   // --- мелочи ---
   function tool(id) { for (var i = 0; i < TOOLS.length; i++) if (TOOLS[i].id === id) return TOOLS[i]; return null; }
-  function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Главная" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id; }
+  function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Главная" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id === "vitrina" ? "Витрина мастера" : id === "vitrina-red" ? "Мастерская витрины" : id; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
-  function root() { return me === "home" ? "./" : "../"; }
+  function root() { return me === "home" ? "./" : me === "vitrina-red" ? "../../" : "../"; }
   function urlOf(id) { return root() + id + "/"; }
   function money(n, cur) {
     if (window.MebelOrder) return MebelOrder.money(n, cur || MebelOrder.region().currency);
@@ -433,6 +437,9 @@
     if (me === "home") { setStaff(); voicePanel(); return; }
     // Блокнот мастера - отдельный продукт со своей шапкой: без полоски "Передать заказ", голос - общий
     if (me === "bloknot") { setStaff(); voicePanel(); return; }
+    // Витрина - страница для клиентов: ничего не добавляем и мастером не помечаем. Мастерская витрины - для мастера.
+    if (me === "vitrina") return;
+    if (me === "vitrina-red") { setStaff(); return; }
     var fromHub = /[?&]from=/.test(location.search);
     // конфигуратор - страница для клиента: полоску видит только мастер (кто уже заходил на сайт)
     if (me !== "konfigurator" || isStaff() || fromHub) { setStaff(); bar(); if (!(adapter && adapter.voicePanel)) voicePanel(); }
@@ -450,7 +457,7 @@
     }
   };
   // страница без адаптера (главная) запускается сама
-  if (me === "home") {
+  if (me === "home" || me === "vitrina" || me === "vitrina-red") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
   }
 })();

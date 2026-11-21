@@ -1,324 +1,460 @@
-/* Витрина мастера: показ работ и отзывов + режим "Для мастера".
- * Что видят все - из dannye.js (window.VITRINA). Черновики мастера (новые работы, отзывы, профиль) - в IndexedDB этого
- * браузера, пока он не выгрузит "Файл для сайта". Голос: один вопрос - ответ - "Стоп" - "Я понял так" - "Да" (как просил мастер). */
+/* Витрина мастера: рисует страницу из window.VITRINA (dannye.js).
+   Ссылки, которые можно слать клиенту:
+     .../vitrina/                    - вся витрина
+     .../vitrina/#rabota=<id>        - сразу открыть одну работу
+     .../vitrina/#story=<id>         - сразу показать работу как сторис
+     .../vitrina/#otzyv=<код>        - форма отзыва с кодом заказа (выдаётся после сдачи)
+   Черновик из Мастерской: ?chernovik=1 - берёт данные и фото из памяти этого браузера. */
 (function () {
   "use strict";
-  var D = window.VITRINA || { master: {}, works: [], reviews: [], points: [] };
+  var D = window.VITRINA || {};
   var $ = function (id) { return document.getElementById(id); };
-  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
-  var tT = 0;
-  function toast(t) { var el = $("toast"); el.textContent = t; el.className = "on"; clearTimeout(tT); tT = setTimeout(function () { el.className = ""; }, 3200); }
-  function copy(text, msg) {
-    var ok = function () { toast(msg || "Скопировано"); };
-    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(ok, function () { fb(); ok(); }); else { fb(); ok(); }
-    function fb() { var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} ta.remove(); }
+  var Q = new URLSearchParams(location.search);
+  var DRAFT = Q.get("chernovik") === "1";
+  var STAFF = Q.has("master") || DRAFT || (window.MebelSite && MebelSite.isStaff && MebelSite.isStaff());
+  var PH = {}; // фото черновика: id -> адрес
+
+  // ---------- мелочи ----------
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function toast(t) { var el = $("toast"); el.textContent = t; el.className = "on"; clearTimeout(toast.t); toast.t = setTimeout(function () { el.className = ""; }, 2600); }
+  var MON = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
+  var MON2 = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+  function month(s) { var m = /^(\d{4})-(\d{2})/.exec(s || ""); return m ? MON[+m[2] - 1] + " " + m[1] : (s || ""); }
+  function day(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ""); return m ? +m[3] + " " + MON2[+m[2] - 1] + " " + m[1] : month(s); }
+  function initials(n) { return String(n || "?").trim().split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0).toUpperCase(); }).join(""); }
+  function money(n) {
+    n = Math.round(+n || 0);
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " " + (D.valyuta || "₸");
+  }
+  function plural(n, f) { n = Math.abs(n) % 100; var d = n % 10; return n > 10 && n < 20 ? f[2] : d === 1 ? f[0] : d >= 2 && d <= 4 ? f[1] : f[2]; }
+  var IC = {
+    wa: '<svg class="i" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg>',
+    tg: '<svg class="i" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.6-3.4-2.2 2.1c-.3.3-.5.5-1 .5l.3-4.7 8.6-7.8c.4-.3-.1-.5-.6-.2L7 13l-4.6-1.4c-1-.3-1-1 .2-1.5L20.5 3c.9-.3 1.6.2 1.4 1.3z"/></svg>',
+    vk: '<svg class="i" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.8 17.5C6.6 17.5 3.1 13.3 3 6.2h3.1c.1 5.2 2.4 7.4 4.2 7.9V6.2h2.9v4.5c1.8-.2 3.7-2.2 4.3-4.5h2.9a8.6 8.6 0 0 1-3.9 5.6 8.9 8.9 0 0 1 4.6 5.7h-3.2c-.7-2.2-2.4-3.9-4.7-4.1v4.1z"/></svg>',
+    ig: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg>',
+    tel: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>',
+    calc: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h8"/></svg>',
+    mic: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+    link: '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>'
+  };
+
+  // ---------- контакты ----------
+  var K = D.kontakty || {};
+  var digits = function (s) { return String(s || "").replace(/\D/g, ""); };
+  function waUrl(text) { var n = digits(K.whatsapp); return n ? "https://wa.me/" + n + (text ? "?text=" + encodeURIComponent(text) : "") : ""; }
+  function tgUrl() { var u = String(K.telegram || "").replace(/^@|^https?:\/\/t\.me\//, ""); return u ? "https://t.me/" + u : ""; }
+  function webUrl(s) { s = String(s || "").trim(); return s ? (/^https?:\/\//.test(s) ? s : "https://" + s) : ""; }
+  function hello(about) { return "Здравствуйте! Пишу с вашего сайта." + (about ? " " + about : ""); }
+
+  // ---------- фото и водяной знак ----------
+  function srcOf(f) {
+    if (!f) return window.VitrinaRis ? VitrinaRis("detal") : "";
+    if (f.src && /^idb:/.test(f.src)) return PH[f.src.slice(4)] || (window.VitrinaRis ? VitrinaRis(f.ris || "detal") : "");
+    if (f.src) return f.src;
+    return window.VitrinaRis ? VitrinaRis(f.ris || "detal") : "";
+  }
+  // Повторяющаяся надпись поверх фото: попадает и на снимок экрана. Сам файл тоже лучше подписывать
+  // в Мастерской - тогда знак есть и в картинке, которую скачали по прямой ссылке.
+  var WM = "";
+  function makeWM() {
+    var t = esc((D.master && D.master.znak) || (D.master && D.master.imya) || "");
+    if (!t) return "";
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="420" height="260"><g transform="rotate(-24 210 130)" font-family="system-ui,sans-serif" font-size="19" font-weight="600" text-anchor="middle">' +
+      '<text x="210" y="138" fill="rgba(0,0,0,.18)">' + t + '</text><text x="209" y="137" fill="rgba(255,255,255,.34)">' + t + "</text></g></svg>";
+    return 'url("data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg).replace(/'/g, "%27").replace(/"/g, "%22") + '")';
+  }
+  function photo(f, alt, eager) {
+    return '<div class="ph"><img src="' + esc(srcOf(f)) + '" alt="' + esc(alt || (f && f.podpis) || "") + '"' + (eager ? "" : ' loading="lazy"') + ' draggable="false">' +
+      (WM && !(f && f.znak) ? '<i class="wm" style="background-image:' + WM.replace(/"/g, "&quot;") + '"></i>' : "") + "</div>";
+  }
+  document.addEventListener("contextmenu", function (e) { if (e.target.closest && e.target.closest(".ph")) { e.preventDefault(); toast("Фото защищены - напишите мастеру, если нужно"); } });
+
+  // ---------- работы ----------
+  var R = D.raboty || [];
+  function work(id) { for (var i = 0; i < R.length; i++) if (R[i].id === id) return i; return -1; }
+  function metaOf(w) { return [w.gde, month(w.kogda)].filter(Boolean).join(" · "); }
+
+  function renderHero() {
+    var m = D.master || {};
+    document.title = (m.imya ? m.imya + " - " : "") + (m.rol || "мебель на заказ") + (m.gorod ? ", " + m.gorod : "");
+    $("mName").textContent = m.imya || "";
+    $("mRol").textContent = [m.rol, m.gorod].filter(Boolean).join(", ");
+    $("ava").innerHTML = m.foto ? '<img src="' + esc(srcOf({ src: m.foto })) + '" alt="">' : esc(initials(m.imya));
+    var f = [];
+    if (m.opyt) f.push("<b>" + esc(m.opyt) + "</b> делаю мебель");
+    if (m.rabot) f.push("<b>" + esc(m.rabot) + "</b> работ");
+    var rv = D.otzyvy || [];
+    if (rv.length) { var avg = rv.reduce(function (s, r) { return s + (+r.ocenka || 5); }, 0) / rv.length; f.push("<b>" + avg.toFixed(1).replace(".", ",") + " ★</b> " + rv.length + " " + plural(rv.length, ["отзыв", "отзыва", "отзывов"])); }
+    $("facts").innerHTML = f.map(function (x) { return "<li>" + x + "</li>"; }).join("");
+    $("mPitch").textContent = m.o_sebe || "";
+    if (R[0]) $("cover").style.backgroundImage = 'url("' + srcOf(R[0].foto && R[0].foto[0]).replace(/"/g, "%22") + '")';
+    var c = [];
+    if (waUrl()) c.push('<a class="btn wa" target="_blank" rel="noopener" href="' + esc(waUrl(hello())) + '">' + IC.wa + "WhatsApp</a>");
+    if (tgUrl()) c.push('<a class="btn tg" target="_blank" rel="noopener" href="' + esc(tgUrl()) + '">' + IC.tg + "Telegram</a>");
+    c.push('<a class="btn gh" href="#raschet">' + IC.calc + "Посчитать стоимость</a>");
+    $("cta").innerHTML = c.join("");
+    // сторис
+    var seen = {}; try { seen = JSON.parse(localStorage.getItem("vt-seen") || "{}"); } catch (e) {}
+    $("stories").innerHTML = R.map(function (w, i) {
+      return '<button type="button" class="st' + (seen[w.id] ? " seen" : "") + '" data-story="' + i + '"><span class="ring"><span style="background-image:url(&quot;' + esc(srcOf(w.foto && w.foto[0])).replace(/"/g, "%22") + '&quot;)"></span></span><small>' + esc(w.nazvanie) + "</small></button>";
+    }).join("");
   }
 
-  // ======================= память мастера (IndexedDB) =======================
-  var LOC = { master: {}, works: [], reviews: [] };
-  function idb(fn) {
-    if (!window.indexedDB) return Promise.resolve(null);
-    return new Promise(function (res) {
-      var rq = indexedDB.open("vitrina", 1);
-      rq.onupgradeneeded = function () { rq.result.createObjectStore("kv"); };
-      rq.onsuccess = function () { try { fn(rq.result, res); } catch (e) { res(null); } };
-      rq.onerror = function () { res(null); };
+  var VID = "";
+  function renderWorks() {
+    var vids = [];
+    R.forEach(function (w) { if (w.vid && vids.indexOf(w.vid) < 0) vids.push(w.vid); });
+    $("vids").innerHTML = vids.length > 1 ? ['<button type="button" class="chip' + (VID ? "" : " on") + '" data-vid="">Все</button>'].concat(vids.map(function (v) {
+      return '<button type="button" class="chip' + (VID === v ? " on" : "") + '" data-vid="' + esc(v) + '">' + esc(v) + "</button>";
+    })).join("") : "";
+    $("grid").innerHTML = R.map(function (w, i) {
+      if (VID && w.vid !== VID) return "";
+      var n = (w.foto || []).length;
+      return '<button type="button" class="card w" data-work="' + i + '">' + photo(w.foto && w.foto[0], w.nazvanie).replace('</div>', (n > 1 ? '<span class="cnt">' + n + " фото</span>" : "") + "</div>") +
+        '<span class="tx"><span class="vid">' + esc(w.vid || "") + "</span><b>" + esc(w.nazvanie) + '</b><span class="meta">' + esc(metaOf(w)) + "</span><p>" + esc(w.rasskaz || "") + "</p></span></button>";
+    }).join("") || '<p class="muted">Работы скоро появятся.</p>';
+  }
+
+  // ---------- окно одной работы ----------
+  var CUR = { wi: -1, fi: 0 };
+  function openWork(i, fi) {
+    var w = R[i]; if (!w) return;
+    CUR = { wi: i, fi: fi || 0 };
+    var rv = (D.otzyvy || []).filter(function (r) { return r.rabota === w.id; });
+    var p = [];
+    if (w.material) p.push("<div><small>Материалы</small>" + esc(w.material) + "</div>");
+    if (w.srok) p.push("<div><small>Срок</small>" + esc(w.srok) + "</div>");
+    if (w.cena) p.push("<div><small>Стоимость</small>" + esc(w.cena) + "</div>");
+    $("workIn").innerHTML = '<div class="gal" id="gal"></div><div class="dots" id="dots"></div><div class="wbody">' +
+      "<h3>" + esc(w.nazvanie) + '</h3><div class="meta">' + esc([w.vid, metaOf(w)].filter(Boolean).join(" · ")) + "</div>" +
+      (w.rasskaz ? '<p class="story">' + esc(w.rasskaz) + "</p>" : "") +
+      (p.length ? '<div class="params">' + p.join("") + "</div>" : "") +
+      ((w.resheniya || []).length ? "<h4>Почему так</h4><ul>" + w.resheniya.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" : "") +
+      (rv.length ? "<h4>Отзыв клиента</h4>" + rv.map(function (r) { return '<p style="margin:0 0 8px"><span class="stars">' + stars(r.ocenka) + "</span> <b>" + esc(r.imya) + "</b>" + (r.zakaz ? ' <span class="tag ok">по заказу ' + esc(r.zakaz) + "</span>" : "") + "<br>" + esc(r.tekst) + "</p>"; }).join("") : "") +
+      '<div class="cta">' + (waUrl() ? '<a class="btn wa" target="_blank" rel="noopener" href="' + esc(waUrl(hello("Понравилась работа \"" + w.nazvanie + "\". Хочу похожее, подскажите по цене и срокам."))) + '">' + IC.wa + "Хочу похожее</a>" : "") +
+      '<button type="button" class="btn" data-share="' + esc(w.id) + '">' + IC.link + "Ссылка на эту работу</button></div></div>";
+    gal();
+    $("work").hidden = false; document.body.style.overflow = "hidden";
+    if (location.hash !== "#rabota=" + w.id) history.replaceState(null, "", "#rabota=" + w.id);
+  }
+  function gal() {
+    var w = R[CUR.wi], f = w.foto || [], i = CUR.fi, x = f[i] || {};
+    $("gal").innerHTML = photo(x, w.nazvanie, true) + (x.podpis ? '<div class="cap">' + esc(x.podpis) + "</div>" : "") +
+      (f.length > 1 ? '<button type="button" class="nav2 pv" data-g="-1" aria-label="Предыдущее фото">&#8249;</button><button type="button" class="nav2 nx" data-g="1" aria-label="Следующее фото">&#8250;</button>' : "");
+    $("dots").innerHTML = f.length > 1 ? f.map(function (_, k) { return "<i" + (k === i ? ' class="on"' : "") + "></i>"; }).join("") : "";
+  }
+  function galStep(d) { var n = (R[CUR.wi].foto || []).length; if (n < 2) return; CUR.fi = (CUR.fi + d + n) % n; gal(); }
+  function closeWork() { $("work").hidden = true; document.body.style.overflow = ""; CUR.wi = -1; if (/^#rabota=/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search); }
+  swipe($("work"), function (d) { if (CUR.wi >= 0 && document.activeElement.tagName !== "INPUT") galStep(d); }, null, ".gal");
+
+  // ---------- сторис ----------
+  var S = null, raf = 0;
+  function slides(w) {
+    var f = (w.foto && w.foto.length) ? w.foto : [{}];
+    return f.map(function (x, i) { return { f: x, cap: i === 0 && w.rasskaz ? w.rasskaz : (x.podpis || "") }; });
+  }
+  function openStory(wi) {
+    if (!R[wi]) return;
+    S = { wi: wi, si: 0, t: 0, last: 0, paused: false, list: slides(R[wi]) };
+    $("story").hidden = false; document.body.style.overflow = "hidden";
+    try { var seen = JSON.parse(localStorage.getItem("vt-seen") || "{}"); seen[R[wi].id] = 1; localStorage.setItem("vt-seen", JSON.stringify(seen)); } catch (e) {}
+    var b = document.querySelector('.st[data-story="' + wi + '"]'); if (b) b.classList.add("seen");
+    var m = D.master || {}, w = R[wi];
+    $("sAva").innerHTML = m.foto ? '<img src="' + esc(srcOf({ src: m.foto })) + '" alt="">' : esc(initials(m.imya));
+    $("sName").textContent = w.nazvanie; $("sMeta").textContent = metaOf(w);
+    $("sWant").href = waUrl(hello("Посмотрел(а) работу \"" + w.nazvanie + "\". Хочу похожее.")) || tgUrl() || "#kontakty";
+    $("sBars").innerHTML = S.list.map(function () { return "<i><b></b></i>"; }).join("");
+    show();
+    cancelAnimationFrame(raf); S.last = performance.now(); raf = requestAnimationFrame(tick);
+  }
+  function dur() { var c = S.list[S.si].cap || ""; return Math.min(13000, 4000 + c.length * 45); }
+  function show() {
+    var s = S.list[S.si];
+    $("sPh").innerHTML = photo(s.f, R[S.wi].nazvanie, true);
+    $("sCap").textContent = s.cap;
+    S.t = 0;
+    [].forEach.call($("sBars").children, function (b, k) { b.firstChild.style.width = k < S.si ? "100%" : "0"; });
+  }
+  function tick(now) {
+    if (!S) return;
+    if (!S.paused) S.t += now - S.last;
+    S.last = now;
+    var p = Math.min(1, S.t / dur()), bar = $("sBars").children[S.si];
+    if (bar) bar.firstChild.style.width = (p * 100) + "%";
+    if (p >= 1) step(1);
+    raf = requestAnimationFrame(tick);
+  }
+  function step(d) {
+    if (!S) return;
+    var n = S.si + d;
+    if (n < 0) { if (S.wi > 0) openStory(S.wi - 1); else { S.t = 0; } return; }
+    if (n >= S.list.length) { if (S.wi < R.length - 1) openStory(S.wi + 1); else closeStory(); return; }
+    S.si = n; show();
+  }
+  function closeStory() { S = null; cancelAnimationFrame(raf); $("story").hidden = true; document.body.style.overflow = ""; if (/^#story=/.test(location.hash)) history.replaceState(null, "", location.pathname + location.search); }
+  (function () {
+    var st = $("story"), hold = 0, held = false;
+    // нажал и держит - пауза; короткое нажатие - листаем
+    st.addEventListener("pointerdown", function (e) { if (!S || !e.target.closest(".tap")) return; held = false; hold = setTimeout(function () { held = true; if (S) S.paused = true; }, 220); });
+    var up = function () { clearTimeout(hold); if (S) S.paused = false; };
+    st.addEventListener("pointerup", up); st.addEventListener("pointercancel", up); st.addEventListener("pointerleave", up);
+    $("sPrev").addEventListener("click", function () { if (!held) step(-1); });
+    $("sNext").addEventListener("click", function () { if (!held) step(1); });
+    $("sPrevW").addEventListener("click", function () { if (S && S.wi > 0) openStory(S.wi - 1); });
+    $("sNextW").addEventListener("click", function () { if (S) { if (S.wi < R.length - 1) openStory(S.wi + 1); else closeStory(); } });
+    $("sX").addEventListener("click", closeStory);
+    $("sMore").addEventListener("click", function () { var i = S.wi, k = S.si; closeStory(); openWork(i, k); });
+    swipe(st, function (d) { if (S) { if (d > 0 && S.wi < R.length - 1) openStory(S.wi + 1); else if (d < 0 && S.wi > 0) openStory(S.wi - 1); } }, closeStory);
+  })();
+  // свайп: влево/вправо - onX(+1/-1), вниз - onDown
+  function swipe(el, onX, onDown, within) {
+    var x0 = null, y0 = 0;
+    el.addEventListener("touchstart", function (e) { if (within && !e.target.closest(within)) { x0 = null; return; } x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+    el.addEventListener("touchend", function (e) {
+      if (x0 == null) return; var dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.3) onX(dx < 0 ? 1 : -1);
+      else if (onDown && dy > 90 && dy > Math.abs(dx) * 1.3) onDown();
+    }, { passive: true });
+  }
+
+  // ---------- чем отличаюсь ----------
+  function renderWhy() {
+    var o = D.otlichiya || [];
+    $("otlichiya").classList.toggle("hide", !o.length);
+    $("why").innerHTML = o.map(function (x, i) { return '<div class="card"><b><span>' + (i + 1) + "</span>" + esc(x.zag) + "</b><p>" + esc(x.tekst) + "</p></div>"; }).join("");
+  }
+
+  // ---------- быстрый расчёт ----------
+  var C = D.raschet || {}, CS = { iz: 0, size: 0, lv: 1, dop: {} };
+  function renderCalc() {
+    var iz = C.izdeliya || [];
+    if (!iz.length) { $("raschet").classList.add("hide"); return; }
+    $("cIzd").innerHTML = iz.map(function (x, i) { return '<button type="button" class="chip' + (i === CS.iz ? " on" : "") + '" data-iz="' + i + '">' + esc(x.nazv) + "</button>"; }).join("");
+    $("cLv").innerHTML = (C.urovni || []).map(function (x, i) { return '<button type="button" data-lv="' + i + '"' + (i === CS.lv ? ' class="on"' : "") + "><b>" + esc(x.nazv) + "</b><span>" + esc(x.opis || "") + "</span></button>"; }).join("");
+    $("cDop").innerHTML = (C.dop || []).map(function (x, i) { return '<label><input type="checkbox" data-dop="' + i + '"' + (CS.dop[i] ? " checked" : "") + ">" + esc(x.nazv) + "</label>"; }).join("");
+    var it = iz[CS.iz], r = $("cSize");
+    r.min = it.min; r.max = it.max; r.step = it.shag || 0.1;
+    if (!CS.size || CS.size < it.min || CS.size > it.max) CS.size = it.def || it.min;
+    r.value = CS.size;
+    $("cNote").textContent = C.zamecanie || "";
+    calc();
+  }
+  function num(n) { return (Math.round(n * 10) / 10).toString().replace(".", ","); }
+  function calc() {
+    var it = (C.izdeliya || [])[CS.iz]; if (!it) return;
+    var base = (it.cena || [])[CS.lv] || 0, k = 1, dops = [];
+    (C.dop || []).forEach(function (x, i) { if (CS.dop[i]) { k += +x.plus || 0; dops.push(x.nazv.toLowerCase()); } });
+    var sum = base * CS.size * k, rz = C.razbros == null ? 0.15 : +C.razbros;
+    var rnd = function (v) { var q = v >= 1e6 ? 50000 : v >= 2e5 ? 10000 : 1000; return Math.round(v / q) * q; };
+    var lo = rnd(sum * (1 - rz)), hi = rnd(sum * (1 + rz));
+    var sz = it.ed === "шт" ? CS.size + " шт" : num(CS.size) + " " + it.ed;
+    $("cSizeV").textContent = sz;
+    $("cSum").textContent = lo === hi ? money(lo) : money(lo).replace(/\s\S+$/, "") + " - " + money(hi);
+    var lv = (C.urovni || [])[CS.lv] || {};
+    var what = it.nazv + ", " + sz + ", " + (lv.nazv || "").toLowerCase() + (dops.length ? ", " + dops.join(", ") : "");
+    $("cWhat").textContent = what;
+    var msg = hello("Посчитал(а) на сайте: " + what + ". Вышло примерно " + $("cSum").textContent + ". Хочу точный расчёт.");
+    var u = waUrl(msg);
+    $("cSend").href = u || tgUrl() || "#kontakty";
+    $("cSend").className = "btn " + (u ? "wa" : "tg");
+    $("cSend").textContent = u ? "Отправить мастеру на точный расчёт" : "Написать мастеру";
+    $("c3d").classList.toggle("hide", !/shkaf|garderob|prihozhaya/.test(it.id));
+  }
+  $("cSize").addEventListener("input", function () { CS.size = +this.value; calc(); });
+
+  // ---------- отзывы ----------
+  function stars(n) { n = Math.max(1, Math.min(5, Math.round(+n || 5))); return "★★★★★".slice(0, n) + '<span style="color:#ddd0bf">' + "★★★★★".slice(n) + "</span>"; }
+  function renderReviews() {
+    var rv = D.otzyvy || [];
+    $("revs").innerHTML = rv.map(function (r) {
+      var wi = work(r.rabota), o = [];
+      if (r.kod && r.zakaz) o.push('<span class="tag ok" title="Отзыв пришёл по ссылке с кодом этого заказа">✓ по заказу ' + esc(r.zakaz) + "</span>");
+      else if (r.zakaz) o.push("<span>заказ " + esc(r.zakaz) + "</span>");
+      if (wi >= 0) o.push('<a href="#rabota=' + esc(r.rabota) + '" data-work="' + wi + '">Фото этой работы</a>');
+      if (r.stranica) o.push('<a href="' + esc(webUrl(r.stranica)) + '" target="_blank" rel="noopener nofollow">Страница клиента</a>');
+      return '<div class="card rv"><div class="top"><span class="av">' + esc(initials(r.imya)) + "</span><span><b>" + esc(r.imya) + '</b><span class="stars">' + stars(r.ocenka) + '</span></span></div><p>' + esc(r.tekst) + '</p><div class="ord"><span>' + esc(day(r.data)) + "</span>" + o.join("") + "</div></div>";
+    }).join("") || '<p class="muted">Отзывов пока нет - будьте первым.</p>';
+    var pl = D.ploshchadki || [];
+    $("plosh").innerHTML = pl.map(function (p) { return '<a class="chip" target="_blank" rel="noopener" href="' + esc(webUrl(p.url)) + '">Отзывы на ' + esc(p.nazv) + " ↗</a>"; }).join("");
+    $("trustPl").classList.toggle("hide", !pl.length);
+  }
+
+  // Код заказа: сравниваем отпечаток (SHA-256) с отпечатками из dannye.js - сам код в файле не хранится.
+  function normKod(s) { return String(s || "").toUpperCase().replace(/[^A-Z0-9А-ЯЁ]/g, ""); }
+  function hashKod(s) {
+    var n = normKod(s);
+    if (!n || !window.crypto || !crypto.subtle) return Promise.resolve("");
+    return crypto.subtle.digest("SHA-256", new TextEncoder().encode("vitrina:" + n)).then(function (b) {
+      return Array.prototype.map.call(new Uint8Array(b), function (x) { return ("0" + x.toString(16)).slice(-2); }).join("").slice(0, 16);
     });
   }
-  function load() { return idb(function (db, res) { var g = db.transaction("kv").objectStore("kv").get("data"); g.onsuccess = function () { res(g.result || null); }; g.onerror = function () { res(null); }; }); }
-  function save() { return idb(function (db, res) { var tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").put(JSON.parse(JSON.stringify(LOC)), "data"); tx.oncomplete = function () { res(true); }; tx.onerror = function () { toast("Не хватило памяти браузера"); res(false); }; }); }
-  function M() { var m = {}, k; for (k in D.master) m[k] = D.master[k]; for (k in LOC.master) if (LOC.master[k] !== "" && LOC.master[k] != null) m[k] = LOC.master[k]; return m; }
-  function works() { return LOC.works.map(function (w) { w.local = true; return w; }).concat(D.works || []); }
-  function reviews() { return LOC.reviews.map(function (r) { r.local = true; return r; }).concat(D.reviews || []); }
-  function waUrl(text) { var n = String(M().wa || "").replace(/\D/g, ""); return "https://wa.me/" + n + "?text=" + encodeURIComponent(text); }
-
-  // ======================= картинки-примеры (пока нет настоящих фото) =======================
-  function demoImg(kind) {
-    var W = 800, H = 600, s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + W + " " + H + '"><defs><linearGradient id="w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#efe7dc"/><stop offset="1" stop-color="#d9cdbd"/></linearGradient><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9b8" stop-opacity=".9"/><stop offset="1" stop-color="#ffe9b8" stop-opacity="0"/></linearGradient></defs><rect width="800" height="600" fill="url(#w)"/><rect y="500" width="800" height="100" fill="#b99c7c"/>';
-    var slats = function (x, y, w, h, c) { var o = '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" fill="' + c + '"/>'; for (var i = x + 8; i < x + w - 4; i += 12) o += '<rect x="' + i + '" y="' + (y + 4) + '" width="6" height="' + (h - 8) + '" fill="rgba(0,0,0,.08)"/>'; return o; };
-    if (/кухня/.test(kind)) {
-      var two = /2/.test(kind);
-      s += '<rect x="60" y="110" width="680" height="160" fill="#6d4c33"/>' + slats(60, 110, 680, 160, two ? "#8a6446" : "#7b593d");
-      s += '<rect x="60" y="270" width="680" height="16" fill="url(#g)"/><rect x="60" y="270" width="680" height="70" fill="url(#g)" opacity=".5"/>';
-      s += '<rect x="40" y="330" width="720" height="18" fill="#e8e4dd"/>';
-      for (var i = 0; i < 4; i++) s += '<rect x="' + (60 + i * 170) + '" y="350" width="166" height="140" fill="' + (two ? "#3c4a48" : "#efeae2") + '" stroke="#c9bfb2"/><rect x="' + (60 + i * 170) + '" y="350" width="166" height="6" fill="#999"/>';
-      s += '<rect x="60" y="488" width="680" height="10" fill="url(#g)" transform="rotate(180 400 493)"/><rect x="330" y="300" width="80" height="30" rx="6" fill="#bbb"/>';
-    } else if (/кровать/.test(kind)) {
-      s += slats(220, 90, 360, 300, "#6b5a7d") + '<rect x="230" y="100" width="340" height="12" fill="url(#g)"/>';
-      s += '<rect x="170" y="370" width="460" height="70" rx="10" fill="#f1ece4"/><rect x="190" y="340" width="120" height="40" rx="16" fill="#fff"/><rect x="490" y="340" width="120" height="40" rx="16" fill="#fff"/>';
-      s += '<rect x="160" y="430" width="480" height="70" fill="#d6c8b6" stroke="#b9a68f"/><rect x="175" y="445" width="215" height="44" fill="#e6dacb"/><rect x="410" y="445" width="215" height="44" fill="#e6dacb"/>';
-      s += '<rect x="80" y="400" width="70" height="100" fill="#d6c8b6"/><rect x="650" y="400" width="70" height="100" fill="#d6c8b6"/>';
-    } else {
-      s += '<rect x="120" y="60" width="560" height="440" fill="#e2d6c5" stroke="#bba98f"/>';
-      s += '<rect x="130" y="70" width="175" height="420" fill="#efe6d8" stroke="#cdbba3"/><rect x="495" y="70" width="175" height="420" fill="#efe6d8" stroke="#cdbba3"/>';
-      s += '<rect x="312" y="70" width="176" height="420" fill="#9fb6c4" stroke="#fff3cf" stroke-width="8"/><rect x="330" y="90" width="40" height="380" fill="rgba(255,255,255,.35)"/>';
-      s += '<rect x="290" y="270" width="8" height="60" rx="3" fill="#8a7a66"/><rect x="502" y="270" width="8" height="60" rx="3" fill="#8a7a66"/>';
-    }
-    s += '<text x="780" y="585" text-anchor="end" font-family="sans-serif" font-size="18" fill="rgba(0,0,0,.35)">пример - здесь будет фото мастера</text></svg>';
-    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
+  var FK = null, RATE = 5;
+  function checkKod() {
+    var v = $("fKod").value;
+    if (!normKod(v)) { FK = null; $("fKodSt").className = "kodst"; $("fKodSt").textContent = "Без кода отзыв тоже можно отправить - я сверю его по своим заказам."; msg(); return; }
+    hashKod(v).then(function (h) {
+      if (normKod($("fKod").value) !== normKod(v)) return;
+      FK = null;
+      (D.kody || []).forEach(function (k) { if (k.h === h) FK = k; });
+      var st = $("fKodSt");
+      if (FK) {
+        st.className = "kodst ok"; st.textContent = "✓ Заказ найден: " + [FK.zakaz, FK.chto, month(FK.kogda)].filter(Boolean).join(", ");
+        if (!$("fWhat").value && FK.chto) $("fWhat").value = FK.chto;
+      } else if (!h) { st.className = "kodst"; st.textContent = "Этот браузер не может проверить код - отправьте как есть, я сверю сам."; }
+      else { st.className = "kodst"; st.textContent = "Код не нашёлся. Проверьте буквы и цифры - или отправьте без кода."; }
+      msg();
+    });
   }
-  function src(p) { return /^demo:/.test(p) ? demoImg(p.slice(5)) : p; }
-
-  // ======================= страница =======================
-  var tagOn = "";
-  function render() {
-    var m = M();
-    document.title = (m.name || "Мебель на заказ") + (m.city ? ", " + m.city : "") + " - работы мастера";
-    $("logoName").textContent = m.name || "Мебель на заказ"; $("fName").textContent = m.name || "";
-    $("fCity").textContent = [m.who, m.city].filter(Boolean).join(", ");
-    $("hWho").textContent = [m.who, m.city].filter(Boolean).join(" · ");
-    $("hSlogan").textContent = m.slogan || ""; $("hAbout").textContent = m.about || "";
-    $("hWa").href = waUrl("Здравствуйте! Видел ваши работы на сайте, хочу узнать про мебель на заказ.");
-    $("demo").classList.toggle("hide", !D.demo);
-    var W = works(), R = reviews().filter(function (r) { return !r.example; });
-    $("hNums").innerHTML = '<div><b>' + W.length + "</b><span>" + plur(W.length, "работа", "работы", "работ") + " на витрине</span></div>" + (R.length ? "<div><b>" + R.length + "</b><span>" + plur(R.length, "отзыв", "отзыва", "отзывов") + "</span></div>" : "") + "<div><b>Под ключ</b><span>замер, проект, сборка</span></div>";
-    // фильтр по тегам
-    var tags = {}; W.forEach(function (w) { (w.tags || []).forEach(function (t) { tags[t] = (tags[t] || 0) + 1; }); });
-    var tl = Object.keys(tags).sort(function (a, b) { return tags[b] - tags[a]; }).slice(0, 10);
-    $("tags").innerHTML = tl.length > 1 ? ['<button type="button" class="chip' + (tagOn ? "" : " on") + '" data-tag="">Все</button>'].concat(tl.map(function (t) { return '<button type="button" class="chip' + (tagOn === t ? " on" : "") + '" data-tag="' + esc(t) + '">' + esc(t) + "</button>"; })).join("") : "";
-    $("grid").innerHTML = W.filter(function (w) { return !tagOn || (w.tags || []).indexOf(tagOn) >= 0; }).map(function (w) {
-      var ph = (w.photos || [])[0];
-      return '<button type="button" class="wk" data-work="' + esc(w.id) + '"><div class="ph">' + (ph ? '<img loading="lazy" alt="' + esc(w.t) + '" src="' + esc(src(ph)) + '">' : "") + (w.local ? '<span class="loc">Только у вас</span>' : "") + ((w.photos || []).length > 1 ? '<span class="n">' + w.photos.length + " фото</span>" : "") + '</div><div class="tx"><b>' + esc(w.t) + '</b><div class="pl">' + esc(w.place || "") + "</div>" + (w.task ? '<div class="q">' + esc(w.task) + "</div>" : "") + "</div></button>";
-    }).join("") || '<p class="muted">Работ пока нет.</p>';
-    $("pts").innerHTML = (D.points || []).map(function (p, i) { return '<div class="pt"><i>' + (i + 1) + "</i><b>" + esc(p.t) + "</b><p>" + esc(p.d) + "</p></div>"; }).join("");
-    $("rvs").innerHTML = reviews().map(function (r) {
-      return '<div class="rv' + (r.example ? " ex" : "") + '"><div class="hd"><span class="av">' + esc((r.name || "?").charAt(0).toUpperCase()) + "</span><div><b>" + esc(r.name) + (r.local ? ' <span class="tag">только у вас</span>' : "") + "</b><span>" + esc([r.work, r.city, r.date].filter(Boolean).join(" · ")) + "</span></div></div><p>" + esc(r.text) + "</p>" + (r.link ? '<a class="lk" href="' + esc(r.link) + '" target="_blank" rel="noopener nofollow">Страница автора отзыва →</a>' : "") + "</div>";
-    }).join("");
-    var L = (m.links || []).filter(function (l) { return l && l.u; });
-    $("fLinks").innerHTML = '<a class="btn wa sm" target="_blank" rel="noopener" href="' + esc(waUrl("Здравствуйте!")) + '">WhatsApp</a>' + (m.tg ? '<a class="btn sm" target="_blank" rel="noopener" href="https://t.me/' + esc(String(m.tg).replace(/^@/, "")) + '">Telegram</a>' : "") + L.map(function (l) { return '<a class="btn sm" target="_blank" rel="noopener" href="' + esc(l.u) + '">' + esc(l.n || "Ссылка") + "</a>"; }).join("");
+  function msg() {
+    var t = "Отзыв для сайта\n" +
+      (FK ? "Заказ: " + FK.zakaz + " (код подтверждён: " + normKod($("fKod").value) + ")\n" : normKod($("fKod").value) ? "Код: " + $("fKod").value.trim() + " (не подтвердился)\n" : "") +
+      "Имя: " + ($("fName").value.trim() || "-") + "\n" +
+      "Что делали: " + ($("fWhat").value.trim() || "-") + "\n" +
+      "Оценка: " + RATE + " из 5\n" +
+      ($("fLink").value.trim() ? "Моя страница: " + $("fLink").value.trim() + "\n" : "") +
+      "Публиковать с именем: " + ($("fOk").checked ? "да" : "нет, без имени") + "\n\n" + ($("fText").value.trim() || "");
+    var u = waUrl(t);
+    $("fWa").classList.toggle("hide", !u);
+    if (u) $("fWa").href = u;
+    $("fCopy").textContent = u ? "Скопировать для Telegram" : "Скопировать и открыть Telegram";
+    return t;
   }
-  function plur(n, a, b, c) { n = Math.abs(n) % 100; var k = n % 10; return n > 10 && n < 20 ? c : k > 1 && k < 5 ? b : k === 1 ? a : c; }
-
-  // ======================= история работы =======================
-  var ST = null;
-  function openWork(id) {
-    var w = works().filter(function (x) { return x.id === id; })[0]; if (!w) return;
-    var el = document.createElement("div"); el.className = "st"; el.id = "st";
-    ST = { w: w, i: 0, el: el };
-    el.innerHTML = '<div class="st-box"><div class="st-ph"><div class="st-bars" id="stBars"></div><img id="stImg" alt=""><button type="button" class="st-nav l" data-st="-1" aria-label="Назад"></button><button type="button" class="st-nav r" data-st="1" aria-label="Дальше"></button><button type="button" class="st-x" data-st="x" aria-label="Закрыть">×</button></div>' +
-      '<div class="st-tx"><h3>' + esc(w.t) + '</h3><div class="pl">' + esc([w.place, w.year].filter(Boolean).join(" · ")) + "</div>" +
-      (w.task ? "<h4>Что хотел заказчик</h4><p>" + esc(w.task) + "</p>" : "") + (w.done ? "<h4>Что сделали</h4><p>" + esc(w.done) + "</p>" : "") +
-      (w.why ? "<h4>Почему так</h4><p>" + esc(w.why) + "</p>" : "") + (w.mat ? "<h4>Материалы</h4><p>" + esc(w.mat) + "</p>" : "") +
-      '<div class="btns"><a class="btn wa" target="_blank" rel="noopener" href="' + esc(waUrl("Здравствуйте! Понравилась работа \"" + w.t + "\" на вашем сайте. Хочу что-то похожее.")) + '">Хочу так же</a><a class="btn" href="#cena" data-st="x">Узнать цену</a></div></div></div>';
-    document.body.appendChild(el); document.body.style.overflow = "hidden"; stShow();
+  function renderForm() {
+    $("fRate").innerHTML = [1, 2, 3, 4, 5].map(function (n) { return '<button type="button" data-rate="' + n + '" aria-label="' + n + " из 5" + '"' + (n <= RATE ? ' class="on"' : "") + ">★</button>"; }).join("");
+    $("fMic").innerHTML = IC.mic;
+    if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) $("fMic").classList.add("hide");
+    ["fName", "fWhat", "fText", "fLink"].forEach(function (id) { $(id).addEventListener("input", msg); });
+    $("fOk").addEventListener("change", msg);
+    var t = 0; $("fKod").addEventListener("input", function () { clearTimeout(t); t = setTimeout(checkKod, 250); });
+    $("fCopy").addEventListener("click", function () {
+      if (!$("fText").value.trim()) { toast("Напишите пару слов в отзыве"); $("fText").focus(); return; }
+      var text = msg(), go = function () { toast("Отзыв скопирован - вставьте его в чат"); var u = tgUrl(); if (u) window.open(u, "_blank", "noopener"); };
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(go, function () { prompt("Скопируйте отзыв:", text); });
+      else prompt("Скопируйте отзыв:", text);
+    });
+    $("fWa").addEventListener("click", function (e) { if (!$("fText").value.trim()) { e.preventDefault(); toast("Напишите пару слов в отзыве"); $("fText").focus(); } });
+    $("fMic").addEventListener("click", function () { dictate(this, $("fText")); });
+    msg();
   }
-  function stShow() { var w = ST.w, n = (w.photos || []).length; $("stImg").src = n ? src(w.photos[ST.i]) : ""; $("stBars").innerHTML = n > 1 ? w.photos.map(function (_, j) { return '<i class="' + (j <= ST.i ? "on" : "") + '"></i>'; }).join("") : ""; }
-  function stClose() { if (ST) { ST.el.remove(); ST = null; document.body.style.overflow = ""; } }
-
-  // ======================= голос: один ответ целиком, до "Стоп" =======================
-  var SR = window.SpeechRecognition || window.webkitSpeechRecognition, DI = null;
-  function dictStop() { if (DI) { DI.want = false; try { DI.rec.stop(); } catch (e) {} } }
-  function dictate(btn, live, done) {
-    if (!SR) { toast("Этот браузер не распознаёт речь - нажмите микрофон на клавиатуре телефона и надиктуйте в поле"); return; }
-    if (DI && DI.btn === btn) { dictStop(); return; }
-    dictStop();
-    var st = { btn: btn, want: true }, acc = "", lab = btn.textContent;
+  // диктовка в поле: фразы дописываются в конец
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition, DICT = null;
+  function dictate(btn, field) {
+    if (DICT) { DICT.want = false; try { DICT.rec.stop(); } catch (e) {} if (DICT.btn === btn) { DICT = null; return; } }
+    var st = { btn: btn, want: true }; DICT = st; btn.classList.add("on");
     var spawn = function () {
-      var r = new SR(); st.rec = r; r.lang = "ru-RU"; r.interimResults = true; r.continuous = !/android/i.test(navigator.userAgent);
-      r.onresult = function (ev) { var lv = ""; for (var i = ev.resultIndex; i < ev.results.length; i++) { var x = ev.results[i]; if (x.isFinal) { var t = x[0].transcript.trim(), stop = /(^|\s)стоп[.!]?$/i.test(t); t = t.replace(/(^|\s)стоп[.!]?$/i, "").trim(); if (t) acc = (acc + " " + t).trim(); if (stop) dictStop(); } else lv += x[0].transcript; } live((acc + " " + lv).trim()); };
-      r.onerror = function (e) { if (/not-allowed|service-not-allowed|audio-capture|network/.test(e.error)) { st.want = false; toast(e.error === "network" ? "Для распознавания речи нужен интернет" : "Нет доступа к микрофону - разрешите его или пишите текстом"); } };
-      r.onend = function () { if (st.want && DI === st) { try { spawn(); } catch (e) { off(); } } else off(); };
+      var r = new SR(); st.rec = r; r.lang = "ru-RU"; r.interimResults = false; r.continuous = !/android/i.test(navigator.userAgent);
+      r.onresult = function (ev) {
+        for (var i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal) {
+          var t = ev.results[i][0].transcript.trim(); if (!t) continue;
+          var v = field.value.replace(/\s+$/, "");
+          t = (!v || /[.!?]$/.test(v)) ? t.charAt(0).toUpperCase() + t.slice(1) : t;
+          field.value = v + (v ? " " : "") + t + (/[.!?]$/.test(t) ? "" : ".");
+          field.dispatchEvent(new Event("input"));
+        }
+      };
+      r.onerror = function (e) { if (/not-allowed|service-not-allowed|audio-capture|network/.test(e.error)) { st.want = false; toast(e.error === "network" ? "Для голоса нужен интернет" : "Нет доступа к микрофону - можно написать текстом"); } };
+      r.onend = function () { if (st.want && DICT === st) { try { spawn(); } catch (e) { off(); } } else off(); };
       try { r.start(); } catch (e) { off(); }
     };
-    var off = function () { if (DI === st) DI = null; btn.classList.remove("on"); btn.textContent = lab; var a = acc; acc = ""; if (a) done(a); else live(""); };
-    DI = st; btn.classList.add("on"); btn.textContent = "Стоп"; live(""); spawn();
-  }
-  function liveTxt(el) { return function (t) { el.innerHTML = t ? "Слышу: " + esc(t) + ' <span style="opacity:.6">- закончили? нажмите "Стоп"</span>' : ""; }; }
-
-  // ======================= отзыв и запрос цены - в WhatsApp мастеру =======================
-  function reviewForm() {
-    var h = '<p class="muted" style="margin:0 0 10px">Напишите как есть. Отзыв уйдёт мастеру в WhatsApp, он опубликует его здесь с вашим именем. Ссылка на вашу страницу в соцсети или видео - чтобы другие видели, что отзыв настоящий.</p>' +
-      '<div class="g2"><label class="f">Ваше имя <input class="t" id="rN"></label><label class="f">Город <input class="t" id="rC"></label><label class="f">Что делали <input class="t" id="rW" placeholder="Кухня, шкаф, кровать..."></label><label class="f">Когда <input class="t" id="rD" placeholder="Например: весна 2026"></label></div>' +
-      '<label class="f" style="margin-top:8px">Отзыв <textarea class="t" id="rT" rows="4"></textarea></label><label class="f" style="margin-top:8px">Ссылка на вашу страницу или видео-отзыв (необязательно) <input class="t" id="rL" placeholder="https://"></label>' +
-      '<div class="btns"><button type="button" class="btn mic sm" id="rMic">Сказать голосом</button><button type="button" class="btn wa" id="rSend">Отправить</button></div><div class="live" id="rLive"></div>';
-    modal("Оставить отзыв", h, function (box) {
-      $("rMic").onclick = function () { var ta = $("rT"); dictate(this, liveTxt($("rLive")), function (t) { ta.value = (ta.value ? ta.value.trim() + " " : "") + t; $("rLive").textContent = "Проверьте текст и нажмите \"Отправить\""; }); };
-      $("rSend").onclick = function () {
-        var n = $("rN").value.trim(), t = $("rT").value.trim(); if (!n || !t) { toast("Напишите имя и отзыв"); return; }
-        var msg = "Отзыв для сайта\nИмя: " + n + ($("rC").value.trim() ? "\nГород: " + $("rC").value.trim() : "") + ($("rW").value.trim() ? "\nЧто делали: " + $("rW").value.trim() : "") + ($("rD").value.trim() ? "\nКогда: " + $("rD").value.trim() : "") + "\n\n" + t + ($("rL").value.trim() ? "\n\nМоя страница: " + $("rL").value.trim() : "");
-        window.open(waUrl(msg), "_blank"); closeModal(); toast("Спасибо! Отзыв ушёл мастеру");
-      };
-    });
+    var off = function () { btn.classList.remove("on"); if (DICT === st) DICT = null; };
+    spawn();
   }
 
-  // ======================= окно =======================
-  function modal(title, html, init) {
-    closeModal();
-    var el = document.createElement("div"); el.className = "md"; el.id = "md";
-    el.innerHTML = '<div class="md-box"><div class="md-hd"><b>' + esc(title) + '</b><button type="button" class="x" data-close aria-label="Закрыть">×</button></div><div class="md-bd" id="mdBd">' + html + "</div></div>";
-    el.addEventListener("click", function (e) { if (e.target === el || e.target.closest("[data-close]")) closeModal(); });
-    document.body.appendChild(el); document.body.style.overflow = "hidden"; if (init) init(el);
+  // ---------- контакты ----------
+  function renderContacts() {
+    var b = [];
+    if (waUrl()) b.push('<a class="btn wa" target="_blank" rel="noopener" href="' + esc(waUrl(hello())) + '">' + IC.wa + "WhatsApp</a>");
+    if (tgUrl()) b.push('<a class="btn tg" target="_blank" rel="noopener" href="' + esc(tgUrl()) + '">' + IC.tg + "Telegram</a>");
+    if (K.vk) b.push('<a class="btn vk" target="_blank" rel="noopener" href="' + esc(webUrl(K.vk)) + '">' + IC.vk + "ВКонтакте</a>");
+    if (K.instagram) b.push('<a class="btn" target="_blank" rel="noopener" href="' + esc(webUrl(K.instagram)) + '">' + IC.ig + "Instagram</a>");
+    if (K.telefon) b.push('<a class="btn" href="tel:' + esc(String(K.telefon).replace(/[^\d+]/g, "")) + '">' + IC.tel + esc(K.telefon) + "</a>");
+    $("cBtns").innerHTML = b.join("");
+    var l = [];
+    if ((D.master || {}).gorod) l.push(["Город", esc(D.master.gorod)]);
+    if (K.chasy) l.push(["Когда", esc(K.chasy)]);
+    if (K.adres) l.push(["Где", esc(K.adres) + (K.karta ? ' <a href="' + esc(webUrl(K.karta)) + '" target="_blank" rel="noopener">на карте</a>' : "")]);
+    l.push(["Замер", "Приеду, сниму размеры, обсудим материалы и решения"]);
+    $("cList").innerHTML = l.map(function (x) { return "<dt>" + x[0] + "</dt><dd>" + x[1] + "</dd>"; }).join("");
+    var d = [];
+    if (waUrl()) d.push('<a class="btn wa" target="_blank" rel="noopener" href="' + esc(waUrl(hello())) + '">' + IC.wa + "WhatsApp</a>");
+    if (tgUrl()) d.push('<a class="btn tg" target="_blank" rel="noopener" href="' + esc(tgUrl()) + '">' + IC.tg + "Telegram</a>");
+    d.push('<a class="btn" href="#raschet">' + IC.calc + "Цена</a>");
+    $("dock").innerHTML = d.join("");
+    $("fUpd").textContent = D.obnovleno ? "Сайт обновлён " + day(D.obnovleno) + "." : "";
   }
-  function closeModal() { dictStop(); var m = $("md"); if (m) { m.remove(); document.body.style.overflow = ""; } }
 
-  // ======================= режим мастера =======================
-  // новая работа: вопросы по одному, как просил мастер
-  var QS = [
-    { k: "t", q: "Что сделали? Коротко, как название", ex: "Например: угловая кухня с рейкой и подсветкой" },
-    { k: "place", q: "Где и для кого?", ex: "Например: квартира в новостройке, молодая семья с ребёнком" },
-    { k: "task", q: "Что хотел заказчик?", ex: "Например: хотели светлую кухню без ручек и много места под посуду" },
-    { k: "done", q: "Что сделали и какие решения применили?", ex: "Например: фасады с рейкой, профиль Gola, подсветка в цоколе, ящики у мойки" },
-    { k: "why", q: "Почему именно так?", ex: "Например: рейка не показывает отпечатки, без ручек безопасно для ребёнка" },
-    { k: "mat", q: "Материалы и фурнитура (можно пропустить)", ex: "Например: МДФ эмаль, Blum с доводчиком" }
-  ];
-  var NW = null;   // черновик новой работы
-  function newDraft() { NW = { id: "l" + Date.now().toString(36), photos: [], ans: {}, step: 0, tags: [], big: false }; }
-  function fixText(t) { t = String(t || "").trim().replace(/\s+/g, " "); if (!t) return ""; t = t.charAt(0).toUpperCase() + t.slice(1); if (!/[.!?]$/.test(t)) t += "."; return t; }
-  function autoTags(w) {
-    var s = (w.t + " " + w.done + " " + w.place).toLowerCase(), out = [];
-    [["кухн", "кухня"], ["шкаф", "шкаф"], ["купе", "купе"], ["кроват", "кровать"], ["спальн", "спальня"], ["прихож", "прихожая"], ["гардероб", "гардероб"], ["детск", "детская"], ["ванн", "ванная"], ["рейк", "рейка"], ["подсвет", "подсветка"], ["зеркал", "зеркало"], ["тумб", "тумба"], ["стол", "стол"]].forEach(function (p) { if (s.indexOf(p[0]) >= 0 && out.indexOf(p[1]) < 0) out.push(p[1]); });
-    return out.slice(0, 5);
+  // ---------- полоска мастера ----------
+  function renderStaff() {
+    if (!STAFF) return;
+    $("staff").classList.remove("hide");
+    $("staffNote").innerHTML = DRAFT ? "<b>Черновик</b> из Мастерской - так увидит клиент после публикации." :
+      D.shablon ? "<b>Вариант 3, Витрина мастера.</b> Сейчас это шаблон: фото нарисованы, тексты - пример. Клиент эту полоску не видит." :
+      "<b>Витрина мастера.</b> Клиент эту полоску не видит.";
   }
-  function workFromDraft() {
-    var a = NW.ans, w = { id: NW.id, t: String(a.t || "").trim().replace(/[.]$/, "") || "Новая работа", place: String(a.place || "").trim().replace(/[.]$/, ""), year: String(new Date().getFullYear()),
-      task: fixText(a.task), done: fixText(a.done), why: fixText(a.why), mat: String(a.mat || "").trim().replace(/[.]$/, ""), photos: NW.photos.slice() };
-    w.t = w.t.charAt(0).toUpperCase() + w.t.slice(1); w.tags = autoTags(w); return w;
-  }
-  function postText(w) {
-    var m = M(), tags = ["мебельназаказ", "корпуснаямебель"].concat(w.tags.map(function (t) { return t.replace(/\s+/g, ""); }), m.city ? [String(m.city).toLowerCase().replace(/[^а-яa-z0-9]/gi, "")] : []);
-    return [w.t + (w.place ? " - " + w.place.charAt(0).toLowerCase() + w.place.slice(1) : ""), "",
-      w.task ? "Задача: " + w.task : "", w.done ? "Что сделали: " + w.done : "", w.why ? "Почему так: " + w.why : "", w.mat ? "Материалы: " + w.mat + "." : "", "",
-      "Хотите так же - пишите в личные сообщения" + (m.wa ? " или в WhatsApp" : "") + ". Замер, проект, сборка под ключ.", "",
-      tags.map(function (t) { return "#" + t; }).join(" ")].filter(function (x, i, arr) { return x !== "" || (arr[i - 1] !== "" && i > 0); }).join("\n").trim();
-  }
-  function aiPrompt(w) {
-    return "Напиши живой пост для Instagram и ВКонтакте от лица мастера корпусной мебели. Без пафоса и канцелярита, коротко, 5-8 предложений, в конце призыв написать и 5-7 хэштегов.\n" +
-      "Работа: " + w.t + "\nГде и для кого: " + w.place + "\nЧто хотел заказчик: " + w.task + "\nЧто сделали: " + w.done + "\nПочему так: " + w.why + (w.mat ? "\nМатериалы: " + w.mat : "") + (M().city ? "\nГород: " + M().city : "");
-  }
-  // водяной знак: текст внизу справа, по желанию - крупно по диагонали
-  function markText() { var m = M(); return m.mark || [m.name, m.wa ? "+" + String(m.wa).replace(/\D/g, "") : ""].filter(Boolean).join(" · ") || "Мебель на заказ"; }
-  function watermark(file, big) {
-    return new Promise(function (res, rej) {
-      var fr = new FileReader();
-      fr.onload = function () {
-        var img = new Image();
-        img.onload = function () {
-          var k = Math.min(1, 1600 / Math.max(img.width, img.height)), W = Math.round(img.width * k), H = Math.round(img.height * k);
-          var c = document.createElement("canvas"); c.width = W; c.height = H; var g = c.getContext("2d");
-          g.drawImage(img, 0, 0, W, H);
-          var txt = markText(), fs = Math.max(16, Math.round(W / 38));
-          g.font = "600 " + fs + "px system-ui, sans-serif"; g.textAlign = "right"; g.textBaseline = "bottom";
-          g.shadowColor = "rgba(0,0,0,.55)"; g.shadowBlur = fs / 3; g.fillStyle = "rgba(255,255,255,.88)"; g.fillText(txt, W - fs * 0.8, H - fs * 0.6);
-          if (big) { g.save(); g.translate(W / 2, H / 2); g.rotate(-Math.atan2(H, W)); g.textAlign = "center"; g.textBaseline = "middle"; var bf = Math.round(Math.min(W, H) / 9); g.font = "700 " + bf + "px system-ui, sans-serif"; g.shadowBlur = 0; g.fillStyle = "rgba(255,255,255,.22)"; g.fillText(txt, 0, 0); g.restore(); }
-          res(c.toDataURL("image/jpeg", 0.85));
-        };
-        img.onerror = function () { rej(new Error("Не получилось открыть фото")); };
-        img.src = fr.result;
-      };
-      fr.onerror = function () { rej(new Error("Не получилось прочитать файл")); };
-      fr.readAsDataURL(file);
-    });
-  }
-  var tab = "new";
-  function master() {
-    if (!NW) newDraft();
-    modal("Для мастера", '<div class="tabs" id="mTabs"></div><div id="mBody"></div>', function () { mRender(); });
-  }
-  function mRender() {
-    var T = [["new", "Новая работа"], ["mine", "Мои работы (" + LOC.works.length + ")"], ["rev", "Отзывы"], ["prof", "О себе"]];
-    $("mTabs").innerHTML = T.map(function (t) { return '<button type="button" data-tab="' + t[0] + '" class="' + (tab === t[0] ? "on" : "") + '">' + esc(t[1]) + "</button>"; }).join("");
-    var b = $("mBody");
-    if (tab === "new") b.innerHTML = mNew(); else if (tab === "mine") b.innerHTML = mMine(); else if (tab === "rev") b.innerHTML = mRev(); else b.innerHTML = mProf();
-    if (tab === "new") bindNew();
-  }
-  function mNew() {
-    var h = '<div class="card"><h3>1. Фото работы</h3><p class="muted" style="margin:0;font-size:14px">На каждое фото сразу ставится водяной знак: <b>' + esc(markText()) + '</b> (поменять - во вкладке "О себе").</p>' +
-      '<label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:14px"><input type="checkbox" id="bigMark"' + (NW.big ? " checked" : "") + '> Крупный знак по диагонали (сильнее защищает от копирования)</label>' +
-      '<div class="btns"><label class="btn p sm" style="cursor:pointer">+ Добавить фото<input type="file" id="phIn" accept="image/*" multiple hidden></label></div>' +
-      '<div class="ph-list">' + NW.photos.map(function (p, i) { return '<figure><img src="' + esc(p) + '" alt=""><button type="button" data-delph="' + i + '" aria-label="Убрать">×</button></figure>'; }).join("") + "</div></div>";
-    var i = NW.step;
-    if (i < QS.length) {
-      var q = QS[i];
-      h += '<div class="card ask"><div class="n">2. Рассказ · вопрос ' + (i + 1) + " из " + QS.length + '</div><div class="qq">' + esc(q.q) + '</div><div class="muted" style="font-size:13.5px">' + esc(q.ex) + "</div>" +
-        '<div class="btns"><button type="button" class="btn mic" id="aMic">Сказать</button><input class="t" id="aIn" style="flex:1 1 200px;width:auto" placeholder="Или напишите"><button type="button" class="btn" id="aGo">Проверить</button>' + (i > 0 ? '<button type="button" class="btn l" id="aBack">Назад</button>' : "") + (q.k === "mat" ? '<button type="button" class="btn l" id="aSkip">Пропустить</button>' : "") + "</div>" +
-        '<div class="live" id="aLive"></div><div id="aCf"></div></div>';
-    }
-    var done = QS.filter(function (q) { return NW.ans[q.k]; });
-    if (done.length) h += '<div class="ans">' + done.map(function (q) { return "<div><span>" + esc(q.q.replace(/\?.*$/, "?").replace(/ \(.*\)$/, "")) + "</span> " + esc(NW.ans[q.k]) + ' <button type="button" class="btn l sm" data-redo="' + QS.indexOf(q) + '">изменить</button></div>'; }).join("") + "</div>";
-    if (i >= QS.length) {
-      var w = workFromDraft();
-      h += '<div class="card" style="margin-top:14px"><h3>3. Готовый пост</h3><div class="post" id="postTx">' + esc(postText(w)) + "</div>" +
-        '<div class="btns"><button type="button" class="btn p" data-a="copyPost">Скопировать текст поста</button><button type="button" class="btn" data-a="dlPh"' + (NW.photos.length ? "" : " disabled") + '>Скачать фото со знаком</button><button type="button" class="btn" data-a="copyAi">Запрос для ИИ (красивее текст)</button></div>' +
-        '<div class="btns"><button type="button" class="btn ok" data-a="saveWork">Поставить на витрину</button><button type="button" class="btn l" data-a="resetNew">Начать заново</button></div>' +
-        '<p class="muted" style="font-size:13px;margin:8px 0 0">На витрине работа сначала видна только в этом браузере. Чтобы её видели все - во вкладке "Мои работы" нажмите "Файл для сайта" и отправьте файл Александру.</p></div>';
-    }
-    return h;
-  }
-  function bindNew() {
-    var inp = $("phIn"); if (inp) inp.onchange = function () {
-      var fs = [].slice.call(inp.files || []); inp.value = ""; if (!fs.length) return; toast("Ставлю водяной знак...");
-      fs.reduce(function (p, f) { return p.then(function () { return watermark(f, NW.big).then(function (d) { NW.photos.push(d); }, function (e) { toast(e.message); }); }); }, Promise.resolve()).then(function () { mRender(); toast("Фото добавлены"); });
-    };
-    var bm = $("bigMark"); if (bm) bm.onchange = function () { NW.big = bm.checked; if (NW.photos.length) toast("Новый знак встанет на фото, которые добавите дальше"); };
-    var q = QS[NW.step]; if (!q) return;
-    var propose = function (t) {
-      var cf = $("aCf"); $("aLive").textContent = "";
-      cf.innerHTML = '<div class="cf"><b>Я понял так:</b>' + esc(t) + '<span class="h">Можно поправить текст перед тем, как записать</span><textarea class="t" id="aFix" rows="2" style="margin-top:6px">' + esc(t) + '</textarea><div class="btns"><button type="button" class="btn ok" id="aOk">Да, дальше</button><button type="button" class="btn" id="aAgain">Нет, сказать заново</button></div></div>';
-      $("aOk").onclick = function () { var v = $("aFix").value.trim(); if (!v) { toast("Ответ пустой"); return; } NW.ans[q.k] = v; NW.step++; while (NW.step < QS.length && NW.ans[QS[NW.step].k] && NW.redo) NW.step++; NW.redo = false; mRender(); };
-      $("aAgain").onclick = function () { cf.innerHTML = ""; $("aMic").click(); };
-    };
-    $("aMic").onclick = function () { dictate(this, liveTxt($("aLive")), propose); };
-    $("aGo").onclick = function () { var v = $("aIn").value.trim(); if (v) propose(v); else toast("Скажите или напишите ответ"); };
-    $("aIn").onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); $("aGo").click(); } };
-    if ($("aBack")) $("aBack").onclick = function () { NW.step--; mRender(); };
-    if ($("aSkip")) $("aSkip").onclick = function () { NW.step++; mRender(); };
-  }
-  function mMine() {
-    if (!LOC.works.length) return '<p class="muted">Своих работ пока нет. Добавьте во вкладке "Новая работа".</p>';
-    return '<div class="lst">' + LOC.works.map(function (w, i) { return '<div class="it">' + (w.photos[0] ? '<img src="' + esc(w.photos[0]) + '" alt="">' : "") + "<div><b>" + esc(w.t) + '</b><span class="muted" style="font-size:13px">' + esc(w.place) + '</span></div><button type="button" class="btn sm" data-copyw="' + i + '">Текст поста</button><button type="button" class="btn l sm" data-delw="' + i + '">Убрать</button></div>'; }).join("") + "</div>" +
-      '<div class="btns"><button type="button" class="btn p" data-a="export">Файл для сайта</button></div><p class="muted" style="font-size:13px">Файл со всеми вашими работами, отзывами и данными "О себе". Отправьте его Александру - он поставит работы на сайт, и их увидят все.</p>';
-  }
-  function mRev() {
-    return '<p class="muted" style="margin:0 0 10px;font-size:14px">Клиенты оставляют отзыв кнопкой на витрине - он приходит вам в WhatsApp. Перенесите его сюда (можно вставить сообщение целиком).</p>' +
-      '<div class="g2"><label class="f">Имя <input class="t" id="mrN"></label><label class="f">Город <input class="t" id="mrC"></label><label class="f">Что делали <input class="t" id="mrW"></label><label class="f">Когда <input class="t" id="mrD"></label></div>' +
-      '<label class="f" style="margin-top:8px">Отзыв <textarea class="t" id="mrT" rows="4"></textarea></label><label class="f" style="margin-top:8px">Ссылка на страницу или видео <input class="t" id="mrL"></label>' +
-      '<div class="btns"><button type="button" class="btn ok" data-a="addRev">Добавить на витрину</button></div>' +
-      (LOC.reviews.length ? '<div class="lst" style="margin-top:12px">' + LOC.reviews.map(function (r, i) { return '<div class="it"><div><b>' + esc(r.name) + '</b><span class="muted" style="font-size:13px">' + esc(r.text.slice(0, 80)) + '</span></div><button type="button" class="btn l sm" data-delr="' + i + '">Убрать</button></div>'; }).join("") + "</div>" : "");
-  }
-  function mProf() {
-    var m = M(), f = function (k, l, ph) { return '<label class="f">' + l + ' <input class="t" data-pf="' + k + '" value="' + esc(m[k] || "") + '" placeholder="' + esc(ph || "") + '"></label>'; };
-    return '<div class="g2">' + f("name", "Имя или мастерская", "Мастерская Ивана") + f("city", "Город", "Алматы") + f("who", "Чем занимаетесь", "Корпусная мебель на заказ") + f("wa", "WhatsApp (цифрами)", "77011234567") + f("tg", "Telegram (ник)", "") + f("mark", "Водяной знак на фото", markText()) + "</div>" +
-      '<label class="f" style="margin-top:8px">Главная фраза <input class="t" data-pf="slogan" value="' + esc(m.slogan || "") + '"></label>' +
-      '<label class="f" style="margin-top:8px">О себе <textarea class="t" data-pf="about" rows="3">' + esc(m.about || "") + "</textarea></label>" +
-      '<div class="g2" style="margin-top:8px">' + [0, 1, 2].map(function (i) { var l = (m.links || [])[i] || {}; return '<label class="f">Соцсеть ' + (i + 1) + ' <input class="t" data-lk="' + i + '" value="' + esc(l.u || "") + '" placeholder="https://instagram.com/..."></label>'; }).join("") + "</div>" +
-      '<div class="btns"><button type="button" class="btn ok" data-a="saveProf">Сохранить</button></div>';
-  }
-  function linkName(u) { return /instagram/.test(u) ? "Instagram" : /vk\.com|vk\.ru/.test(u) ? "ВКонтакте" : /t\.me/.test(u) ? "Telegram" : /youtube|youtu\.be/.test(u) ? "YouTube" : /tiktok/.test(u) ? "TikTok" : /ok\.ru/.test(u) ? "Одноклассники" : /2gis/.test(u) ? "2ГИС" : "Ссылка"; }
-  function download(name, url) { var a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
 
-  // ======================= нажатия =======================
+  // ---------- нажатия ----------
   document.addEventListener("click", function (e) {
-    var t = e.target, b;
-    if ((b = t.closest("[data-work]"))) { openWork(b.dataset.work); return; }
-    if ((b = t.closest("[data-tag]"))) { tagOn = b.dataset.tag; render(); return; }
-    if ((b = t.closest("[data-st]"))) { var k = b.dataset.st; if (k === "x") { stClose(); return; } var n = (ST.w.photos || []).length; if (n) { ST.i = (ST.i + (+k) + n) % n; stShow(); } return; }
-    if (ST && t === ST.el) { stClose(); return; }
-    if (t.id === "meBtn") { master(); return; }
-    if (t.id === "rvBtn") { reviewForm(); return; }
-    if ((b = t.closest("[data-tab]"))) { tab = b.dataset.tab; mRender(); return; }
-    if ((b = t.closest("[data-delph]"))) { NW.photos.splice(+b.dataset.delph, 1); mRender(); return; }
-    if ((b = t.closest("[data-redo]"))) { NW.step = +b.dataset.redo; NW.redo = true; mRender(); return; }
-    if ((b = t.closest("[data-copyw]"))) { var w0 = LOC.works[+b.dataset.copyw]; copy(postText(w0), "Текст поста скопирован"); return; }
-    if ((b = t.closest("[data-delw]"))) { LOC.works.splice(+b.dataset.delw, 1); save(); render(); mRender(); return; }
-    if ((b = t.closest("[data-delr]"))) { LOC.reviews.splice(+b.dataset.delr, 1); save(); render(); mRender(); return; }
-    if ((b = t.closest("[data-a]"))) {
-      var a = b.dataset.a;
-      if (a === "copyPost") copy($("postTx").textContent, "Текст поста скопирован - вставьте под фото в соцсети");
-      else if (a === "copyAi") { copy(aiPrompt(workFromDraft()), "Запрос скопирован - вставьте в ChatGPT или другой ИИ"); }
-      else if (a === "dlPh") NW.photos.forEach(function (p, i) { setTimeout(function () { download("rabota-" + (i + 1) + ".jpg", p); }, i * 300); });
-      else if (a === "saveWork") { var w = workFromDraft(); if (!w.photos.length && !confirm("Работа без фото. Всё равно поставить?")) return; LOC.works.unshift(w); save(); newDraft(); render(); tab = "mine"; mRender(); toast("Работа на витрине (пока только у вас)"); }
-      else if (a === "resetNew") { newDraft(); mRender(); }
-      else if (a === "export") { var data = { master: LOC.master, works: LOC.works, reviews: LOC.reviews, at: new Date().toISOString() }; download("vitrina-" + new Date().toISOString().slice(0, 10) + ".json", URL.createObjectURL(new Blob([JSON.stringify(data)], { type: "application/json" }))); toast("Файл сохранён - отправьте его Александру"); }
-      else if (a === "addRev") { var r = { name: $("mrN").value.trim(), city: $("mrC").value.trim(), work: $("mrW").value.trim(), date: $("mrD").value.trim(), text: $("mrT").value.trim(), link: $("mrL").value.trim() }; if (!r.name || !r.text) { toast("Нужны имя и текст отзыва"); return; } LOC.reviews.unshift(r); save(); render(); mRender(); toast("Отзыв на витрине (пока только у вас)"); }
-      else if (a === "saveProf") { [].forEach.call(document.querySelectorAll("[data-pf]"), function (i) { LOC.master[i.dataset.pf] = i.value.trim(); }); LOC.master.links = [].map.call(document.querySelectorAll("[data-lk]"), function (i) { var u = i.value.trim(); return u ? { n: linkName(u), u: u } : null; }).filter(Boolean); save(); render(); toast("Сохранено"); }
+    var t = e.target.closest ? e.target.closest("[data-work],[data-story],[data-vid],[data-g],[data-close],[data-share],[data-iz],[data-lv],[data-rate],[data-dop]") : null;
+    if (!t) { if (e.target === $("work")) closeWork(); return; }
+    if (t.hasAttribute("data-dop")) { CS.dop[+t.getAttribute("data-dop")] = t.checked; calc(); return; }
+    if (t.hasAttribute("data-work")) { e.preventDefault(); openWork(+t.getAttribute("data-work")); }
+    else if (t.hasAttribute("data-story")) openStory(+t.getAttribute("data-story"));
+    else if (t.hasAttribute("data-vid")) { VID = t.getAttribute("data-vid"); renderWorks(); }
+    else if (t.hasAttribute("data-g")) galStep(+t.getAttribute("data-g"));
+    else if (t.hasAttribute("data-close")) closeWork();
+    else if (t.hasAttribute("data-share")) {
+      var u = location.origin + location.pathname + "#rabota=" + t.getAttribute("data-share");
+      var ok = function () { toast("Ссылка скопирована - можно отправить в чат"); };
+      if (navigator.share && /Mobi|Android|iPhone/i.test(navigator.userAgent)) navigator.share({ title: R[CUR.wi].nazvanie, url: u }).catch(function () {});
+      else if (navigator.clipboard) navigator.clipboard.writeText(u).then(ok, function () { prompt("Ссылка на работу:", u); });
+      else prompt("Ссылка на работу:", u);
     }
+    else if (t.hasAttribute("data-iz")) { CS.iz = +t.getAttribute("data-iz"); CS.size = 0; renderCalc(); }
+    else if (t.hasAttribute("data-lv")) { CS.lv = +t.getAttribute("data-lv"); renderCalc(); }
+    else if (t.hasAttribute("data-rate")) { RATE = +t.getAttribute("data-rate"); renderForm.stars(); msg(); }
   });
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape") { if (ST) stClose(); else closeModal(); } if (ST && (e.key === "ArrowRight" || e.key === "ArrowLeft")) { var n = (ST.w.photos || []).length; if (n) { ST.i = (ST.i + (e.key === "ArrowRight" ? 1 : -1) + n) % n; stShow(); } } });
-  // запрос цены
-  $("rqMic").onclick = function () { var ta = $("rqText"); dictate(this, liveTxt($("rqLive")), function (t) { ta.value = (ta.value ? ta.value.trim() + " " : "") + t; $("rqLive").textContent = "Проверьте текст и нажмите \"Отправить\""; }); };
-  $("rqSend").onclick = function () { var t = $("rqText").value.trim(); if (!t) { toast("Опишите, что нужно"); return; } window.open(waUrl("Здравствуйте! Хочу узнать примерную цену.\n" + t + ($("rqCity").value.trim() ? "\nГород: " + $("rqCity").value.trim() : "") + ($("rqName").value.trim() ? "\nМеня зовут: " + $("rqName").value.trim() : "")), "_blank"); };
+  renderForm.stars = function () { [].forEach.call($("fRate").children, function (b, i) { b.classList.toggle("on", i < RATE); }); };
+  document.addEventListener("keydown", function (e) {
+    if (S) { if (e.key === "Escape") closeStory(); else if (e.key === "ArrowRight") step(1); else if (e.key === "ArrowLeft") step(-1); else if (e.key === " ") { S.paused = !S.paused; e.preventDefault(); } return; }
+    if (CUR.wi >= 0) { if (e.key === "Escape") closeWork(); else if (e.key === "ArrowRight") galStep(1); else if (e.key === "ArrowLeft") galStep(-1); }
+  });
 
-  render();
-  load().then(function (v) { if (v) { LOC = { master: v.master || {}, works: v.works || [], reviews: v.reviews || [] }; render(); } if (/[?&]master=1/.test(location.search)) master(); });
-  window.Vitrina = { postText: postText, workFromDraft: function () { return workFromDraft(); }, draft: function () { return NW; } };
+  // ---------- ссылки с решёткой ----------
+  function route() {
+    var h = decodeURIComponent(location.hash || ""), m;
+    if ((m = /^#rabota=(.+)$/.exec(h)) && work(m[1]) >= 0) { if (CUR.wi !== work(m[1])) openWork(work(m[1])); }
+    else if ((m = /^#story=(.+)$/.exec(h)) && work(m[1]) >= 0) openStory(work(m[1]));
+    else if ((m = /^#otzyv=(.*)$/.exec(h))) {
+      if (m[1]) { $("fKod").value = m[1]; checkKod(); }
+      setTimeout(function () { $("revForm").scrollIntoView({ behavior: "smooth", block: "start" }); $("fName").focus({ preventScroll: true }); }, 60);
+    } else if (CUR.wi >= 0 && !/^#rabota=/.test(h)) closeWork();
+  }
+  window.addEventListener("hashchange", route);
+
+  // ---------- черновик из Мастерской ----------
+  function loadDraft() {
+    if (!DRAFT) return Promise.resolve();
+    try { var d = JSON.parse(localStorage.getItem("vt-draft") || "null"); if (d) { D = d; K = D.kontakty || {}; R = D.raboty || []; C = D.raschet || {}; } } catch (e) {}
+    return new Promise(function (ok) {
+      if (!window.indexedDB) return ok();
+      var rq = indexedDB.open("vt-photos", 1);
+      rq.onupgradeneeded = function () { rq.result.createObjectStore("p"); };
+      rq.onerror = function () { ok(); };
+      rq.onsuccess = function () {
+        try {
+          var st = rq.result.transaction("p").objectStore("p"), c = st.openCursor();
+          c.onsuccess = function () { var cur = c.result; if (!cur) return ok(); PH[cur.key] = URL.createObjectURL(cur.value); cur.continue(); };
+          c.onerror = function () { ok(); };
+        } catch (e) { ok(); }
+      };
+    });
+  }
+
+  function start() {
+    renderStaff(); renderHero(); renderWorks(); renderWhy(); renderCalc(); renderReviews(); renderContacts();
+    if (location.hash) route();
+  }
+  // данные черновика читаем до отрисовки (WM и K берутся из D)
+  loadDraft().then(function () { WM = makeWM(); start(); msg(); });
+  renderForm();
 })();

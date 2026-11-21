@@ -1,5 +1,5 @@
-// Блокнот: кухня по модулям по одному с "Я понял так"; Витрина: показ работ, режим мастера, пост.
-// Запуск: node test/pw_bloknot_vitrina.js  (сайт из папки репо - сначала python3 site/build.py . --project src)
+// Блокнот: кухня по модулям по одному с "Я понял так" (отзыв мастера).
+// Запуск: node test/pw_bloknot_km.js  (сайт из папки репо - сначала python3 site/build.py . --project src)
 const {chromium,devices}=require('playwright');
 const path=require('path'), fs=require('fs');
 const ROOT=path.resolve(__dirname,'../../..');
@@ -29,18 +29,6 @@ let fail=0; const ok=(c,m)=>{ console.log((c?'  ok  ':'  FAIL ')+m); if(!c) fail
  ok(P.length===4 && /Под мойку\|800/.test(P[0]) && /Посудомойка\|450/.test(P[1]) && /Ящики\|600\|3 ящика, 1 большой, 2 маленьких/.test(P[2]) && /Шкаф с дверцами\|400\|одна распашная/.test(P[3]),'4 модуля мастера записаны как надо');
  ok(/Модуль 5/.test(await p.textContent('.km-q')),'следующий вопрос - модуль 5');
  await p.locator('.km').screenshot({path:__dirname+'/shots/bloknot_km.png'});
- // витрина
- await p.goto('http://site.test/vitrina/'); await p.waitForTimeout(600);
- ok((await p.$$('.wk')).length===3,'на витрине 3 работы-примера');
- await p.screenshot({path:__dirname+'/shots/vitrina.png'});
- await p.click('.wk'); await p.waitForTimeout(300); ok(await p.isVisible('.st'),'история работы открылась');
- await p.screenshot({path:__dirname+'/shots/vitrina_story.png'}); await p.click('.st-x');
- await p.click('#meBtn'); await p.waitForTimeout(300);
- const ans=['кухня с рейкой','квартира в новостройке','хотели без ручек','сделали профиль gola и подсветку','безопасно для детей','мдф эмаль'];
- for(const a of ans){ await p.fill('#aIn',a); await p.click('#aGo'); await p.waitForTimeout(150); ok(await p.isVisible('#aOk'),'"Я понял так" перед записью: '+a); await p.click('#aOk'); await p.waitForTimeout(200); }
- const post=await p.textContent('#postTx'); console.log('    ПОСТ:\n'+post); ok(/Задача: Хотели без ручек\./.test(post)&&/#кухня/.test(post),'пост собран');
- await p.click('[data-a="saveWork"]'); await p.waitForTimeout(400); await p.keyboard.press('Escape'); await p.waitForTimeout(300);
- ok((await p.$$('.wk')).length===4,'новая работа на витрине (у мастера)');
  ok(!errs.length,'ошибок страницы нет '+errs.join('; '));
  await b.close(); console.log(fail?'\nПРОВАЛОВ: '+fail:'\nВсё прошло'); process.exit(fail?1:0);
 })();
