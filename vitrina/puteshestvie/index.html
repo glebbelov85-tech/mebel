@@ -145,6 +145,11 @@ svg{flex:none}
 #room.enter .room-head>*{animation:rise .8s var(--ease) both}
 #room.enter .room-head h2{animation-delay:.08s}#room.enter .room-head p{animation-delay:.16s}
 @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+#room.enter .topbar>*{animation:drop .7s var(--ease) both}
+#room.enter .topbar>:nth-child(2){animation-delay:.06s}#room.enter .topbar>:nth-child(4){animation-delay:.12s}
+#room.enter .deck-ui>*{animation:rise .7s var(--ease) both}
+#room.enter .deck-ui>:nth-child(1){animation-delay:.25s}#room.enter .deck-ui>:nth-child(2){animation-delay:.3s}#room.enter .deck-ui>:nth-child(3){animation-delay:.35s}
+@keyframes drop{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
 .deck{position:absolute;left:0;right:0;top:50%;height:min(56vh,480px);transform:translateY(-36%);perspective:1400px;touch-action:pan-y;-webkit-user-select:none;user-select:none;cursor:grab;outline:none}
 .deck.drag{cursor:grabbing}
 .wcard{position:absolute;left:50%;top:0;height:100%;aspect-ratio:4/3.3;max-width:86vw;border-radius:22px;overflow:hidden;background:#1B1712;box-shadow:0 40px 80px rgba(0,0,0,.6);will-change:transform,opacity;text-align:left;padding:0}
@@ -165,13 +170,15 @@ svg{flex:none}
 .dots i{width:8px;height:8px;border-radius:99px;background:rgba(244,238,228,.3);transition:width .4s var(--ease),background .3s}
 .dots i.on{width:26px;background:var(--acc)}
 
-/* ---------- 3. работа ---------- */
-#work{overflow:hidden;background:#000;touch-action:none}
+/* ---------- 3. работа ----------
+   Фото по умолчанию целиком (в свободной части экрана, не под панелями), дальше - колесо, щипок, +/-, двойное нажатие.
+   Панели (.chrome) выезжают и уезжают; нажатие на фото убирает их все, кнопка в углу возвращает. */
+#work{overflow:hidden;background:#0B0907;touch-action:none;--m:clamp(12px,2vw,24px);--sw:min(380px,34vw);--tb:76px;--sh:150px}
 #work .area{position:absolute;inset:0;cursor:grab}
 #work.dragging .area{cursor:grabbing}
-.stage{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.stage{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;box-shadow:0 30px 80px rgba(0,0,0,.55)}
 .stage img{display:block;width:100%;height:100%;-webkit-user-select:none;user-select:none;-webkit-user-drag:none;pointer-events:none;max-width:none}
-.stage .wm{background-size:840px 520px}
+.stage .wm{background-size:840px 520px;opacity:.75}
 .spots{position:absolute;inset:0;pointer-events:none;transition:opacity .4s}
 .spots.off{opacity:0}
 .spots.off .spot{pointer-events:none}
@@ -182,13 +189,47 @@ svg{flex:none}
 .spot.on svg{transform:rotate(45deg)}
 @media (hover:hover){.spot:hover i{transform:scale(1.15)}}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(224,180,126,.7)}70%{box-shadow:0 0 0 18px rgba(224,180,126,0)}100%{box-shadow:0 0 0 0 rgba(224,180,126,0)}}
-.vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 90% at 50% 40%,transparent 55%,rgba(0,0,0,.5)),linear-gradient(180deg,rgba(0,0,0,.5),transparent 22%,transparent 62%,rgba(0,0,0,.55))}
-.fade-ui{transition:opacity .35s var(--ease)}
+.vignette{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.55),transparent 14%,transparent 84%,rgba(0,0,0,.5));transition:opacity .5s var(--ease)}
+.fade-ui{transition:opacity .45s var(--ease),transform .6s var(--ease)}
 #work.closing .fade-ui{opacity:0}
-.sheet{position:absolute;z-index:6;right:clamp(12px,2vw,24px);top:calc(104px + var(--st));bottom:clamp(12px,2vw,24px);width:min(400px,calc(100% - 24px));display:flex;flex-direction:column;background:rgba(20,17,13,.82);-webkit-backdrop-filter:blur(18px) saturate(1.2);backdrop-filter:blur(18px) saturate(1.2);border:1px solid rgba(244,238,228,.14);border-radius:22px;overflow:hidden;transition:transform .6s var(--ease),opacity .35s var(--ease)}
-.sheet.hide{transform:translateX(calc(100% + 40px))}
-.sheet-sc{overflow-y:auto;overscroll-behavior:contain;padding:22px 22px 10px;flex:1;-webkit-overflow-scrolling:touch;touch-action:pan-y}
-.sheet h3{font-family:var(--serif);font-size:34px;font-weight:600;line-height:1.05;margin:6px 0 8px}
+#work .topbar{transition:opacity .45s var(--ease),transform .6s var(--ease)}
+/* всё лишнее убрано: панели уезжают за края */
+#work.bare .topbar{transform:translateY(calc(-100% - 10px));opacity:0;pointer-events:none}
+#work.bare .work-ui{transform:translateY(calc(100% + 30px));opacity:0;pointer-events:none}
+#work.bare .vignette{opacity:0}
+#work.bare .sheet{transform:translateX(calc(100% + 40px));opacity:0;pointer-events:none}
+#work.bare .sheet-tab{transform:translateX(110%);opacity:0;pointer-events:none}
+.ui-show{position:absolute;z-index:7;right:calc(var(--m));bottom:calc(var(--m) + var(--sb));opacity:0;transform:scale(.5) rotate(-90deg);pointer-events:none;transition:opacity .4s var(--ease),transform .5s var(--ease)}
+#work.bare .ui-show{opacity:1;transform:none;pointer-events:auto;transition-delay:.15s}
+
+/* панель описания: компактная -> подробная (Подробнее) -> убрана за край (стрелка или нажатие на шапку) */
+.sheet{position:absolute;z-index:6;right:var(--m);bottom:calc(var(--m) + var(--sb));width:var(--sw);max-height:calc(100% - 96px - var(--st) - var(--m) - var(--sb));display:flex;flex-direction:column;background:rgba(20,17,13,.86);-webkit-backdrop-filter:blur(18px) saturate(1.2);backdrop-filter:blur(18px) saturate(1.2);border:1px solid rgba(244,238,228,.14);border-radius:22px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+.sheet.hide,#work.pano .sheet{transform:translateX(calc(100% + 40px));opacity:0;pointer-events:none}
+.sheet-head{position:relative;padding:16px 16px 4px 20px;cursor:pointer;flex:none}
+.grab{display:none}
+.sh-row{display:flex;align-items:center;gap:6px;min-height:36px}
+.sh-row .eyebrow{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px}
+.more{display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:0 10px 0 12px;border-radius:99px;font-size:13px;font-weight:700;color:var(--ink);background:rgba(244,238,228,.08);border:1px solid rgba(244,238,228,.14);transition:background .2s,border-color .2s}
+.more svg{width:16px;height:16px;transition:transform .5s var(--ease)}
+.sheet.open .more svg{transform:rotate(180deg)}
+.hide-x{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:var(--muted);transition:background .2s,color .2s,transform .3s var(--ease)}
+.hide-x svg{width:18px;height:18px}
+@media (hover:hover){.more:hover{background:rgba(244,238,228,.14)}.hide-x:hover{background:rgba(244,238,228,.1);color:var(--ink);transform:translateX(2px)}.sheet-head:hover h3{color:#fff}}
+.sheet h3{font-family:var(--serif);font-size:28px;font-weight:600;line-height:1.08;margin:4px 0 8px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;transition:color .2s}
+.sheet.open h3{-webkit-line-clamp:4}
+.sheet-body{display:grid;grid-template-rows:minmax(0,0fr);flex:0 1 auto;min-height:0;transition:grid-template-rows .6s var(--ease)}
+.sheet.open .sheet-body{grid-template-rows:minmax(0,1fr)}
+.sheet-sc{min-height:0;display:flow-root;overflow:hidden;overscroll-behavior:contain;padding:0 20px;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+.sheet.open .sheet-sc{overflow-y:auto}
+.sheet-sc>*{opacity:0;transform:translateY(12px);transition:opacity .3s var(--ease),transform .4s var(--ease)}
+.sheet.open .sheet-sc>*{opacity:1;transform:none;transition:opacity .5s var(--ease),transform .6s var(--ease)}
+.sheet.open .sheet-sc>:nth-child(2){transition-delay:.06s}.sheet.open .sheet-sc>:nth-child(3){transition-delay:.12s}.sheet.open .sheet-sc>:nth-child(4){transition-delay:.18s}.sheet.open .sheet-sc>:nth-child(5){transition-delay:.24s}.sheet.open .sheet-sc>:nth-child(n+6){transition-delay:.3s}
+.sheet-sc>:last-child{margin-bottom:14px}
+.sheet-tab{position:absolute;z-index:6;right:0;top:50%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 8px 14px 10px;border-radius:14px 0 0 14px;background:rgba(20,17,13,.86);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(244,238,228,.16);border-right:0;color:var(--ink);font-size:12px;font-weight:700;letter-spacing:.06em;transform:translate(110%,-50%);opacity:0;pointer-events:none;transition:transform .55s var(--ease),opacity .35s var(--ease)}
+.sheet-tab span{writing-mode:vertical-rl;transform:rotate(180deg)}
+.sheet-tab svg{width:18px;height:18px;color:var(--acc)}
+#work.sh-hidden:not(.pano):not(.bare) .sheet-tab{transform:translate(0,-50%);opacity:1;pointer-events:auto;transition-delay:.2s}
+@media (hover:hover){.sheet-tab:hover{padding-right:14px}}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
 .chips span{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
 .sec{margin-top:20px}
@@ -213,26 +254,38 @@ svg{flex:none}
 .review .by{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:13px}
 .review .ok{font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;background:#DCEFE2;color:#1F6B3A}
 .review .st{color:#B9822F;letter-spacing:1px}
-.sheet-foot{padding:14px 22px calc(18px + var(--sb));display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid rgba(244,238,228,.1)}
-.sheet-foot .btn{padding:0 12px}
-.note{position:absolute;z-index:7;left:clamp(12px,3vw,32px);bottom:calc(clamp(90px,14vh,120px) + var(--sb));max-width:min(360px,calc(100% - 24px));padding:16px 18px;border-radius:16px;background:rgba(20,17,13,.9);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(224,180,126,.4);opacity:0;transform:translateY(14px);transition:opacity .45s var(--ease),transform .45s var(--ease);pointer-events:none}
+.sheet-foot{flex:none;padding:12px 16px calc(14px);display:grid;grid-template-columns:1fr 1fr;gap:8px;border-top:1px solid rgba(244,238,228,.1)}
+.sheet-foot .btn{padding:0 12px;min-height:46px}
+.note{position:absolute;z-index:7;left:var(--m);bottom:calc(var(--tb) + var(--m) + var(--sb) + 8px);max-width:min(360px,calc(100% - 24px));padding:16px 18px;border-radius:16px;background:rgba(20,17,13,.9);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(224,180,126,.4);opacity:0;transform:translateY(14px) scale(.97);transform-origin:0 100%;transition:opacity .45s var(--ease),transform .45s var(--ease);pointer-events:none}
 .note.on{opacity:1;transform:none;pointer-events:auto}
 .note b{display:block;font-family:var(--serif);font-size:24px;font-weight:600;line-height:1.1;margin-bottom:4px;padding-right:30px}
 .note span{font-size:14px;color:#DDD3C4}
 .note button{position:absolute;top:4px;right:4px;width:44px;height:44px;display:grid;place-items:center;color:var(--muted)}
 .note button svg{width:18px;height:18px}
-.work-ui{position:absolute;left:clamp(12px,3vw,32px);bottom:calc(clamp(14px,3vh,28px) + var(--sb));z-index:6;display:flex;gap:10px;align-items:center;flex-wrap:wrap;transition:opacity .35s var(--ease),bottom .6s var(--ease)}
-.drag-hint{font-size:13px;color:#E8DFD2;background:rgba(17,15,12,.55);padding:8px 14px;border-radius:99px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:flex;gap:8px;align-items:center;transition:opacity .5s}
-.drag-hint svg{width:18px;height:18px}
-.drag-hint.gone{opacity:0}
+/* нижняя полоса кнопок: своя зона внизу слева, фото под неё не заходит */
+.work-ui{position:absolute;left:var(--m);bottom:calc(var(--m) + var(--sb));right:calc(var(--sw) + var(--m) * 2);z-index:6;display:flex;gap:10px;align-items:center;flex-wrap:nowrap;min-width:0}
+.grp{display:flex;gap:8px;align-items:center}
+.zoom{gap:0;height:46px;border-radius:99px;background:rgba(17,15,12,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(244,238,228,.22);overflow:hidden;transition:opacity .35s var(--ease),transform .45s var(--ease)}
+.zb{width:44px;height:44px;display:grid;place-items:center;transition:background .2s,opacity .2s}
+.zb svg{width:18px;height:18px}
+.zb:disabled{opacity:.35;cursor:default}
+.zl{min-width:78px;height:44px;padding:0 6px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink);border-left:1px solid rgba(244,238,228,.14);border-right:1px solid rgba(244,238,228,.14);transition:background .2s,color .2s}
+@media (hover:hover){.zb:not(:disabled):hover,.zl:hover{background:rgba(244,238,228,.1)}}
+.zb:active,.zl:active{background:rgba(244,238,228,.16)}
+.drag-hint{font-size:13px;color:#E8DFD2;background:rgba(17,15,12,.55);padding:8px 14px;border-radius:99px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;transition:opacity .6s var(--ease),transform .6s var(--ease)}
+.drag-hint.gone{opacity:0;transform:translateX(-12px);pointer-events:none}
 .exit-pano{display:none}
-#work.pano .exit-pano{display:inline-flex}
-#work.pano .sheet{transform:translateX(calc(100% + 40px))}
+#work.pano .exit-pano{display:inline-flex;animation:pop .5s var(--ease) both}
+#work.pano .zoom,#work.pano #uiTg,#work.pano .drag-hint{display:none}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:none}}
+.zoom-pill{position:absolute;z-index:8;left:50%;top:50%;padding:10px 18px;border-radius:99px;background:rgba(17,15,12,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font-weight:800;font-size:15px;font-variant-numeric:tabular-nums;transform:translate(-50%,-50%) scale(.85);opacity:0;pointer-events:none;transition:opacity .35s var(--ease),transform .35s var(--ease)}
+.zoom-pill.on{opacity:1;transform:translate(-50%,-50%)}
 .dive{position:absolute;inset:0;z-index:20;pointer-events:none;background:#000;clip-path:circle(0% at 50% 50%);opacity:0}
 .dive.go{animation:dive 1s var(--swift) forwards}
 @keyframes dive{0%{clip-path:circle(0% at 50% 50%);opacity:1}45%{clip-path:circle(80% at 50% 50%);opacity:1}100%{clip-path:circle(80% at 50% 50%);opacity:0}}
-.badge360{position:absolute;top:calc(84px + var(--st));left:16px;right:16px;margin:0 auto;width:fit-content;max-width:92vw;z-index:7;font-size:13px;padding:8px 14px;border-radius:14px;background:rgba(17,15,12,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(224,180,126,.4);opacity:0;transition:opacity .4s;pointer-events:none;text-align:center}
-#work.pano .badge360{opacity:1}
+.badge360{position:absolute;top:calc(84px + var(--st));left:16px;right:16px;margin:0 auto;width:fit-content;max-width:92vw;z-index:7;font-size:13px;padding:8px 14px;border-radius:14px;background:rgba(17,15,12,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(224,180,126,.4);opacity:0;transform:translateY(-10px);transition:opacity .4s,transform .5s var(--ease);pointer-events:none;text-align:center}
+#work.pano .badge360{opacity:1;transform:none}
+#work.pano .work-ui{right:var(--m)}
 
 /* хочу так же */
 .modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(5,4,3,.6);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:opacity .35s,visibility 0s linear .35s;overflow-y:auto}
@@ -249,6 +302,8 @@ svg{flex:none}
 .mbox .x svg{width:20px;height:20px}
 .toast{position:fixed;left:50%;bottom:calc(28px + var(--sb));z-index:70;transform:translate(-50%,20px);opacity:0;padding:10px 16px;border-radius:12px;background:var(--ink);color:var(--bg);font-weight:600;font-size:14px;transition:opacity .35s var(--ease),transform .35s var(--ease);pointer-events:none;max-width:calc(100% - 32px);text-align:center}
 .toast.on{opacity:1;transform:translate(-50%,0)}
+body[data-vp=work] .toast{bottom:auto;top:calc(80px + var(--st));transform:translate(-50%,-16px)}
+body[data-vp=work] .toast.on{transform:translate(-50%,0)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* полоска вариантов (site.js) на тёмном фоне */
@@ -257,11 +312,26 @@ svg{flex:none}
 @media (max-width:860px){
   .home-in{grid-template-columns:1fr;gap:28px;align-items:start;min-height:0}
   .home h1{font-size:44px}
-  .sheet{top:auto;left:10px;right:10px;width:auto;height:46vh;height:46svh;bottom:10px;border-radius:22px}
-  .sheet.hide,#work.pano .sheet{transform:translateY(calc(100% + 30px))}
-  .note{bottom:auto;top:calc(76px + var(--st));left:12px;right:12px;max-width:none}
-  .work-ui{bottom:calc(46vh + 22px);bottom:calc(46svh + 22px)}
-  .work-ui.full,#work.pano .work-ui{bottom:calc(16px + var(--sb))}
+  #work{--m:10px}
+  .sheet{left:10px;right:10px;width:auto;bottom:calc(10px + var(--sb));max-height:74vh;max-height:74svh}
+  .sheet.hide,#work.pano .sheet,#work.bare .sheet{transform:translateY(calc(100% + 30px))}
+  .sheet-head{padding:8px 12px 2px 18px}
+  .grab{display:block;width:40px;height:4px;border-radius:4px;background:rgba(244,238,228,.28);margin:0 auto 4px}
+  .sheet h3{font-size:24px;-webkit-line-clamp:1;margin:0 0 6px}
+  .sheet-sc{padding:0 18px}
+  .sheet-foot{padding:10px 12px 12px}
+  .note{bottom:auto;top:calc(76px + var(--st));left:12px;right:12px;max-width:none;transform-origin:50% 0;transform:translateY(-14px) scale(.97)}
+  .work-ui{right:10px;bottom:calc(var(--sh) + 20px + var(--sb));transition:opacity .45s var(--ease),transform .6s var(--ease),bottom .6s var(--ease)}
+  .work-ui .zoom{margin-left:auto}
+  #work.sh-hidden .work-ui,#work.pano .work-ui{bottom:calc(14px + var(--sb))}
+  #work.sh-open .work-ui{transform:translateY(30px);opacity:0;pointer-events:none}
+  .sheet-tab{top:auto;bottom:0;right:auto;left:50%;flex-direction:row;padding:8px 16px calc(8px + var(--sb));border-radius:14px 14px 0 0;border:1px solid rgba(244,238,228,.16);border-bottom:0;transform:translate(-50%,110%)}
+  #work.sh-hidden .work-ui{bottom:calc(58px + var(--sb))}
+  #work.sh-hidden:not(.pano):not(.bare) .sheet-tab{transform:translate(-50%,0)}
+  .sheet-tab span{writing-mode:horizontal-tb;transform:none}
+  .hide-x svg{transform:rotate(90deg)}
+  .sheet-tab svg{transform:rotate(90deg)}
+  .ui-show{bottom:calc(14px + var(--sb))}
   .deck{height:52vh;transform:translateY(-32%)}
   .room-head{top:calc(84px + var(--st))}
   .room-head .eyebrow{display:none}
@@ -273,6 +343,7 @@ svg{flex:none}
   .crumbs span{max-width:46vw}
   .topbar{gap:8px}
   .drag-hint{display:none}
+  .zl{min-width:64px;font-size:12px}
   .room-head h2{font-size:44px}
   .sheet h3{font-size:30px}
   .sheet-sc{padding:18px 18px 8px}
@@ -351,37 +422,56 @@ svg{flex:none}
     <div class="stage" id="stage"><img id="wImg" alt="" draggable="false"><i class="wm" id="wWm"></i></div>
     <div class="spots" id="spots"></div>
   </div>
-  <div class="vignette"></div>
-  <div class="topbar fade-ui">
+  <div class="vignette chrome"></div>
+  <div class="topbar fade-ui chrome" id="workTop">
     <button type="button" class="ic" id="workBack" aria-label="Назад в комнату"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="crumbs" id="crumbsW"></div><div class="sp"></div>
     <div class="mini" id="miniW" role="group" aria-label="Мини-карта дома"></div>
   </div>
   <div class="badge360" id="badge360">Режим обзора: тяните в стороны. Это демо на обычном фото - с 360-камерой можно будет смотреть вокруг полностью</div>
   <div class="note" id="note" role="status"><b id="noteT"></b><span id="noteD"></span><button type="button" id="noteX" aria-label="Закрыть деталь"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-  <div class="work-ui fade-ui" id="workUi">
-    <button type="button" class="ic" id="wPrev" aria-label="Предыдущая работа"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
-    <button type="button" class="ic" id="wNext" aria-label="Следующая работа"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
-    <button type="button" class="ic" id="sheetTg" aria-label="Скрыть описание" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
+  <div class="work-ui fade-ui chrome" id="workUi">
+    <div class="grp nav-g">
+      <button type="button" class="ic" id="wPrev" aria-label="Предыдущая работа"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button type="button" class="ic" id="wNext" aria-label="Следующая работа"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+    <div class="grp zoom" role="group" aria-label="Масштаб фото">
+      <button type="button" class="zb" id="zOut" aria-label="Отдалить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></button>
+      <button type="button" class="zl" id="zLvl" title="Показать фото целиком">Целиком</button>
+      <button type="button" class="zb" id="zIn" aria-label="Приблизить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+    <button type="button" class="ic" id="uiTg" aria-label="Убрать подписи и панели" title="Убрать всё лишнее"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     <button type="button" class="btn ghost exit-pano" id="exitPano">Выйти из обзора</button>
-    <span class="drag-hint" id="dragHint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12h8M5 9l-3 3 3 3M19 9l3 3-3 3"/></svg>Тяните фото, чтобы осмотреться</span>
+    <span class="drag-hint" id="dragHint">Колесо или щипок - приблизить, двойное нажатие - крупно</span>
   </div>
-  <aside class="sheet fade-ui" id="sheet" aria-label="Описание работы">
-    <div class="sheet-sc" id="sheetSc">
-      <div class="eyebrow" id="sVid"></div>
+  <button type="button" class="ic ui-show" id="uiShow" aria-label="Вернуть подписи и панели" title="Вернуть панели"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg></button>
+  <button type="button" class="sheet-tab" id="sheetTab" aria-label="Показать описание работы" aria-controls="sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg><span>Описание</span></button>
+  <aside class="sheet fade-ui chrome" id="sheet" aria-label="Описание работы">
+    <div class="sheet-head" id="sheetHead">
+      <i class="grab" aria-hidden="true"></i>
+      <div class="sh-row">
+        <div class="eyebrow" id="sVid"></div>
+        <button type="button" class="more" id="sheetMore" aria-expanded="false" aria-controls="sheetBody"><span>Подробнее</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <button type="button" class="hide-x" id="sheetHide" aria-label="Убрать описание" title="Убрать описание"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
       <h3 id="sTitle"></h3>
-      <div class="chips" id="sChips"></div>
-      <div class="sec" id="sDetWrap"><h4>Детали крупным планом</h4><div class="details" id="sDetails"></div></div>
-      <div class="sec" id="sFotoWrap"><h4>Фото работы</h4><div class="thumbs" id="sThumbs"></div><p class="cap" id="sCap"></p></div>
-      <div class="sec" id="sStoryWrap"><h4>Рассказ мастера</h4><p class="story" id="sStory"></p></div>
-      <div class="sec" id="sSolWrap"><h4>Что придумали</h4><ul class="sol" id="sSol"></ul></div>
-      <div class="sec" id="sRevWrap"><h4>Отзыв хозяев</h4><div id="sRev"></div></div>
+    </div>
+    <div class="sheet-body" id="sheetBody">
+      <div class="sheet-sc" id="sheetSc">
+        <div class="chips" id="sChips"></div>
+        <div class="sec" id="sDetWrap"><h4>Детали крупным планом</h4><div class="details" id="sDetails"></div></div>
+        <div class="sec" id="sFotoWrap"><h4>Фото работы</h4><div class="thumbs" id="sThumbs"></div><p class="cap" id="sCap"></p></div>
+        <div class="sec" id="sStoryWrap"><h4>Рассказ мастера</h4><p class="story" id="sStory"></p></div>
+        <div class="sec" id="sSolWrap"><h4>Что придумали</h4><ul class="sol" id="sSol"></ul></div>
+        <div class="sec" id="sRevWrap"><h4>Отзыв хозяев</h4><div id="sRev"></div></div>
+      </div>
     </div>
     <div class="sheet-foot">
       <button type="button" class="btn ghost" id="panoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="9" ry="3.5"/></svg>Обзор</button>
       <button type="button" class="btn main" id="wantBtn">Хочу так же</button>
     </div>
   </aside>
+  <div class="zoom-pill" id="zPill" aria-hidden="true"></div>
   <div class="dive" id="dive"></div>
 </section>
 

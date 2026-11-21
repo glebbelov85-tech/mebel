@@ -133,6 +133,7 @@
       if (inst) requestAnimationFrame(function () { requestAnimationFrame(function () { e.classList.remove("inst"); }); });
     });
     cur = id;
+    document.body.setAttribute("data-vp", id); // закрытая витрина прячет свою кнопку "Назад" вне дома
   }
   function restart(e, cls) { e.classList.remove(cls); void e.offsetWidth; e.classList.add(cls); }
 
@@ -398,16 +399,39 @@
   $("dNext").onclick = function () { deckGo(Math.round(deckT) + 1); };
   $("roomBack").onclick = function () { up(); };
 
-  // ---------- 3. работа: сцена, точки, наезд ----------
-  var st = { s: 1, x: 0, y: 0, base: 1, iw: 1200, ih: 900 }, note = -1, pano = false, tw = null, glide = null, wRaf = 0;
+  // ---------- 3. работа: сцена, масштаб, точки ----------
+  // Фото по умолчанию целиком - вписано в свободную часть экрана (не под панелями и кнопками).
+  // Масштаб: колесо, щипок, кнопки +/-, двойное нажатие. Одно нажатие по фото убирает все панели (или возвращает).
+  var st = { s: 1, x: 0, y: 0, base: 1, min: 1, max: 4, iw: 1200, ih: 900 }, note = -1, pano = false, tw = null, glide = null, wRaf = 0;
+  var bare = false, sheetMode = "compact"; // compact | open | hidden
   var stage = $("stage"), wImg = $("wImg");
   function pts() { var w = S.work; if (!w) return []; return S.foto === 0 ? (w.tochki || []) : ((fotos(w)[S.foto] || {}).tochki || []); }
+  var wide = function () { return innerWidth > 860; };
+  // свободная часть экрана, куда вписываем фото
+  function view() {
+    var W = innerWidth, H = innerHeight;
+    if (pano || bare) return { l: 0, t: 0, r: W, b: H };
+    var m = wide() ? Math.max(12, Math.min(24, W * .02)) : 10;
+    var top = $("workTop").offsetHeight;
+    var ui = $("workUi").offsetHeight || 46;
+    if (wide()) {
+      var r = sheetMode === "hidden" ? W - 48 : W - $("sheet").offsetWidth - m * 2;
+      return { l: m, t: top, r: Math.max(m + 200, r), b: H - ui - m * 2 };
+    }
+    var sh = sheetMode === "hidden" ? 48 : sheetH;
+    return { l: 0, t: top, r: W, b: Math.max(top + 160, H - sh - ui - 30) };
+  }
   function clampSt(o) {
-    var W = innerWidth, H = innerHeight, w = st.iw * o.s, h = st.ih * o.s;
-    o.x = w <= W ? (W - w) / 2 : Math.min(0, Math.max(W - w, o.x));
-    o.y = h <= H ? (H - h) / 2 : Math.min(0, Math.max(H - h, o.y));
+    var v = pano || bare ? { l: 0, t: 0, r: innerWidth, b: innerHeight } : view(), w = st.iw * o.s, h = st.ih * o.s, vw = v.r - v.l, vh = v.b - v.t;
+    // увеличенное фото может заходить под панели, но не дальше краёв экрана
+    var L = w > vw ? 0 : v.l, R = w > vw ? innerWidth : v.r, T0 = h > vh ? 0 : v.t, B = h > vh ? innerHeight : v.b;
+    if (w > vw && w <= innerWidth) { L = v.l; R = v.r; }
+    if (h > vh && h <= innerHeight) { T0 = v.t; B = v.b; }
+    o.x = w <= R - L ? L + (R - L - w) / 2 : Math.min(L, Math.max(R - w, o.x));
+    o.y = h <= B - T0 ? T0 + (B - T0 - h) / 2 : Math.min(T0, Math.max(B - h, o.y));
     return o;
   }
+  var lastLvl = "";
   function applySt() {
     var tilt = 0;
     if (pano) { var W = innerWidth, w = st.iw * st.s; tilt = w > W ? ((st.x - (W - w) / 2) / ((w - W) / 2)) * -9 : 0; }
@@ -417,6 +441,12 @@
       var t = P[i]; if (!t) return;
       b.style.transform = "translate(" + (st.x + st.iw * st.s * t.x / 100) + "px," + (st.y + st.ih * st.s * t.y / 100) + "px)";
     });
+    var fit = st.s <= st.base * 1.01, l = fit ? "Целиком" : Math.round(st.s / st.base * 100) + "%";
+    if (l !== lastLvl) {
+      lastLvl = l; $("zLvl").textContent = l;
+      $("zOut").disabled = fit; $("zIn").disabled = st.s >= st.max * .99;
+      $("zLvl").setAttribute("aria-label", fit ? "Фото целиком" : "Масштаб " + l + ", показать целиком");
+    }
   }
   function wKick() { if (!wRaf) wRaf = requestAnimationFrame(wFrame); }
   function wFrame(now) {
@@ -442,15 +472,56 @@
     tw = { t0: performance.now(), dur: dur, a: { s: st.s, x: st.x, y: st.y }, b: b, ease: ease || eEase, done: done };
     wKick();
   }
-  function restSt() { var W = innerWidth, H = innerHeight; st.base = Math.max(W / st.iw, H / st.ih) * (pano ? 1.35 : 1); return clampSt({ s: st.base, x: (W - st.iw * st.base) / 2, y: (H - st.ih * st.base) / 2 }); }
+  // "целиком": фото вписано в свободную часть; в обзоре - заполняет экран с запасом, чтобы было куда тянуть
+  function restSt() {
+    var W = innerWidth, H = innerHeight;
+    if (pano) {
+      st.base = st.min = Math.max(W / st.iw, H / st.ih) * 1.35; st.max = st.base * 3;
+    } else {
+      var v = view();
+      st.base = st.min = Math.min((v.r - v.l) / st.iw, (v.b - v.t) / st.ih);
+      st.max = Math.max(st.base * 5, Math.max(W / st.iw, H / st.ih) * 2.5);
+    }
+    sizeWM();
+    return clampSt({ s: st.base, x: 0, y: 0 });
+  }
+  function sizeWM() { $("wWm").style.backgroundSize = (420 / Math.max(.1, st.base)) + "px auto"; }
+  // заново вписать (после смены панелей): если фото было целиком - плавно к новому "целиком", иначе только поджать к краям
+  function refit(dur) {
+    if (cur !== "work") return;
+    var wasFit = st.s <= st.base * 1.02, old = { s: st.s, x: st.x, y: st.y };
+    var r = restSt();
+    if (note >= 0) { var n = note; note = -1; focusSpot(n); return; }
+    if (wasFit) animTo(r, dur == null ? 650 : dur, eEase);
+    else { var o = clampSt({ s: Math.max(st.min, old.s), x: old.x, y: old.y }); animTo(o, dur == null ? 650 : dur, eEase); }
+  }
+  function zoomAt(s, px, py, dur) {
+    s = Math.max(st.min, Math.min(st.max, s));
+    var cx = (px - st.x) / st.s, cy = (py - st.y) / st.s;
+    var o = { s: s, x: px - cx * s, y: py - cy * s };
+    if (dur) animTo(o, dur, eEase); else { tw = null; glide = null; o = clampSt(o); st.s = o.s; st.x = o.x; st.y = o.y; applySt(); }
+    $("dragHint").classList.add("gone");
+  }
+  function vCenter() { var v = view(); return { x: (v.l + v.r) / 2, y: (v.t + v.b) / 2 }; }
+  function zoomStep(dir) {
+    if (note >= 0) closeNote(true);
+    var c = vCenter(), s = dir > 0 ? st.s * 1.6 : st.s / 1.6;
+    if (dir < 0 && s < st.base * 1.08) { animTo(restSt(), 450, eEase); pill("Целиком"); return; }
+    zoomAt(s, c.x, c.y, 380);
+    pill(Math.round(Math.max(st.min, Math.min(st.max, s)) / st.base * 100) + "%");
+  }
+  function pill(t) { var p = $("zPill"); p.textContent = t; p.classList.add("on"); clearTimeout(pill.t); pill.t = setTimeout(function () { p.classList.remove("on"); }, 700); }
+  $("zIn").onclick = function () { zoomStep(1); };
+  $("zOut").onclick = function () { zoomStep(-1); };
+  $("zLvl").onclick = function () { if (note >= 0) closeNote(true); animTo(restSt(), 500, eEase); };
+
   function setFotoImg(f, cb) {
     var src = srcOf(f);
     loadImg(src, function (sz) {
       st.iw = sz.w; st.ih = sz.h;
       stage.style.width = sz.w + "px"; stage.style.height = sz.h + "px";
       wImg.src = src; wImg.alt = (f && f.podpis) || (S.work && S.work.nazvanie) || "";
-      var wm = $("wWm"); wm.style.backgroundImage = WM && !(f && f.znak) ? WM : "none";
-      wm.style.backgroundSize = (420 / Math.max(.3, Math.max(innerWidth / sz.w, innerHeight / sz.h))) + "px auto";
+      $("wWm").style.backgroundImage = WM && !(f && f.znak) ? WM : "none";
       cb && cb(sz);
     });
   }
@@ -473,6 +544,7 @@
     $("sVid").textContent = w._k.nazvanie;
     $("sTitle").textContent = w.nazvanie;
     $("sChips").innerHTML = [w.gde, w.material, w.srok ? "Срок: " + w.srok : ""].filter(Boolean).map(function (c) { return "<span>" + esc(c) + "</span>"; }).join("");
+    $("sChips").hidden = !$("sChips").innerHTML;
     $("sStory").textContent = w.rasskaz || ""; $("sStoryWrap").hidden = !w.rasskaz;
     var rs = w.resheniya || [];
     $("sSol").innerHTML = rs.map(function (r) { return "<li>" + esc(r) + "</li>"; }).join(""); $("sSolWrap").hidden = !rs.length;
@@ -486,6 +558,17 @@
     $("sFotoWrap").hidden = F.length < 2;
     $("sThumbs").innerHTML = F.length < 2 ? "" : F.map(function (f, i) { return '<button type="button" data-foto="' + i + '" aria-label="Фото ' + (i + 1) + (f && f.podpis ? ": " + esc(f.podpis) : "") + '"><img src="' + esc(srcOf(f)) + '" alt="" loading="lazy" draggable="false"></button>'; }).join("");
     markThumbs();
+    // нечего разворачивать - кнопки "Подробнее" нет
+    var any = [].some.call($("sheetSc").children, function (c) { return !c.hidden; });
+    $("sheetMore").hidden = !any;
+    if (!any && sheetMode === "open") setSheet("compact", true);
+    measureSheet();
+  }
+  // высота компактной панели на телефоне: под неё не заходит фото и над ней стоят кнопки
+  var sheetH = 150;
+  function measureSheet() {
+    var sh = $("sheet"), h = $("sheetHead").offsetHeight + sh.querySelector(".sheet-foot").offsetHeight + 2;
+    if (h > 40) { sheetH = h; $("work").style.setProperty("--sh", h + "px"); }
   }
   function markThumbs() {
     [].forEach.call($("sThumbs").children, function (b, i) { b.classList.toggle("on", i === S.foto); });
@@ -496,7 +579,7 @@
   function showFoto(i) {
     var F = fotos(S.work); i = (i + F.length) % F.length; if (i === S.foto) return;
     closeNote(true);
-    stage.animate([{ opacity: 1 }, { opacity: 0 }], { duration: T(220), fill: "forwards" }).onfinish = function (ev) {
+    stage.animate([{ opacity: 1 }, { opacity: 0 }], { duration: T(220), fill: "forwards" }).onfinish = function () {
       S.foto = i;
       setFotoImg(F[i], function () {
         var r = restSt(); st.s = r.s; st.x = r.x; st.y = r.y; renderSpots(); applySt(); markThumbs();
@@ -505,7 +588,6 @@
       });
     };
   }
-  function sheetVisible() { return !$("sheet").classList.contains("hide") && !pano; }
   function focusSpot(i) {
     var t = pts()[i]; if (!t) return;
     if (note === i) { closeNote(); return; }
@@ -514,10 +596,9 @@
     $("note").classList.add("on");
     [].forEach.call($("spots").children, function (b, j) { b.classList.toggle("on", j === i); });
     [].forEach.call($("sDetails").children, function (b, j) { b.classList.toggle("on", j === i); });
-    var W = innerWidth, H = innerHeight, cx = W / 2, cy = H / 2, sr = $("sheet").getBoundingClientRect(), wide = W > 860;
-    if (sheetVisible()) { if (wide) cx = sr.left / 2; else { var nb = $("note").getBoundingClientRect().bottom; cy = (nb + sr.top) / 2; } }
-    else if (!wide) { cy = ($("note").getBoundingClientRect().bottom + H) / 2; }
-    var s = st.base * 2.1;
+    var v = view(), cx = (v.l + v.r) / 2, cy = (v.t + v.b) / 2;
+    if (!wide()) { var nb = $("note").offsetTop + $("note").offsetHeight; cy = (Math.max(v.t, nb) + v.b) / 2; }
+    var s = Math.min(st.max, st.base * 2.4);
     animTo({ s: s, x: cx - st.iw * s * t.x / 100, y: cy - st.ih * s * t.y / 100 }, 900, eEase);
     $("dragHint").classList.add("gone");
   }
@@ -530,33 +611,137 @@
   }
   $("noteX").onclick = function () { closeNote(); };
 
-  // перетаскивание = осмотреться (с инерцией и упором в края)
-  var pd = null;
+  // ----- жесты на фото: тянуть, щипок, двойное нажатие, одно нажатие - убрать/вернуть панели -----
+  var ptrs = {}, nP = 0, pd = null, pinch = null, lastTap = null, tapTimer = 0;
+  function two() { var a = []; for (var k in ptrs) a.push(ptrs[k]); return a; }
+  function startPinch() {
+    var a = two(); if (a.length < 2) return;
+    pinch = { d: Math.max(20, Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y)), mx: (a[0].x + a[1].x) / 2, my: (a[0].y + a[1].y) / 2, s: st.s, x: st.x, y: st.y };
+    pd = null; lastTap = null; clearTimeout(tapTimer);
+    $("dragHint").classList.add("gone");
+  }
   $("area").addEventListener("pointerdown", function (e) {
     if (e.button > 0 || cur !== "work") return;
-    pd = { x: e.clientX, y: e.clientY, sx: st.x, sy: st.y, m: false, id: e.pointerId, lt: performance.now(), vx: 0, vy: 0 };
+    if (!ptrs[e.pointerId]) nP++;
+    ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
     tw = null; glide = null;
     try { $("area").setPointerCapture(e.pointerId); } catch (er) {}
+    if (nP >= 2) startPinch();
+    else pd = { x: e.clientX, y: e.clientY, sx: st.x, sy: st.y, m: false, id: e.pointerId, lt: performance.now(), vx: 0, vy: 0, swipe: false, fit: st.s <= st.base * 1.02 && !pano };
   });
   $("area").addEventListener("pointermove", function (e) {
+    if (!ptrs[e.pointerId]) return;
+    ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
+    if (pinch) {
+      var a = two(); if (a.length < 2) return;
+      var d = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y), mx = (a[0].x + a[1].x) / 2, my = (a[0].y + a[1].y) / 2;
+      var s = pinch.s * d / pinch.d;
+      // за пределами - с сопротивлением, после отпускания вернётся
+      if (s < st.min) s = st.min * Math.pow(s / st.min, .35); else if (s > st.max) s = st.max * Math.pow(s / st.max, .35);
+      st.s = s; st.x = mx - (pinch.mx - pinch.x) * (s / pinch.s); st.y = my - (pinch.my - pinch.y) * (s / pinch.s);
+      applySt(); return;
+    }
     if (!pd || e.pointerId !== pd.id) return;
     var dx = e.clientX - pd.x, dy = e.clientY - pd.y;
-    if (!pd.m && Math.abs(dx) + Math.abs(dy) > 6) { pd.m = true; $("work").classList.add("dragging"); $("dragHint").classList.add("gone"); }
+    if (!pd.m && Math.abs(dx) + Math.abs(dy) > 8) {
+      pd.m = true; $("work").classList.add("dragging"); $("dragHint").classList.add("gone");
+      pd.swipe = pd.fit && Math.abs(dx) > Math.abs(dy) && WORKS.length > 1;
+    }
     if (!pd.m) return;
+    if (pd.swipe) { st.x = pd.sx + dx * .55; applySt(); return; } // фото целиком: листаем работы
     var now = performance.now(), o = clampSt({ s: st.s, x: pd.sx + dx, y: pd.sy + dy }), dtt = Math.max(1, now - pd.lt);
     pd.vx = (o.x - st.x) / dtt; pd.vy = (o.y - st.y) / dtt; pd.lt = now;
     st.x = o.x; st.y = o.y; applySt();
   });
   function areaUp(e) {
+    if (!ptrs[e.pointerId]) return;
+    delete ptrs[e.pointerId]; nP = Math.max(0, nP - 1);
+    if (pinch) {
+      if (nP < 2) {
+        pinch = null;
+        var s = Math.max(st.min, Math.min(st.max, st.s)), c = vCenter();
+        if (s <= st.base * 1.04) animTo(restSt(), 380, eEase);
+        else { var a = two()[0], px = a ? a.x : c.x, py = a ? a.y : c.y; zoomAt(s, px, py, 300); }
+        pd = null; // оставшийся палец больше ничего не делает до следующего касания
+      }
+      return;
+    }
     if (!pd || e.pointerId !== pd.id) return;
     var p = pd; pd = null; $("work").classList.remove("dragging");
-    if (p.m) { if (!reduce && performance.now() - p.lt < 90) { glide = { vx: p.vx, vy: p.vy }; wKick(); } }
-    else if (e.type === "pointerup" && note >= 0) closeNote();
+    if (p.m) {
+      if (p.swipe) {
+        var dx = e.clientX - p.x;
+        if (Math.abs(dx) > Math.min(90, innerWidth * .18) && e.type === "pointerup") stepWork(dx < 0 ? 1 : -1);
+        else animTo(restSt(), 380, eEase);
+      } else if (!reduce && performance.now() - p.lt < 90) { glide = { vx: p.vx, vy: p.vy }; wKick(); }
+      return;
+    }
+    if (e.type !== "pointerup") return;
+    var now = performance.now(), x = e.clientX, y = e.clientY;
+    if (lastTap && now - lastTap.t < 320 && Math.hypot(x - lastTap.x, y - lastTap.y) < 40) {
+      // двойное нажатие: крупно в эту точку / обратно целиком
+      clearTimeout(tapTimer); lastTap = null;
+      if (pano) return;
+      if (note >= 0) closeNote(true);
+      if (st.s > st.base * 1.05) animTo(restSt(), 500, eEase);
+      else { zoomAt(st.base * 2.5, x, y, 500); }
+      return;
+    }
+    lastTap = { t: now, x: x, y: y };
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(function () { lastTap = null; if (note >= 0) closeNote(); else if (!pano) setBare(!bare); }, 300);
   }
   $("area").addEventListener("pointerup", areaUp); $("area").addEventListener("pointercancel", areaUp);
+  $("area").addEventListener("wheel", function (e) {
+    if (cur !== "work" || pano) return;
+    e.preventDefault();
+    var dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+    if (note >= 0) closeNote(true);
+    zoomAt(st.s * Math.exp(-dy * (e.ctrlKey ? .01 : .0022)), e.clientX, e.clientY);
+  }, { passive: false });
   addEventListener("resize", function () {
-    if (cur === "work") { var r = restSt(); tw = null; st.s = r.s; st.x = r.x; st.y = r.y; if (note >= 0) { var n = note; note = -1; focusSpot(n); } else applySt(); }
+    if (cur === "work") { measureSheet(); var r = restSt(); tw = null; st.s = r.s; st.x = r.x; st.y = r.y; if (note >= 0) { var n = note; note = -1; focusSpot(n); } else applySt(); }
     if (cur === "room") deckRender();
+  });
+
+  // ----- панели: убрать всё / вернуть; описание: компактно / подробно / убрано -----
+  function setBare(on) {
+    bare = on; $("work").classList.toggle("bare", on);
+    if (on) { closeNote(true); $("dragHint").classList.add("gone"); }
+    if (kbd) (on ? $("uiShow") : $("uiTg")).focus({ preventScroll: true });
+    refit(700);
+  }
+  $("uiTg").onclick = function () { setBare(true); };
+  $("uiShow").onclick = function () { setBare(false); };
+  function setSheet(mode, quiet) {
+    var was = sheetMode; sheetMode = mode;
+    var sh = $("sheet"), wk = $("work");
+    sh.classList.toggle("open", mode === "open"); sh.classList.toggle("hide", mode === "hidden");
+    wk.classList.toggle("sh-open", mode === "open"); wk.classList.toggle("sh-hidden", mode === "hidden");
+    $("sheetMore").setAttribute("aria-expanded", mode === "open" ? "true" : "false");
+    $("sheetMore").firstChild.textContent = mode === "open" ? "Свернуть" : "Подробнее";
+    sh.inert = mode === "hidden";
+    if (mode !== "open") $("sheetSc").scrollTop = 0;
+    // на широком экране колонка описания та же в любом виде - фото не двигаем; убрали панель - фото расширяется
+    if (!quiet && (was === "hidden" || mode === "hidden" || !wide())) refit(650);
+    if (!quiet && kbd) (mode === "hidden" ? $("sheetTab") : $("sheetMore")).focus({ preventScroll: true });
+  }
+  $("sheetMore").onclick = function (e) { e.stopPropagation(); setSheet(sheetMode === "open" ? "compact" : "open"); };
+  $("sheetHide").onclick = function (e) { e.stopPropagation(); setSheet("hidden"); };
+  $("sheetTab").onclick = function () { setSheet("compact"); };
+  // нажатие на шапку окна: развёрнуто - свернуть, компактно - убрать за край; на телефоне ещё и смахивание
+  var hd = null;
+  $("sheetHead").addEventListener("pointerdown", function (e) { hd = { y: e.clientY, t: performance.now() }; });
+  $("sheetHead").addEventListener("pointerup", function (e) {
+    if (!hd) return; var dy = e.clientY - hd.y; hd = null;
+    if (Math.abs(dy) < 30) return;
+    hd = "swipe";
+    if (dy < 0) setSheet("open"); else setSheet(sheetMode === "open" ? "compact" : "hidden");
+  });
+  $("sheetHead").addEventListener("click", function (e) {
+    if (hd === "swipe") { hd = null; return; }
+    if (e.target.closest("button")) return;
+    setSheet(sheetMode === "open" ? "compact" : "hidden");
   });
 
   function fillWork(w) {
@@ -565,23 +750,42 @@
     renderSheet(w); renderSpots(); crumbs($("crumbsW"), 2); mini($("miniW"));
     $("wantBtn").textContent = "Хочу так же";
   }
+  // панели выезжают каждая со своего края
+  function chromeIn(delay) {
+    if (reduce || !$("work").animate) return;
+    var o = { duration: 700, delay: delay || 0, easing: EASE, fill: "backwards" };
+    $("workTop").animate([{ opacity: 0, transform: "translateY(-24px)" }, { opacity: 1, transform: "none" }], o);
+    $("workUi").animate([{ opacity: 0, transform: "translateY(24px)" }, { opacity: 1, transform: "none" }], o);
+    if (sheetMode !== "hidden") $("sheet").animate([{ opacity: 0, transform: wide() ? "translateX(60px)" : "translateY(60px)" }, { opacity: 1, transform: "none" }], { duration: 800, delay: (delay || 0) + 80, easing: EASE, fill: "backwards" });
+  }
+  var HINT = "vp-zoom-hint";
+  function zoomHint() {
+    var h = $("dragHint"); h.classList.remove("gone");
+    var n = 0; try { n = +localStorage.getItem(HINT) || 0; localStorage.setItem(HINT, n + 1); } catch (e) {}
+    if (n >= 3) { h.classList.add("gone"); return; }
+    if (!wide() && n < 2) setTimeout(function () { if (cur === "work") toast("Щипок или двойное нажатие - приблизить"); }, 1200);
+    clearTimeout(zoomHint.t); zoomHint.t = setTimeout(function () { h.classList.add("gone"); }, 6000);
+  }
   // открыть работу: из карточки ленты (разворот рамки на весь экран) или просто проявлением
   function openWork(w, fromCard, done) {
     fillWork(w);
     setFotoImg(fotos(w)[0], function (sz) {
+      measureSheet();
       var r = restSt();
+      zoomHint();
       if (fromCard && !reduce && $("work").animate) {
         var c = fromCard.getBoundingClientRect(), a = coverBox(sz, c.left, c.top, c.width, c.height);
-        st.s = a.s; st.x = a.x; st.y = a.y; st.base = r.s; applySt();
+        st.s = a.s; st.x = a.x; st.y = a.y; applySt();
         $("spots").style.opacity = 0;
         show("work", true);
         $("work").animate([{ clipPath: "inset(" + c.top + "px " + (innerWidth - c.right) + "px " + (innerHeight - c.bottom) + "px " + c.left + "px round 22px)" }, { clipPath: "inset(0px 0px 0px 0px round 0px)" }], { duration: 800, easing: SWIFT });
-        [].forEach.call(document.querySelectorAll("#work .fade-ui"), function (e) { e.animate([{ opacity: 0 }, { opacity: 0, offset: .45 }, { opacity: 1 }], { duration: 900, easing: EASE }); });
+        chromeIn(380);
         animTo(r, 800, eSwift, function () { $("spots").style.opacity = ""; $("spots").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400 }); done && done(); }, true);
       } else {
         st.s = r.s; st.x = r.x; st.y = r.y; applySt();
         show("work");
         stage.animate([{ opacity: 0, transform: stage.style.transform + " scale(1.04)" }, { opacity: 1, transform: stage.style.transform }], { duration: T(700), easing: EASE });
+        chromeIn(200);
         done && done();
       }
     });
@@ -593,7 +797,6 @@
     var card = i >= 0 ? deckEls[i] : null;
     closeNote(true);
     if (!card || reduce || !$("work").animate) { show("room"); done && done(); return; }
-    // комната уже под кадром, а кадр сворачивается в карточку
     $("room").classList.add("inst"); $("room").classList.add("on"); $("room").inert = false; $("room").removeAttribute("aria-hidden");
     var c = card.getBoundingClientRect(), a = coverBox({ w: st.iw, h: st.ih }, c.left, c.top, c.width, c.height);
     $("work").classList.add("closing");
@@ -602,20 +805,22 @@
     animTo(a, 700, eSwift, null, true);
     an.onfinish = function () {
       show("room", true); an.cancel(); $("work").classList.remove("closing"); $("spots").style.opacity = "";
+      restart($("room"), "enter");
       done && done();
     };
   }
   function switchWork(w, dir) {
     closeNote(true);
-    var sg = stage;
-    sg.animate([{ opacity: 1 }, { opacity: 0 }], { duration: T(260), fill: "forwards" }).onfinish = function () {
+    var sg = stage, dx = (dir || 1) * 60;
+    sg.getAnimations().forEach(function (a) { a.cancel(); });
+    sg.animate([{ opacity: 1, transform: sg.style.transform }, { opacity: 0, transform: "translateX(" + (-dx) + "px) " + sg.style.transform }], { duration: T(240), easing: "ease-in", fill: "forwards" }).onfinish = function () {
       fillWork(w);
       setFotoImg(fotos(w)[0], function () {
         var r = restSt(); st.s = r.s; st.x = r.x; st.y = r.y; applySt();
         sg.getAnimations().forEach(function (a) { a.cancel(); });
-        var dx = (dir || 1) * 40;
         sg.animate([{ opacity: 0, transform: "translateX(" + dx + "px) " + sg.style.transform }, { opacity: 1, transform: sg.style.transform }], { duration: T(520), easing: EASE });
-        $("sheetSc").animate([{ opacity: 0 }, { opacity: 1 }], { duration: T(400) });
+        $("sheetHead").animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: T(450), easing: EASE });
+        if (sheetMode === "open") $("sheetSc").animate([{ opacity: 0 }, { opacity: 1 }], { duration: T(400) });
       });
     };
   }
@@ -623,17 +828,12 @@
   $("wNext").onclick = function () { stepWork(1); };
   $("wPrev").onclick = function () { stepWork(-1); };
   $("workBack").onclick = function () { up(); };
-  function setSheet(hide) {
-    $("sheet").classList.toggle("hide", hide); $("workUi").classList.toggle("full", hide);
-    $("sheetTg").setAttribute("aria-pressed", hide ? "true" : "false");
-    $("sheetTg").setAttribute("aria-label", hide ? "Показать описание" : "Скрыть описание");
-  }
-  $("sheetTg").onclick = function () { setSheet(!$("sheet").classList.contains("hide")); if (note >= 0) { var n = note; note = -1; setTimeout(function () { focusSpot(n); }, 30); } };
 
   // обзор: пока демо на обычном фото (честно подписано). Настоящие панорамы 360 - следующий шаг.
   function setPano(on) {
     var d = $("dive");
     closeNote(true);
+    if (on && bare) { bare = false; $("work").classList.remove("bare"); }
     if (!reduce) restart(d, "go");
     setTimeout(function () {
       pano = on; $("work").classList.toggle("pano", on); $("spots").classList.toggle("off", on);
@@ -762,6 +962,9 @@
       if (closeModal()) return;
       if (cur === "doors") { openDoors(); return; }
       if (cur === "work" && note >= 0) { closeNote(); return; }
+      if (cur === "work" && bare) { setBare(false); return; }
+      if (cur === "work" && sheetMode === "open") { setSheet("compact"); return; }
+      if (cur === "work" && st.s > st.base * 1.02 && !pano) { animTo(restSt(), 450, eEase); return; }
       if (cur === "work" && pano) { setPano(false); return; }
       up(); return;
     }
@@ -772,7 +975,9 @@
       else if (k === "ArrowLeft") { deckGo(Math.round(deckT) - 1); e.preventDefault(); }
       else if ((k === "Enter" || k === " ") && tag !== "BUTTON") { deckAct(Math.round(deckT)); e.preventDefault(); }
     } else if (cur === "work") {
-      if (k === "ArrowRight") stepWork(1);
+      if ((k === "+" || k === "=") && !pano) zoomStep(1);
+      else if ((k === "-" || k === "_") && !pano) zoomStep(-1);
+      else if (k === "ArrowRight") stepWork(1);
       else if (k === "ArrowLeft") stepWork(-1);
       else if (k === "ArrowDown" && (S.work.foto || []).length > 1 && !e.target.closest(".sheet-sc")) { showFoto(S.foto + 1); e.preventDefault(); }
       else if (k === "ArrowUp" && (S.work.foto || []).length > 1 && !e.target.closest(".sheet-sc")) { showFoto(S.foto - 1); e.preventDefault(); }
