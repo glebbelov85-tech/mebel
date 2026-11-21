@@ -26,6 +26,34 @@
       list.map(function (v) { return '<button type="button" data-v="' + esc(v) + '">' + esc(v) + "</button>"; }).join("") + "</div>";
   }
 
+  // мессенджеры: отметить, какими пользуется (q:<id>), для каждого номер или ссылка (q:<id>:<имя>), какой основной (q:<id>:osn)
+  function mess(q) {
+    var k = "q:" + q.id, list = q.var || [];
+    return '<div class="chips" data-ch="' + esc(k) + '" data-multi="1" data-mess="' + esc(q.id) + '">' +
+      list.map(function (v) { return '<button type="button" data-v="' + esc(v) + '">' + esc(v) + "</button>"; }).join("") + "</div>" +
+      list.map(function (v) {
+        return '<label class="mrow" data-mr="' + esc(v) + '" hidden><span>' + esc(v) + '</span><input type="text" data-k="' + esc(k + ":" + v) +
+          '" placeholder="' + esc((q.mph && q.mph[v]) || "Номер или ссылка") + '" autocomplete="off"></label>';
+      }).join("") +
+      '<div class="mosn" hidden><p class="h">Куда клиентам писать в первую очередь?</p>' + chips(k + ":osn", list) + "</div>";
+  }
+  function paintMess(box) {
+    var id = box.getAttribute("data-mess"), k = "q:" + id, a = sel(k), card = box.parentNode;
+    [].forEach.call(card.querySelectorAll("[data-mr]"), function (r) {
+      var v = r.getAttribute("data-mr"); r.hidden = a.indexOf(v) < 0 && !txt(k + ":" + v);
+    });
+    var o = card.querySelector(".mosn"); if (o) o.hidden = a.length < 2 && !sel(k + ":osn").length;
+  }
+  function messAns(q) {
+    var k = "q:" + q.id, a = sel(k), out = [];
+    (q.var || []).forEach(function (v) {
+      var t = txt(k + ":" + v).trim();
+      if (a.indexOf(v) >= 0 || t) out.push(v + (t ? " " + t : ""));
+    });
+    var o = sel(k + ":osn")[0];
+    return (out.length ? "Пользуется: " + out.join(", ") : "") + (o ? (out.length ? ". " : "") + "Основной: " + o : "");
+  }
+
   // ---------- ключи ответов: q:<id> - текст, c:<id> - выбор, w:<id> - работа, r:<id> - отзыв ----------
   function txt(k) { return (S.t && S.t[k]) || ""; }
   function setTxt(k, v) { S.t = S.t || {}; if (v) S.t[k] = v; else delete S.t[k]; }
@@ -77,7 +105,8 @@
         n++;
         return '<div class="card q" data-q="' + esc(q.id) + '"><h3>' + n + ". " + esc(q.q) + "</h3>" + (q.h ? '<p class="h">' + esc(q.h) + "</p>" : "") +
           (q.tip === "chips" ? chips("q:" + q.id, q.var || [], q.multi) : "") +
-          area("q:" + q.id, q.tip === "chips" ? "Можно добавить словами" : "Ваш ответ") + "</div>";
+          (q.tip === "mess" ? mess(q) : "") +
+          area("q:" + q.id, q.ph || (q.tip ? "Можно добавить словами" : "Ваш ответ")) + "</div>";
       }).join("");
     }).join("");
   }
@@ -89,13 +118,14 @@
     }).join("");
   }
   function fill() {
-    [].forEach.call(document.querySelectorAll("textarea[data-k]"), function (t) { t.value = txt(t.getAttribute("data-k")); });
+    [].forEach.call(document.querySelectorAll("textarea[data-k], input[data-k]"), function (t) { t.value = txt(t.getAttribute("data-k")); });
     [].forEach.call(document.querySelectorAll("[data-ch]"), paintChips);
     [].forEach.call(document.querySelectorAll("[data-wv]"), paintVerdict);
     counts();
   }
   function paintChips(box) {
     var k = box.getAttribute("data-ch"), a = sel(k), stars = box.classList.contains("stars");
+    if (box.hasAttribute("data-mess")) paintMess(box);
     [].forEach.call(box.querySelectorAll("button"), function (b) {
       var v = b.getAttribute("data-v");
       b.classList.toggle("on", stars ? a.length && +v <= +a[0] : a.indexOf(v) >= 0);
@@ -110,7 +140,11 @@
 
   // ---------- сколько сделано ----------
   function qList() { var a = []; (A.gruppy || []).forEach(function (g) { (g.voprosy || []).forEach(function (q) { a.push(q); }); }); return a; }
-  function answered(k) { return !!(txt(k).trim() || sel(k).length); }
+  function answered(k) {
+    if (txt(k).trim() || sel(k).length) return true;
+    var p = k + ":", t = S.t || {}, c = S.c || {};
+    return Object.keys(t).concat(Object.keys(c)).some(function (x) { return x.indexOf(p) === 0; });
+  }
   function counts() {
     var R = V.raboty || [], Q = qList();
     var wd = R.filter(function (w) { return verdict(w.id) || txt("w:" + w.id); }).length;
@@ -143,7 +177,7 @@
     var n = 0, q = [];
     qList().forEach(function (x) {
       n++;
-      var a = sel("q:" + x.id).join(", "), t = txt("q:" + x.id).trim();
+      var a = x.tip === "mess" ? messAns(x) : sel("q:" + x.id).join(", "), t = txt("q:" + x.id).trim();
       if (a || t) q.push(n + ". " + x.q + "\n" + [a, t].filter(Boolean).join(". "));
     });
     if (q.length) blocks.push("ВОПРОСЫ\n" + q.join("\n\n"));
