@@ -74,6 +74,8 @@
   function work(id) { for (var i = 0; i < R.length; i++) if (R[i].id === id) return i; return -1; }
   function metaOf(w) { return [w.gde, month(w.kogda)].filter(Boolean).join(" · "); }
 
+  // быстрый расчёт есть, только если мастер указал цены изделий
+  function hasCalc() { return !!((D.raschet && D.raschet.izdeliya) || []).length; }
   function renderHero() {
     var m = D.master || {};
     document.title = (m.imya ? m.imya + " - " : "") + (m.rol || "мебель на заказ") + (m.gorod ? ", " + m.gorod : "");
@@ -91,7 +93,7 @@
     var c = [];
     if (waUrl()) c.push('<a class="btn wa" target="_blank" rel="noopener" href="' + esc(waUrl(hello())) + '">' + IC.wa + "WhatsApp</a>");
     if (tgUrl()) c.push('<a class="btn tg" target="_blank" rel="noopener" href="' + esc(tgUrl()) + '">' + IC.tg + "Telegram</a>");
-    c.push('<a class="btn gh" href="#raschet">' + IC.calc + "Посчитать стоимость</a>");
+    if (hasCalc()) c.push('<a class="btn gh" href="#raschet">' + IC.calc + "Посчитать стоимость</a>");
     $("cta").innerHTML = c.join("");
     // сторис
     var seen = {}; try { seen = JSON.parse(localStorage.getItem("vt-seen") || "{}"); } catch (e) {}
@@ -228,7 +230,12 @@
   var C = D.raschet || {}, CS = { iz: 0, size: 0, lv: 1, dop: {} };
   function renderCalc() {
     var iz = C.izdeliya || [];
-    if (!iz.length) { $("raschet").classList.add("hide"); return; }
+    if (!iz.length) {
+      // цен мастера ещё нет: прячем блок и пункт "Расчёт" в меню
+      $("raschet").classList.add("hide");
+      document.querySelectorAll('a[href="#raschet"]:not(.btn)').forEach(function (a) { a.classList.add("hide"); });
+      return;
+    }
     $("cIzd").innerHTML = iz.map(function (x, i) { return '<button type="button" class="chip' + (i === CS.iz ? " on" : "") + '" data-iz="' + i + '">' + esc(x.nazv) + "</button>"; }).join("");
     $("cLv").innerHTML = (C.urovni || []).map(function (x, i) { return '<button type="button" data-lv="' + i + '"' + (i === CS.lv ? ' class="on"' : "") + "><b>" + esc(x.nazv) + "</b><span>" + esc(x.opis || "") + "</span></button>"; }).join("");
     $("cDop").innerHTML = (C.dop || []).map(function (x, i) { return '<label><input type="checkbox" data-dop="' + i + '"' + (CS.dop[i] ? " checked" : "") + ">" + esc(x.nazv) + "</label>"; }).join("");
@@ -378,7 +385,7 @@
     var d = [];
     if (waUrl()) d.push('<a class="btn wa" target="_blank" rel="noopener" href="' + esc(waUrl(hello())) + '">' + IC.wa + "WhatsApp</a>");
     if (tgUrl()) d.push('<a class="btn tg" target="_blank" rel="noopener" href="' + esc(tgUrl()) + '">' + IC.tg + "Telegram</a>");
-    d.push('<a class="btn" href="#raschet">' + IC.calc + "Цена</a>");
+    if (hasCalc()) d.push('<a class="btn" href="#raschet">' + IC.calc + "Цена</a>");
     $("dock").innerHTML = d.join("");
     $("fUpd").textContent = D.obnovleno ? "Сайт обновлён " + day(D.obnovleno) + "." : "";
   }

@@ -666,6 +666,7 @@
     };
     // быстрый расчёт - в витрине варианта 3 (та же страница данных)
     $("mCalc").href = "../#raschet";
+    $("mCalc").hidden = !((D.raschet && D.raschet.izdeliya) || []).length; // цен ещё нет - кнопку не показываем
     lastFocus = document.activeElement;
     $("modal").classList.add("on");
     setTimeout(function () { (wa ? $("mWa") : $("mX")).focus({ preventScroll: true }); }, 60);
