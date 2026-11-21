@@ -199,12 +199,21 @@
   // ======================= голос: диктовка в поле =======================
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition, DICT = null;
   function dictStop() { if (DICT) { DICT.want = false; try { DICT.rec.stop(); } catch (e) {} } }
-  // btn - кнопка микрофона, cb.final(text) - фраза распознана, cb.live(text) - пока говорит
+  // btn - кнопка микрофона, cb.final(text) - фраза распознана, cb.live(text) - пока говорит.
+  // cb.done(text) - режим "один ответ целиком" (по просьбе мастера): всё сказанное копится, пока не нажмут "Стоп"
+  // (ту же кнопку) или не скажут "стоп", и только потом отдаётся одним куском - дальше экран показывает "Я понял так".
   function dictate(btn, cb) {
     if (!SR) { toast("Этот браузер не распознаёт речь - нажмите микрофон на клавиатуре телефона"); return; }
     if (DICT && DICT.btn === btn) { dictStop(); return; }
     dictStop();
-    var st = { btn: btn, want: true };
+    var st = { btn: btn, want: true }, acc = "", lab = btn.querySelector("span"), lab0 = lab ? lab.textContent : "";
+    if (cb.done) {
+      var fin = cb.final, lv = cb.live;
+      cb = { live: function (t) { if (lv) lv((acc + " " + (t || "")).trim(), true); }, end: cb.end, done: cb.done,
+        final: function (t) { var stop = /(^|\s)стоп[.!]?$/i.test(t) || /^(все|всё|готово)[.!]?$/i.test(t); t = t.replace(/(^|\s)(стоп|все|всё|готово)[.!]?$/i, "").trim();
+          if (t) acc = (acc + " " + t).trim(); if (lv) lv(acc, true); if (stop) dictStop(); } };
+      if (lab) lab.textContent = "Стоп";
+    }
     var spawn = function () {
       var r = new SR(); st.rec = r; r.lang = "ru-RU"; r.interimResults = true; r.continuous = !/android/i.test(navigator.userAgent);
       r.onresult = function (ev) {
@@ -216,9 +225,57 @@
       r.onend = function () { if (st.want && DICT === st) { try { spawn(); } catch (e) { off(); } } else off(); };
       try { r.start(); } catch (e) { off(); }
     };
-    var off = function () { if (DICT === st) DICT = null; btn.classList.remove("on"); if (cb.live) cb.live(""); if (cb.end) cb.end(); };
+    var off = function () { if (DICT === st) DICT = null; btn.classList.remove("on"); if (lab && cb.done) lab.textContent = lab0;
+      if (cb.done) { var a = acc; acc = ""; if (a) cb.done(a); else if (cb.live) cb.live(""); } else if (cb.live) cb.live("");
+      if (cb.end) cb.end(); };
     DICT = st; btn.classList.add("on"); spawn();
   }
+  // "Я понял так": показать понятое и ждать подтверждения. opt: {ok, again, extra:[[надпись, fn]]}
+  function heardCard(el, html, heard, opt) {
+    if (!el) return;
+    el.innerHTML = '<div class="cf"><b>Я понял так:</b><div class="cf-b">' + html + '</div>' + (heard ? '<span class="cf-h">Вы сказали: "' + esc(heard) + '"</span>' : "") +
+      '<div class="btns">' + (opt.ok ? '<button type="button" class="btn ok" data-cf="ok">' + esc(opt.okLabel || "Да, верно") + "</button>" : "") +
+      '<button type="button" class="btn" data-cf="again">' + esc(opt.againLabel || "Нет, сказать заново") + "</button>" +
+      (opt.extra || []).map(function (x, i) { return '<button type="button" class="btn l" data-cf="x' + i + '">' + esc(x[0]) + "</button>"; }).join("") + "</div></div>";
+    el.onclick = function (e) {
+      var b = e.target.closest("[data-cf]"); if (!b) return; e.stopPropagation(); var k = b.dataset.cf; el.onclick = null; el.innerHTML = "";
+      if (k === "ok") opt.ok(); else if (k === "again") { if (opt.again) opt.again(); } else { var x = (opt.extra || [])[+k.slice(1)]; if (x) x[1](); }
+    };
+  }
+  function liveHeard(el, t, whole) { if (el) el.innerHTML = t ? '<span class="cf-live">Слышу: ' + esc(t) + "</span>" + (whole ? ' <span class="cf-tip">Закончили - нажмите "Стоп"</span>' : "") : ""; }
+  // модуль кухни из одного ответа: "мойка, модуль 800", "450 посудомойка", "3 ящика: 1 большой, 2 маленьких", "шкаф 400, одна дверца"
+  var NUMW = { "один": 1, "одна": 1, "одним": 1, "одной": 1, "одного": 1, "одну": 1, "два": 2, "две": 2, "двумя": 2, "двух": 2, "три": 3, "тремя": 3, "трех": 3, "четыре": 4, "четырьмя": 4, "четырех": 4,
+    "сто": 100, "двести": 200, "триста": 300, "четыреста": 400, "пятьсот": 500, "шестьсот": 600, "семьсот": 700, "восемьсот": 800, "девятьсот": 900, "тысяча": 1000, "тысячу": 1000,
+    "двадцать": 20, "тридцать": 30, "сорок": 40, "пятьдесят": 50, "шестьдесят": 60, "семьдесят": 70, "восемьдесят": 80, "девяносто": 90 };
+  function modNums(t) {
+    var w = vn(t).split(" "), out = [], acc = null;
+    w.forEach(function (x) { var n = NUMW[x];
+      if (n != null && n >= 20) { acc = (acc != null && acc >= 100 && acc % 100 === 0 && n < 100) || (acc != null && acc >= 1000 && n < 1000) ? acc + n : (acc != null ? (out.push(String(acc)), n) : n); return; }
+      if (acc != null) { out.push(String(acc)); acc = null; }
+      out.push(n != null ? String(n) : x); });
+    if (acc != null) out.push(String(acc));
+    return out.join(" ");
+  }
+  function modFromText(text) {
+    var t = modNums(text), m, det = [];
+    var CNT = "ящик|двер|дверц|фасад|распаш|створ|больш|мал|маленьк|глубок|полк|полок";
+    var name = /посудомо|пмм/.test(t) ? "Посудомойка" : /мойк|раковин/.test(t) ? "Под мойку" : /пенал/.test(t) ? (/холодил/.test(t) ? "Пенал под холодильник" : /духов|свч|техник/.test(t) ? "Пенал под технику" : "Пенал") :
+      /ящик/.test(t) ? "Ящики" : /духов/.test(t) ? "Под духовку" : /варочн|плит/.test(t) ? "Под варочную панель" : /холодил/.test(t) ? "Место под холодильник" : /бутылочн|карго/.test(t) ? "Бутылочница" :
+      /угл/.test(t) ? "Угловой шкаф" : /заглушк|планк/.test(t) ? "Заглушка" : /сушк/.test(t) ? "Шкаф с сушкой" : /вытяжк/.test(t) ? "Над вытяжкой" : /открыт|полк/.test(t) && !/двер|распаш|фасад/.test(t) ? "Открытые полки" :
+      /шкаф|модул|тумб|распаш|двер|фасад/.test(t) ? "Шкаф с дверцами" : null;
+    if ((m = t.match(/(\d)\s+ящик/))) det.push(m[1] + " " + (m[1] === "1" ? "ящик" : +m[1] < 5 ? "ящика" : "ящиков"));
+    else if (name === "Ящики" && (m = t.match(/(\d)\s+(?:больш|глубок).{0,20}?(\d)\s+(?:мал|маленьк|мелк|небольш)|(\d)\s+(?:мал|маленьк|мелк|небольш).{0,20}?(\d)\s+(?:больш|глубок)/))) det.push((+(m[1] || 0) + +(m[2] || 0) + +(m[3] || 0) + +(m[4] || 0)) + " ящика");
+    if ((m = t.match(/(\d)\s+(?:больш|глубок)[а-я]*/))) det.push(m[1] + " " + (m[1] === "1" ? "большой" : "больших"));
+    if ((m = t.match(/(\d)\s+(?:мал|маленьк|мелк|небольш)[а-я]*/))) det.push(m[1] + " " + (m[1] === "1" ? "маленький" : "маленьких"));
+    if ((m = t.match(/(\d)\s+(?:[а-я]+\s+)?(?:распаш|двер|фасад|створ)/))) det.push(m[1] === "1" ? "одна распашная дверца" : m[1] + " дверцы");
+    else if (/распаш/.test(t) && name === "Шкаф с дверцами") det.push("распашные дверцы");
+    // ширина: число 150-1500, которое не количество ("3 ящика", "1 большой")
+    var wid = null, re = new RegExp("(\\d+)(?:\\s*(мм|см|миллиметр[а-я]*|сантиметр[а-я]*))?(?!\\s*(?:" + CNT + "))", "g");
+    while ((m = re.exec(t))) { var v = +m[1]; if (/^см|^сант/.test(m[2] || "") || (v >= 15 && v <= 150 && !m[2] && v % 5 === 0 && v > 25)) v = v * 10; if (v >= 150 && v <= 1500) wid = v; }
+    if (!name && wid) name = "Шкаф с дверцами";
+    return name ? { n: name, w: wid, t: det.join(", ") } : null;
+  }
+  function modSummary(md, n) { return "<b>Модуль " + n + ": " + esc(md.n) + "</b>" + (md.t ? ", " + esc(md.t) : "") + (md.w ? "<br>Ширина <b>" + md.w + " мм</b>" : '<br><span class="cf-warn">Ширину не назвали - нажмите или скажите её</span>'); }
   function micBtn(id, label) { return '<button type="button" class="btn mic' + (label ? "" : " sm") + '" id="' + id + '" title="Сказать голосом">' + svg(IC.mic) + (label ? "<span>" + label + "</span>" : "") + "</button>"; }
 
   // ======================= разбор фраз =======================
@@ -319,6 +376,7 @@
     { said: "90% мебельщиков нужна простота. Сложная программа - для крупных контор.", ans: "Блокнот - одна страница: описание, фото, вопросы, правки, ТЗ. Без деталировки, бухгалтерии и документов.", st: "Сделано", go: "izdelie" },
     { said: "Рисую эскиз от руки, фотографирую комнату, ИИ делает фото-рендер. Всё утверждаем на эскизе.", ans: "Фото эскиза, комнаты и рендера лежат в заказе. На эскизе ставите номера-пометки. Готовый запрос для ИИ-рендера собирается из ваших ответов - копируете в ChatGPT или Gemini вместе с фото.", st: "Сделано", go: "izdelie" },
     { said: "Клиент всё время меняет заказ. В WhatsApp-памятке поправить просто, в программе долго.", ans: "Правка - одна строка голосом: \"клиент хочет ящик длиннее, плюс 5 тысяч\". Дата, статус и как менялась цена видны сразу, памятка клиенту уходит в WhatsApp одной кнопкой.", st: "Сделано", go: "pravki" },
+    { said: "Программа перескакивает и не так понимает: называю модули подряд, а она настраивает кучу лишнего. Нужен строгий порядок: вопрос, ответ, стоп, подтвердил, следующий.", ans: "Голос теперь работает по одному: нажали \"Сказать\", ответили, нажали \"Стоп\" - блокнот показывает \"Я понял так\" и записывает только после \"Да\". Для кухни - модули по одному: \"Модуль 3 слева направо: что это и ширина?\". Так же в Замере голосом.", st: "Сделано", go: "izdelie" },
     { said: "Почти никто не умеет рисовать. Выручает голосовое описание и Pinterest для идей.", ans: "Описание голосом в каждом изделии, кнопка \"Идеи на Pinterest\" по типу изделия и вашим ответам. Примерка готовой мебели на фото - в конфигураторе сайта.", st: "Сделано", go: "izdelie" },
     { said: "Каждая вещь нестандартная: щиты на батарею, выступы, арт-объекты, кривые зеркала, изголовья. Трёх размеров мало.", ans: "Изделие - не набор фабричных модулей. Сколько угодно замеров со своими названиями (кривая стена - несколько замеров), а любые части и нюансы - строкой или голосом: \"выступ 50 мм слева, внимание, плюс 8 тысяч\". У каждого - размер, цена и пометка для цеха. 11 типов изделий и \"Другое\".", st: "Сделано", go: "izdelie" },
     { said: "Нюансы: декоративный бок без сверлений, отступ под дефлектор сушилки, подсветка со вторым дном и трансформатором, присадка под фурнитуру, ножки.", ans: "Вопросы под каждое изделие спрашивают именно это. Ответ сам становится пометкой \"Внимание\" в ТЗ - например, \"Петли на декоративный бок не сверлить\".", st: "Сделано", go: "voprosy" },
@@ -380,7 +438,8 @@
         return '<div class="part' + (x.w ? " w" : "") + '"><input class="pn" data-part="' + i + '" data-k="n" value="' + esc(x.n) + '" placeholder="Что"><input class="ps" data-part="' + i + '" data-k="sz" value="' + esc(x.sz) + '" placeholder="Размер, мм"><input class="pt" data-part="' + i + '" data-k="t" value="' + esc(x.t) + '" placeholder="Как, где, зачем"><label class="pq"><span>шт</span><input data-part="' + i + '" data-k="q" value="' + esc(x.q || 1) + '" inputmode="numeric" title="Сколько штук"></label><input class="pp" data-part="' + i + '" data-k="p" value="' + esc(x.p) + '" inputmode="decimal" placeholder="Цена"><span class="ac"><button type="button" class="' + (x.w ? "on" : "") + '" data-partw="' + i + '" title="Внимание для цеха">!</button><button type="button" class="x" data-delpart="' + i + '" aria-label="Убрать">×</button></span></div>';
       }).join("") + "</div>" : "") +
       '<div class="btns" style="margin-top:' + (P.length ? 10 : 0) + 'px">' + micBtn("partMic", "Нюанс голосом") + '<input class="t" id="partText" style="flex:1 1 200px;width:auto" placeholder="Или напишите: ящик левый длиннее на 100, внимание"><button type="button" class="btn" data-a="addPart">Добавить</button></div><div class="muted" id="partLive" style="font-size:13px;margin-top:4px"></div>' +
-      '<div class="chips" style="margin-top:8px">' + PART_KINDS.map(function (k) { return '<button type="button" class="chip add" data-addpart="' + esc(k) + '">+ ' + esc(k) + "</button>"; }).join("") + "</div></div></section>";
+      '<div class="chips" style="margin-top:8px">' + PART_KINDS.map(function (k) { return '<button type="button" class="chip add" data-addpart="' + esc(k) + '">+ ' + esc(k) + "</button>"; }).join("") + "</div>" +
+      (it.type === "kuhnya" ? kmCard(it) : "") + "</div></section>";
     // размеры
     h += '<section class="blk"><div class="card"><h3>Размеры и замеры, мм</h3><p class="muted" style="font-size:13.5px;margin:0 0 10px">Сколько угодно размеров со своими названиями. Стена кривая - впишите несколько замеров: "1800 / 1795 / 1790".</p><div class="sizes">' + it.sizes.map(function (s, i) {
       return '<div class="sz"><input class="t" data-size="' + i + '" data-k="l" value="' + esc(s.l) + '" placeholder="Что меряем"><input class="t" data-size="' + i + '" data-k="v" value="' + esc(s.v) + '" placeholder="мм" inputmode="decimal"><button type="button" class="x" data-delsize="' + i + '" aria-label="Убрать размер">×</button></div>';
@@ -406,17 +465,50 @@
     el.innerHTML = h;
     fillPhotos(el);
     $("partMic").onclick = function () {
-      dictate(this, { final: function (t) { it.parts.push(partFromText(t)); save(); rItem(); toast("Нюанс добавлен - проверьте"); }, live: function (t) { var l = $("partLive"); if (l) l.textContent = t ? "Слышу: " + t : ""; } });
+      var btn = this;
+      dictate(btn, { live: function (t, w) { liveHeard($("partLive"), t, w); },
+        done: function (t) { var np = partFromText(t);
+          heardCard($("partLive"), "<b>" + esc(np.n) + "</b>" + (np.sz ? " · размер " + esc(np.sz) : "") + (np.t ? " · " + esc(np.t) : "") + (np.p ? " · цена " + esc(money(np.p)) : "") + (np.w ? ' · <span class="cf-warn">Внимание для цеха</span>' : ""), t,
+            { ok: function () { it.parts.push(np); save(); rItem(); toast("Нюанс добавлен"); }, okLabel: "Да, добавить", again: function () { $("partMic").click(); },
+              extra: [["Поправить текстом", function () { var f = $("partText"); f.value = t; f.focus(); }]] }); } });
     };
+    var km = $("kmMic"), kmT = $("kmText");
+    if (km) {
+      var kmPropose = function (t) {
+        var md = modFromText(t), n = kmNum(it);
+        if (!md) { heardCard($("kmLive"), '<span class="cf-warn">Не понял, какой это модуль.</span> Скажите одним модулем: что это и ширину, например "мойка 800".', t, { again: function () { km.click(); }, againLabel: "Сказать ещё раз" }); return; }
+        var put = function (w) { it.parts.push({ id: uid("n"), n: "Модуль " + n + ": " + md.n, sz: w ? String(w) : "", t: md.t, q: 1, p: "", w: false, km: 1 }); save(); rItem(); toast("Модуль " + n + " записан"); setTimeout(function () { var k = $("kmMic"); if (k) k.scrollIntoView({ block: "center", behavior: "smooth" }); }, 50); };
+        heardCard($("kmLive"), modSummary(md, n) + (md.w ? "" : '<div class="chips" style="margin-top:6px">' + [300, 400, 450, 500, 600, 800, 900].map(function (w) { return '<button type="button" class="chip" data-kmw="' + w + '">' + w + "</button>"; }).join("") + "</div>"), t,
+          { ok: md.w ? function () { put(md.w); } : null, okLabel: "Да, записать", again: function () { km.click(); } });
+        var l = $("kmLive"); [].forEach.call(l.querySelectorAll("[data-kmw]"), function (b) { b.onclick = function (e) { e.stopPropagation(); kmPropose(t + " " + b.dataset.kmw); }; });
+      };
+      km.onclick = function () { dictate(km, { live: function (t, w) { liveHeard($("kmLive"), t, w); }, done: kmPropose }); };
+      kmT.onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); var v = kmT.value.trim(); if (v) { kmT.value = ""; kmPropose(v); } } };
+      $("kmGo").onclick = function () { var v = kmT.value.trim(); if (v) { kmT.value = ""; kmPropose(v); } else toast("Скажите или напишите модуль"); };
+    }
     $("partText").onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); document.querySelector('[data-a="addPart"]').click(); } };
     $("descMic").onclick = function () {
       var ta = $("desc"), base = ta.value;
       dictate(this, {
-        final: function (t) { base = (base ? base.replace(/\s+$/, "") + (/[.!?]$/.test(base.trim()) ? " " : ". ") : "") + t; ta.value = base; it.desc = base; save(); },
-        live: function (t) { $("descLive").textContent = t ? "Слышу: " + t : ""; },
-        end: function () { autoSizes(it, true); rItem(); }
+        live: function (t, w) { liveHeard($("descLive"), t, w); },
+        done: function (t) {
+          base = (base ? base.replace(/\s+$/, "") + (/[.!?]$/.test(base.trim()) ? " " : ". ") : "") + t; it.desc = base; save(); rItem();
+          // размеры из сказанного - только после подтверждения
+          var add = sizesFromText(t).filter(function (f) { var ex = it.sizes.filter(function (s) { return s.l.toLowerCase() === f.l.toLowerCase(); })[0]; return !ex || !String(ex.v).trim() || String(ex.v) !== String(f.v); });
+          if (add.length) heardCard($("descLive"), "Размеры: <b>" + add.map(function (f) { return esc(f.l) + " " + esc(f.v); }).join(", ") + "</b>. Записать их в размеры?", "",
+            { ok: function () { add.forEach(function (f) { var ex = it.sizes.filter(function (s) { return s.l.toLowerCase() === f.l.toLowerCase(); })[0]; if (ex) ex.v = f.v; else it.sizes.push(f); }); save(); rItem(); toast("Размеры записаны"); }, okLabel: "Да, записать", againLabel: "Не надо" });
+          else toast("Описание дописано");
+        }
       });
     };
+  }
+  // кухня по модулям: один вопрос - один модуль - "Я понял так" - подтверждение
+  function kmNum(it) { return (it.parts || []).filter(function (x) { return x.km; }).length + 1; }
+  function kmCard(it) {
+    var n = kmNum(it), done = (it.parts || []).filter(function (x) { return x.km; }), sum = done.reduce(function (s, x) { return s + (num(x.sz) || 0); }, 0);
+    return '<div class="km"><div class="km-q">Модуль ' + n + ' (слева направо): что это и какая ширина?</div>' +
+      '<p class="muted" style="font-size:13px;margin:2px 0 8px">Один модуль за раз. Нажмите "Сказать", назовите модуль, нажмите "Стоп" - я покажу, как понял, и запишу только после "Да". Например: "мойка 800", "450 посудомойка", "3 ящика, 1 большой 2 маленьких, 600", "шкаф 400, одна дверца".' + (done.length ? " Записано модулей: " + done.length + ", по ширине " + sum + " мм." : "") + "</p>" +
+      '<div class="btns" style="margin-top:0">' + micBtn("kmMic", "Сказать") + '<input class="t" id="kmText" style="flex:1 1 200px;width:auto" placeholder="Или напишите: мойка 800"><button type="button" class="btn" id="kmGo">Проверить</button></div><div id="kmLive" class="muted" style="font-size:13px;margin-top:6px"></div></div>';
   }
   function autoSizes(it, quiet) {
     var found = sizesFromText(it.desc), n = 0;
@@ -488,7 +580,7 @@
       ((DB.custom[it.type] || []).length ? '<div class="chips" style="margin-top:8px">' + DB.custom[it.type].map(function (c) { return '<button type="button" class="chip" data-delcq="' + c.id + '" title="Убрать вопрос">' + esc(c.t) + " ×</button>"; }).join("") + "</div>" : "") + "</div></section>";
     el.innerHTML = h;
     var m = $("qMic");
-    if (m) m.onclick = function () { var q = qById(it, qcur); dictate(m, { final: function (t) { voiceAnswer(it, q, t); }, live: function (t) { var l = $("qLive"); if (l) l.textContent = t ? "Слышу: " + t : ""; } }); };
+    if (m) m.onclick = function () { var q = qById(it, qcur); dictate(m, { done: function (t) { voiceAnswer(it, q, t); }, live: function (t, w) { liveHeard($("qLive"), t, w); } }); };
   }
   function qById(it, id) { var a = allQ(it); for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
   function chipsFor(it, q, big) {
@@ -536,21 +628,21 @@
     qcur = j >= L.length ? "__end" : L[Math.max(0, j)].id;
     rQ();
   }
+  // ответ голосом: сначала "Я понял так", записываем и идём дальше только после "Да" (раньше сразу перескакивал на следующий вопрос)
   function voiceAnswer(it, q, text) {
     if (!q) return;
-    var t = vn(text);
+    var t = vn(text), again = function () { var mm = $("qMic"); if (mm) mm.click(); };
     if (/^(дальше|следующ|пропус|далее)/.test(t)) { qStep(it, 1); return; }
     if (/^(назад|предыдущ)/.test(t)) { qStep(it, -1); return; }
-    if (/^(не нужно|не надо|нет такого|не относится)$/.test(t)) { setAns(it, q, NA); qStep(it, 1); return; }
-    var hits = q.o ? matchOpts(text, q.o) : [];
-    if (hits.length) {
-      if (q.m) { var a = []; hits.forEach(function (h) { a.push(h.o); }); it.ans[q.id] = a; save(); toast("Отмечено: " + a.join(", ")); rQ(); }
-      else { it.ans[q.id] = hits[0].o; save(); toast("Ответ: " + hits[0].o); setTimeout(function () { qStep(it, 1); }, 600); rQ(); }
-      return;
-    }
-    if (q.o) { it.notes[q.id] = (it.notes[q.id] ? it.notes[q.id] + "; " : "") + text; toast("Записал как уточнение"); }
-    else { it.ans[q.id] = text; toast("Записал ответ"); }
-    save(); rQ();
+    var hits = q.o ? matchOpts(text, q.o) : [], apply, html;
+    if (/^(не нужно|не надо|нет такого|не относится)$/.test(t)) { html = "<b>Не нужно</b> - вопрос не про это изделие"; apply = function () { it.ans[q.id] = NA; }; }
+    else if (hits.length) {
+      var a = q.m ? hits.map(function (h) { return h.o; }) : [hits[0].o];
+      html = (q.m && a.length > 1 ? "Отметить: " : "Ответ: ") + "<b>" + esc(a.join(", ")) + "</b>";
+      apply = function () { it.ans[q.id] = q.m ? a : a[0]; };
+    } else if (q.o) { html = "Подходящего варианта не нашёл. Записать как уточнение: <b>" + esc(text) + "</b>"; apply = function () { it.notes[q.id] = (it.notes[q.id] ? it.notes[q.id] + "; " : "") + text; }; }
+    else { html = "Ответ: <b>" + esc(text) + "</b>"; apply = function () { it.ans[q.id] = text; }; }
+    heardCard($("qLive"), html, text, { ok: function () { apply(); save(); qStep(it, 1); }, okLabel: "Да, дальше", again: again });
   }
 
   // ======================= ПРАВКИ =======================
@@ -591,7 +683,7 @@
     $("chItem").onchange = function () { chDraft.item = this.value; };
     $("chMic").onclick = function () {
       var base = ta.value;
-      dictate(this, { final: function (t) { base = (base ? base.trim() + ". " : "") + t; ta.value = base; chDraft.text = base; autoAmount(); }, live: function (t) { $("chLive").textContent = t ? "Слышу: " + t : ""; } });
+      dictate(this, { done: function (t) { base = (base ? base.trim() + ". " : "") + t; ta.value = base; chDraft.text = base; autoAmount(); $("chLive").textContent = "Проверьте текст и сумму и нажмите \"Записать правку\""; }, live: function (t, w) { liveHeard($("chLive"), t, w); } });
     };
   }
   function autoAmount() {
@@ -915,7 +1007,7 @@
     else if (a === "dupItem") { var cp = JSON.parse(JSON.stringify(it)); cp.id = uid("i"); cp.name = it.name + " (копия)"; p.items.push(cp); p.curItem = cp.id; save(); rItem(); toast("Копия изделия - поменяйте отличия"); }
     else if (a === "delItem") arm("it", b, "Точно удалить изделие?", function () { p.items = p.items.filter(function (x) { return x !== it; }); p.curItem = p.items.length ? p.items[0].id : ""; save(); render(); });
     else if (a === "delProj") arm("pr", b, "Точно удалить заказ?", function () { DB.projects = DB.projects.filter(function (x) { return x !== p; }); DB.cur = DB.projects.length ? DB.projects[0].id : ""; save(); go("glavnoe"); toast("Заказ удалён"); });
-    else if (a === "addPart") { var pt = $("partText").value.trim(); if (!pt) { toast("Напишите или скажите нюанс"); return; } it.parts.push(partFromText(pt)); save(); rItem(); toast("Нюанс добавлен"); }
+    else if (a === "addPart") { var pt = $("partText").value.trim(); if (!pt) { toast("Напишите или скажите нюанс"); return; } it.parts.push(partFromText(pt)); save(); rItem(); toast("Нюанс добавлен - проверьте строку"); }
     else if (a === "parseDesc") { autoSizes(it); rItem(); }
     else if (a === "copyAi") copy(aiPrompt(it), "Запрос скопирован - вставьте в ИИ вместе с фото комнаты и эскиза");
     else if (a === "pin") window.open("https://www.pinterest.com/search/pins/?q=" + encodeURIComponent($("pinQ").value || pinQuery(it)), "_blank", "noopener");

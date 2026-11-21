@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f1b18">
+<title>Мебель на заказ - работы мастера</title>
+<meta name="description" content="Работы мастера корпусной мебели: кухни, шкафы, кровати. Рассказ к каждой работе, отзывы клиентов, примерная цена за минуту.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%231f1b18'/%3E%3Cpath fill='%23e2b273' d='M5 6h14v3H5zm0 5h6v7H5zm8 0h6v7h-6z'/%3E%3C/svg%3E">
+<style>
+/* Витрина мастера - страница для его клиентов (Вариант 2, по голосовому мастера от 2026-11-21):
+   портфолио с рассказом к каждой работе ("что хотел заказчик - что сделали - почему так"), отзывы, которые
+   может оставить любой, примерная цена. Режим "Для мастера": новая работа по вопросам голосом, водяной знак на фото,
+   текст поста для соцсетей. Данные: dannye.js (видят все) + свои черновики мастера в IndexedDB (vitrina). */
+:root{--bg:#f6f2ec;--card:#fffdfa;--ink:#211d1a;--muted:#73685e;--line:#e7ddd0;--dark:#1f1b18;--acc:#b8772f;--acc2:#93591f;--acc-l:#f7e9d6;--ok:#2e6f5c;--bad:#b3261e}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+html,body{margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+a{color:var(--acc2)}
+button,input,select,textarea{font:inherit;color:inherit}
+img{max-width:100%;display:block}
+.hide{display:none!important}
+.in{max-width:1080px;margin:0 auto;padding:0 18px}
+.muted{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:11px 16px;cursor:pointer;text-decoration:none;color:var(--ink);font-weight:600;font-size:15px;white-space:nowrap}
+.btn:hover{border-color:var(--acc)}
+.btn.p{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.p:hover{background:var(--acc2)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.wa{background:#1f9e57;border-color:#1f9e57;color:#fff}
+.btn.l{border:0;background:none;color:var(--muted);padding:8px 6px;font-weight:500}
+.btn.sm{padding:7px 11px;font-size:14px;border-radius:10px}
+.btn.mic.on{background:var(--bad);border-color:var(--bad);color:#fff;animation:pulse 1.4s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(179,38,30,.15)}}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 13px;font-size:14px;cursor:pointer}
+.chip.on{background:var(--dark);border-color:var(--dark);color:#fff}
+.t{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff}
+.t:focus{outline:2px solid var(--acc-l);border-color:var(--acc)}
+label.f{display:block;font-size:13.5px;color:var(--muted);font-weight:600}
+label.f .t{margin-top:4px;color:var(--ink);font-weight:400;font-size:15px}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(max-width:640px){.g2{grid-template-columns:1fr}}
+/* шапка */
+.top{position:sticky;top:0;z-index:30;background:rgba(31,27,24,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#f4ede4}
+.top .in{display:flex;align-items:center;gap:14px;height:56px}
+.logo{font-weight:700;font-size:16px;letter-spacing:.01em;display:flex;align-items:center;gap:8px;color:#fff;text-decoration:none;min-width:0}
+.logo i{width:30px;height:30px;border-radius:9px;background:var(--acc);display:flex;align-items:center;justify-content:center;font-style:normal;flex:none}
+.logo span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top nav{display:flex;gap:2px;margin-left:auto}
+.top nav a{color:#e9dfd3;text-decoration:none;font-size:14px;padding:7px 10px;border-radius:8px}
+.top nav a:hover{background:rgba(255,255,255,.08)}
+.top .me{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#fff;border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
+@media(max-width:760px){.top nav{display:none}.top .me{margin-left:auto}}
+.demo{background:#fff4d9;border-bottom:1px solid #f0d9a4;font-size:13.5px;color:#6b4d12}
+.demo .in{padding-top:8px;padding-bottom:8px}
+/* первый экран */
+.hero{background:radial-gradient(900px 380px at 85% -10%,rgba(226,178,115,.28),transparent 60%),linear-gradient(170deg,#2b2520,#1a1714);color:#f4ede4;padding:46px 0 52px}
+.hero .who{text-transform:uppercase;letter-spacing:.12em;font-size:12.5px;color:#e2b273;font-weight:700}
+.hero h1{font-size:40px;line-height:1.1;margin:10px 0 12px;letter-spacing:-.02em;max-width:760px}
+.hero p{max-width:640px;opacity:.85;font-size:17px;margin:0}
+.hero .btns{margin-top:22px}
+.hero .btn:not(.p):not(.wa){background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:#fff}
+.hero .nums{display:flex;gap:26px;margin-top:28px;flex-wrap:wrap}
+.hero .nums b{display:block;font-size:24px;color:#fff}
+.hero .nums span{font-size:13px;opacity:.7}
+@media(max-width:640px){.hero{padding:30px 0 36px}.hero h1{font-size:29px}.hero p{font-size:15.5px}}
+section{padding:46px 0 0}
+.sh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.sh h2{margin:0;font-size:27px;letter-spacing:-.015em}
+.sh p{margin:0;color:var(--muted);font-size:14.5px}
+/* работы */
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:14px}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.grid{grid-template-columns:1fr}}
+.wk{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;cursor:pointer;text-align:left;padding:0;display:flex;flex-direction:column;transition:transform .15s,box-shadow .15s}
+.wk:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(60,40,20,.12)}
+.wk .ph{aspect-ratio:4/3;background:#e9e1d6;position:relative;overflow:hidden}
+.wk .ph img{width:100%;height:100%;object-fit:cover}
+.wk .ph .n{position:absolute;right:10px;bottom:10px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;border-radius:999px;padding:2px 9px}
+.wk .ph .loc{position:absolute;left:10px;top:10px;background:var(--acc);color:#fff;font-size:11.5px;border-radius:999px;padding:2px 9px;font-weight:700}
+.wk .tx{padding:13px 15px 15px}
+.wk b{display:block;font-size:17px;line-height:1.25}
+.wk .pl{font-size:13.5px;color:var(--muted);margin-top:3px}
+.wk .q{font-size:14px;margin-top:8px;color:#4a413a;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* как работаю */
+.pts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media(max-width:900px){.pts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.pts{grid-template-columns:1fr}}
+.pt{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.pt i{font-style:normal;width:34px;height:34px;border-radius:10px;background:var(--acc-l);color:var(--acc2);display:flex;align-items:center;justify-content:center;font-weight:800}
+.pt b{display:block;margin-top:10px;font-size:16px}
+.pt p{margin:4px 0 0;font-size:14px;color:var(--muted)}
+/* отзывы */
+.rvs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media(max-width:700px){.rvs{grid-template-columns:1fr}}
+.rv{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.rv.ex{border-style:dashed;background:#fbf8f3}
+.rv .hd{display:flex;align-items:center;gap:10px}
+.rv .av{width:38px;height:38px;border-radius:50%;background:var(--acc-l);color:var(--acc2);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.rv .hd b{display:block}
+.rv .hd span{font-size:13px;color:var(--muted)}
+.rv p{margin:10px 0 0;font-size:15px}
+.rv .lk{font-size:13px;margin-top:8px;display:inline-block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}
+.card h3{margin:0 0 6px;font-size:19px}
+/* цена */
+.price{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:14px}
+@media(max-width:800px){.price{grid-template-columns:1fr}}
+.cfg{background:linear-gradient(160deg,#2f6f5c,#1f5040);color:#eef7f3;border:0}
+.cfg h3{color:#fff}
+.cfg p{opacity:.85}
+.cfg .btn{background:#fff;color:#1f5040;border-color:#fff}
+footer{margin-top:56px;background:var(--dark);color:#d8cfc4;padding:30px 0 40px;font-size:14px}
+footer a{color:#e2b273}
+footer .row{display:flex;flex-wrap:wrap;gap:18px;justify-content:space-between;align-items:center}
+/* история работы (как stories) */
+.st{position:fixed;inset:0;z-index:100;background:rgba(12,10,9,.92);display:flex;align-items:center;justify-content:center;padding:16px}
+.st-box{background:var(--card);border-radius:20px;overflow:hidden;max-width:1000px;width:100%;max-height:100%;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+@media(max-width:820px){.st{padding:0;align-items:stretch}.st-box{border-radius:0;grid-template-columns:1fr;grid-template-rows:auto 1fr;overflow:auto}}
+.st-ph{position:relative;background:#111;min-height:300px;display:flex;align-items:center;justify-content:center;user-select:none}
+.st-ph img{width:100%;height:100%;object-fit:contain;max-height:86vh}
+@media(max-width:820px){.st-ph img{max-height:62vh}}
+.st-bars{position:absolute;left:10px;right:10px;top:10px;display:flex;gap:4px;z-index:2}
+.st-bars i{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.35)}
+.st-bars i.on{background:#fff}
+.st-nav{position:absolute;top:0;bottom:0;width:40%;z-index:1;background:none;border:0;cursor:pointer}
+.st-nav.l{left:0}.st-nav.r{right:0}
+.st-tx{padding:22px 22px 24px;overflow:auto;max-height:86vh}
+@media(max-width:820px){.st-tx{max-height:none}}
+.st-tx h3{margin:0;font-size:23px;line-height:1.2}
+.st-tx .pl{color:var(--muted);font-size:14px;margin-top:4px}
+.st-tx h4{margin:16px 0 3px;font-size:12.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--acc2)}
+.st-tx p{margin:0;font-size:15.5px}
+.st-x{position:absolute;right:12px;top:22px;z-index:3;width:38px;height:38px;border-radius:50%;border:0;background:rgba(0,0,0,.5);color:#fff;font-size:24px;line-height:1;cursor:pointer}
+/* окно */
+.md{position:fixed;inset:0;z-index:110;background:rgba(20,16,13,.5);display:flex;align-items:flex-start;justify-content:center;padding:30px 12px;overflow:auto}
+.md-box{background:var(--bg);border-radius:18px;max-width:760px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.md-hd{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);border-radius:18px 18px 0 0;z-index:2}
+.md-hd b{font-size:18px;flex:1}
+.md-hd .x{border:0;background:none;font-size:28px;line-height:1;cursor:pointer;color:var(--muted)}
+.md-bd{padding:14px 16px 18px}
+@media(max-width:600px){.md{padding:0}.md-box{border-radius:0;min-height:100%}.md-hd{border-radius:0}}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px}
+.tabs button{border:0;background:none;padding:8px 13px;border-radius:999px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tabs button.on{background:var(--dark);color:#fff}
+/* мастер: новая работа */
+.ph-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:10px}
+.ph-list figure{margin:0;position:relative;border-radius:10px;overflow:hidden;background:#ddd;aspect-ratio:1}
+.ph-list img{width:100%;height:100%;object-fit:cover}
+.ph-list button{position:absolute;right:4px;top:4px;border:0;border-radius:50%;width:26px;height:26px;background:rgba(0,0,0,.6);color:#fff;cursor:pointer}
+.ask{border-left:4px solid var(--acc);margin-top:14px}
+.ask .n{font-size:12.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.ask .qq{font-size:19px;font-weight:700;margin:2px 0 4px}
+.cf{background:#f3faf3;border:1px solid #b9dcbb;border-left:4px solid #2e7d32;border-radius:12px;padding:10px 12px;font-size:15px;margin-top:10px}
+.cf>b{display:block;margin-bottom:3px}
+.cf .h{display:block;color:#777;font-size:12.5px;font-style:italic;margin-top:4px}
+.live{font-size:14px;color:var(--muted);margin-top:8px;min-height:20px}
+.ans{font-size:14px;margin-top:10px}
+.ans div{padding:6px 0;border-bottom:1px dashed var(--line)}
+.ans span{color:var(--muted)}
+.post{white-space:pre-wrap;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:14.5px;margin-top:8px}
+.lst{display:grid;gap:8px}
+.lst .it{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px}
+.lst .it img{width:56px;height:56px;border-radius:8px;object-fit:cover;flex:none}
+.lst .it div{flex:1;min-width:0}
+.lst .it b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{display:inline-block;font-size:11.5px;border-radius:999px;padding:1px 8px;background:#fff1d6;color:#7a520f;font-weight:700}
+#toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,30px);opacity:0;background:#211d1a;color:#fff;padding:10px 16px;border-radius:12px;z-index:200;transition:.25s;pointer-events:none;max-width:90vw;font-size:14.5px}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <a class="logo" href="#"><i>М</i><span id="logoName">Мастерская мебели</span></a>
+  <nav><a href="#raboty">Работы</a><a href="#kak">Как работаю</a><a href="#otzyvy">Отзывы</a><a href="#cena">Цена</a><a href="#svyaz">Связаться</a></nav>
+  <button type="button" class="me" id="meBtn" title="Добавить работу, водяной знак, текст поста">Для мастера</button>
+</div></header>
+<div class="demo hide" id="demo"><div class="in"><b>Это шаблон витрины.</b> Фото и тексты - примеры. Когда мастер пришлёт ссылки на соцсети, здесь будут его настоящие работы и отзывы.</div></div>
+
+<div class="hero"><div class="in">
+  <div class="who" id="hWho">Корпусная мебель на заказ</div>
+  <h1 id="hSlogan">Делаю мебель, которую не стыдно показать через десять лет</h1>
+  <p id="hAbout"></p>
+  <div class="btns">
+    <a class="btn wa" id="hWa" target="_blank" rel="noopener">Написать в WhatsApp</a>
+    <a class="btn p" href="#cena">Узнать примерную цену</a>
+    <a class="btn" href="#raboty">Смотреть работы</a>
+  </div>
+  <div class="nums" id="hNums"></div>
+</div></div>
+
+<main class="in">
+  <section id="raboty">
+    <div class="sh"><h2>Работы</h2><p>Нажмите на работу: что хотел заказчик, что сделали и почему так.</p></div>
+    <div class="chips" id="tags"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section id="kak">
+    <div class="sh"><h2>Как я работаю</h2></div>
+    <div class="pts" id="pts"></div>
+  </section>
+
+  <section id="otzyvy">
+    <div class="sh"><h2>Отзывы</h2><p>Оставить отзыв может любой, без регистрации.</p></div>
+    <div class="rvs" id="rvs"></div>
+    <div class="btns"><button type="button" class="btn p" id="rvBtn">Оставить отзыв</button></div>
+  </section>
+
+  <section id="cena">
+    <div class="sh"><h2>Примерная цена за минуту</h2></div>
+    <div class="price">
+      <div class="card cfg"><h3>Соберите сами</h3><p>Кухня или шкаф: выберите размеры, фасады и ручки - сразу увидите примерную цену и 3D. Понравится - отправите мне одной кнопкой.</p><div class="btns"><a class="btn" href="../konfigurator/" id="cfgLink">Открыть конструктор</a></div></div>
+      <div class="card"><h3>Или опишите словами</h3><p class="muted" style="margin:0 0 10px;font-size:14.5px">Что нужно и примерные размеры. Отвечу с ценой в WhatsApp.</p>
+        <label class="f">Что нужно <textarea class="t" id="rqText" rows="3" placeholder="Например: угловая кухня 3 на 1,8 метра, до потолка, фасады светлые"></textarea></label>
+        <div class="g2" style="margin-top:8px"><label class="f">Город <input class="t" id="rqCity"></label><label class="f">Как к вам обращаться <input class="t" id="rqName"></label></div>
+        <div class="btns"><button type="button" class="btn mic sm" id="rqMic">Сказать голосом</button><button type="button" class="btn wa" id="rqSend">Отправить в WhatsApp</button></div>
+        <div class="live" id="rqLive"></div></div>
+    </div>
+  </section>
+</main>
+
+<footer id="svyaz"><div class="in">
+  <div class="row"><div><b style="color:#fff;font-size:17px" id="fName">Мастерская мебели</b><div id="fCity"></div></div><div class="btns" id="fLinks" style="margin:0"></div></div>
+  <p style="opacity:.6;margin:18px 0 0;font-size:12.5px">Фото на сайте защищены водяным знаком. Копирование без разрешения мастера запрещено.</p>
+</div></footer>
+
+<div id="toast"></div>
+<script src="dannye.js"></script>
+<script src="vitrina.js"></script>
+</body>
+</html>

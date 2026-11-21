@@ -91,6 +91,8 @@ def main():
     wr(os.path.join(OUT, "otzyv", "index.html"), rd(os.path.join(HERE, "home", "otzyv.html")))
     # Блокнот мастера - второй продукт: отдельная страница со своими файлами, общий site.js
     shutil.copytree(os.path.join(HERE, "bloknot"), os.path.join(OUT, "bloknot"))
+    # Витрина мастера - страница для его клиентов (портфолио, отзывы), без полоски сайта
+    shutil.copytree(os.path.join(HERE, "vitrina"), os.path.join(OUT, "vitrina"))
 
     # 1. Калькулятор (+ демо для коллег без полоски сайта)
     run_build("calculator")

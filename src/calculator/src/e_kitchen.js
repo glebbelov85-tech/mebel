@@ -13,7 +13,7 @@ function kFac(b,c,name,x,y,w,h,z,hd){     // фасад в ячейке x..x+w, 
   if(hd){ if(c.hnd==="std") b.H("handle",1); else if(c.hnd==="push") b.H("push",1); }
 }
 function kDoors(b,c,x,y,w,h,z,opt){
-  opt=opt||{}; const n=opt.n||(w>500?2:1), side=opt.up?"vb":"vt";
+  opt=opt||{}; const n=opt.n||(c.dn>0&&c.dn<=4?c.dn:0)||(w>500?2:1), side=opt.up?"vb":"vt";
   for(let i=0;i<n;i++) kFac(b,c,n>1?`Дверь ${i+1}`:"Дверь",x+i*w/n,y,w/n,h,z, h>1200?(i===0&&n>1?"vm-r":n>1?"vm-l":"vm-r") : side+(n>1?(i===0?"-r":"-l"):"-r"));
   b.H(c.hinge,n*hingesFor(h));
 }
@@ -224,7 +224,7 @@ function genKitchen(K){
     wall.lower.forEach((md,j)=>{
       const d=modDef(md.t); if(!d){ warns.push(`${nm}: модуль удалён из библиотеки - замените его.`); return; }
       const w=clamp(+md.w||0,20,1500), key=`${wi}l${j}`, b=Builder();
-      d.gen(b,c,w); place(b,wi,s,yLow,key,""+wi);
+      c.dn=+md.dn||0; try{ d.gen(b,c,w); } finally{ c.dn=0; } place(b,wi,s,yLow,key,""+wi);
       low.push({s,w,t:md.t,key,name:d.name,tall:d.tall,gap:d.gap});
       if(d.tall){ talls.push([s,s+w]); tallN++; } else if(!d.gap && md.t!=="l_fill") lowN++;
       if(d.top) topIv[wi].push([s,s+w]);
@@ -241,7 +241,7 @@ function genKitchen(K){
       const d=modDef(md.t); if(!d){ warns.push(`${nm}: модуль удалён из библиотеки - замените его.`); return; }
       const w=clamp(+md.w||0,20,1500), key=`${wi}u${j}`, b=Builder();
       let moved=true; while(moved){ moved=false; for(const [a,e] of talls){ if(us<e-0.5 && us+w>a+0.5){ us=e; moved=true; } } }
-      d.gen(b,c,w); place(b,wi,us,yUp,key,""+wi);
+      c.dn=+md.dn||0; try{ d.gen(b,c,w); } finally{ c.dn=0; } place(b,wi,us,yUp,key,""+wi);
       up.push({s:us,w,t:md.t,key,name:d.name,gap:d.gap});
       if(!d.gap){ modsN++; if(md.t!=="u_fill") upN++; upMM+=w; }
       if(md.t==="u_lift" && w>1200) warns.push(`${nm}: подъёмный фасад шире 1200 мм - тяжело для механизма.`);
