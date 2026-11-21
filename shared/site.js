@@ -44,7 +44,11 @@
     { id: "v3", n: 3, name: "Витрина мастера", short: "Витрина", path: "vitrina/", isNew: true,
       pages: ["vitrina", "vitrina-red"],
       who: "Сайт для клиентов: работы, отзывы и расчёт по одной ссылке из мессенджера",
-      points: ["Работы как сторис: фото с водяным знаком и рассказ", "Отзывы с кодом заказа и ссылкой на фото работы", "Быстрый расчёт вилки цены и заявка в WhatsApp", "Мастерская: фото и рассказ голосом с телефона"] }
+      points: ["Работы как сторис: фото с водяным знаком и рассказ", "Отзывы с кодом заказа и ссылкой на фото работы", "Быстрый расчёт вилки цены и заявка в WhatsApp", "Мастерская: фото и рассказ голосом с телефона"] },
+    { id: "v4", n: 4, name: "Витрина: путешествие по дому", short: "Путешествие", path: "vitrina/puteshestvie/", isNew: true,
+      pages: ["vitrina-put"],
+      who: "Та же витрина, но клиент не листает, а ходит по дому мастера: комната за комнатой",
+      points: ["Дом в разрезе: каждая комната - раздел работ", "Работы 3D-лентой, фото на весь экран", "Точки на фото: наезд на деталь и рассказ", "\"Хочу так же\" - готовое сообщение в WhatsApp"] }
   ];
 
   var me = window.MEBEL_TOOL || "home";
@@ -65,9 +69,9 @@
 
   // --- мелочи ---
   function tool(id) { for (var i = 0; i < TOOLS.length; i++) if (TOOLS[i].id === id) return TOOLS[i]; return null; }
-  function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Главная" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id === "vitrina" ? "Витрина мастера" : id === "vitrina-red" ? "Мастерская витрины" : id; }
+  function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Главная" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id === "vitrina" ? "Витрина мастера" : id === "vitrina-red" ? "Мастерская витрины" : id === "vitrina-put" ? "Витрина: путешествие" : id; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
-  function root() { return me === "home" ? "./" : me === "vitrina-red" ? "../../" : "../"; }
+  function root() { return me === "home" ? "./" : me === "vitrina-red" || me === "vitrina-put" ? "../../" : "../"; }
   function urlOf(id) { return root() + id + "/"; }
   function money(n, cur) {
     if (window.MebelOrder) return MebelOrder.money(n, cur || MebelOrder.region().currency);
@@ -99,7 +103,7 @@
 
   // --- пометка "Обновление" и подсказка "Доступно обновление" ---
   // VER вшивает build.py при сборке; version.json на сервере - номер самой свежей сборки.
-  var VER = {"v": "20261121085355", "at": "2026-11-21T08:53:55Z", "note": "Вместо имени автора - тихая строка внизу: \"Разработка в тестовом режиме. Все права защищены.\""};
+  var VER = {"v": "20261121113446", "at": "2026-11-21T11:34:46Z", "note": "Новый вариант 4: витрина \"Путешествие по дому\" - комнаты, 3D-лента работ, детали крупным планом"};
   var MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
   function verDate(v, withTime) {
     var d = v && new Date(v.at);
@@ -282,7 +286,7 @@
     "Инструменты в свободном доступе. <b>Можно:</b> пользоваться ими в работе, давать клиентам ссылку на конфигуратор, делиться ссылкой на сайт.",
     "<b>Нельзя:</b> перепродавать инструменты или доступ к ним, копировать и выкладывать у себя, выдавать за своё.",
     "Ваши заказы, цены и клиенты хранятся в вашем браузере и остаются вашими.",
-    "Сторонние части остаются под своими лицензиями: three.js (MIT) - 3D, pdfmake (MIT) - PDF документов, pdf.js (Apache 2.0) - чтение PDF, Tesseract.js (Apache 2.0) - чтение текста с фото, SheetJS (Apache 2.0) - таблицы Excel, шрифты Inter, Golos Text, Manrope и JetBrains Mono (SIL Open Font License 1.1).",
+    "Сторонние части остаются под своими лицензиями: three.js (MIT) - 3D, pdfmake (MIT) - PDF документов, pdf.js (Apache 2.0) - чтение PDF, Tesseract.js (Apache 2.0) - чтение текста с фото, SheetJS (Apache 2.0) - таблицы Excel, шрифты Inter, Golos Text, Manrope, Cormorant Garamond и JetBrains Mono (SIL Open Font License 1.1).",
     "История разработки с датами правок сохраняется."
   ];
   function openTerms() {
@@ -446,7 +450,7 @@
     // Блокнот мастера - отдельный продукт со своей шапкой: без полоски "Передать заказ", голос - общий
     if (me === "bloknot") { setStaff(); voicePanel(); return; }
     // Витрина - страница для клиентов: ничего не добавляем и мастером не помечаем. Мастерская витрины - для мастера.
-    if (me === "vitrina") return;
+    if (me === "vitrina" || me === "vitrina-put") return;
     if (me === "vitrina-red") { setStaff(); return; }
     var fromHub = /[?&]from=/.test(location.search);
     // конфигуратор - страница для клиента: полоску видит только мастер (кто уже заходил на сайт)
@@ -465,7 +469,7 @@
     }
   };
   // страница без адаптера (главная) запускается сама
-  if (me === "home" || me === "vitrina" || me === "vitrina-red") {
+  if (me === "home" || me === "vitrina" || me === "vitrina-red" || me === "vitrina-put") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
   }
 })();
