@@ -90,7 +90,8 @@
     "#krLock .msg{min-height:22px;margin-top:12px;font-size:14px;color:#f0b4a0}",
     "#krLock .msg.ok{color:#c9bdb0}",
     "#krLock .foot{margin-top:26px;font-size:12px;color:#8a7d70}",
-    "#krBack{position:fixed;right:10px;top:calc(10px + env(safe-area-inset-top));z-index:2147482000;display:inline-flex;align-items:center;gap:6px;background:rgba(31,27,24,.9);color:#f3ede6;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:7px 12px;font:600 13px system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 4px 18px rgba(0,0,0,.25);backdrop-filter:blur(6px)}"
+    "#krBack{position:fixed;right:10px;top:calc(10px + env(safe-area-inset-top));z-index:2147482000;display:inline-flex;align-items:center;gap:6px;background:rgba(31,27,24,.9);color:#f3ede6;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:7px 12px;font:600 13px system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 4px 18px rgba(0,0,0,.25);backdrop-filter:blur(6px)}",
+    "#krBack.bl{top:auto;right:auto;left:12px;bottom:calc(14px + env(safe-area-inset-bottom))}"
   ].join("\n");
   function style() { if (document.getElementById("krCss")) return; var s = document.createElement("style"); s.id = "krCss"; s.textContent = CSS; document.head.appendChild(s); }
   function lockScreen() {
@@ -236,7 +237,7 @@
         });
       }, Promise.resolve()).then(function () {
         hide.remove();
-        var a = document.createElement("a"); a.id = "krBack"; a.href = BASE; a.textContent = "← Назад"; a.title = "Назад в закрытую витрину";
+        var a = document.createElement("a"); a.id = "krBack"; a.href = BASE; a.textContent = "← Назад"; a.title = "Назад в закрытую витрину"; if (opts && opts.back === "bl") a.className = "bl";
         document.body.appendChild(a);
       });
     });
