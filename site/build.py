@@ -122,6 +122,8 @@ def main():
     shutil.copytree(os.path.join(HERE, "bloknot"), os.path.join(OUT, "bloknot"))
     # Витрина мастера - третий вариант: страница для клиентов + Мастерская (redaktor/)
     shutil.copytree(os.path.join(HERE, "vitrina"), os.path.join(OUT, "vitrina"))
+    # Вкладка "Витрины" в верхней полосе: экран выбора витрины (мастера, путешествие, Краснодар)
+    shutil.copytree(os.path.join(HERE, "vitriny"), os.path.join(OUT, "vitriny"))
     # Закрытая витрина для Краснодара: страница входа по пин-коду + зашифрованные данные и фото (enc/).
     # Внутри - те же витрины вариантов 3 и 4, но данные они получают из расшифровки (zamok.js).
     krasnodar()
