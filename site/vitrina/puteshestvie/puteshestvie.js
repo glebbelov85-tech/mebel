@@ -42,7 +42,7 @@
   function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
   function toast(t) { var e = $("toast"); e.textContent = t; e.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(function () { e.classList.remove("on"); }, 2200); }
   function plural(n, f) { n = Math.abs(n) % 100; var d = n % 10; return n > 10 && n < 20 ? f[2] : d === 1 ? f[0] : d >= 2 && d <= 4 ? f[1] : f[2]; }
-  function initials(n) { return String(n || "?").trim().split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0).toUpperCase(); }).join(""); }
+  function initials(n) { var w = String(n || "?").trim().split(/\s+/), l = w.filter(function (x) { return x.length > 1; }); return (l.length ? l : w).slice(0, 2).map(function (x) { return x.charAt(0).toUpperCase(); }).join(""); }
   var MON2 = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
   function day(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ""); return m ? +m[3] + " " + MON2[+m[2] - 1] + " " + m[1] : (s || ""); }
   function low(s) { return String(s || "").trim().toLowerCase(); }
@@ -147,7 +147,7 @@
     var av = $("hAv");
     if (m.foto) { av.style.backgroundImage = 'url("' + srcOf({ src: m.foto }).replace(/"/g, "%22") + '")'; av.textContent = ""; }
     else av.textContent = initials(m.imya);
-    $("roofT").textContent = m.imya ? "дом мастера " + m.imya : "дом мастера";
+    $("roofT").textContent = !m.imya ? "дом мастера" : m.chelovek ? "дом мастерской «" + m.imya + "»" : "дом мастера " + m.imya;
     var n = WORKS.length;
     $("hLead").textContent = "Каждая комната - раздел работ. Наведите или нажмите: в комнате включится свет. Войдите - и смотрите мебель вблизи, с деталями и отзывами хозяев.";
     var kod = (D.otzyvy || []).filter(function (o) { return o && o.kod; }).length;
@@ -158,7 +158,7 @@
     $("trust").innerHTML = t.join("");
     var hasRv = WORKS.some(function (w) { return otzyvy(w).length; }), hasPn = WORKS.some(function (w) { return w.panorama; });
     $("legend").innerHTML = '<span><i></i>есть работы</span>' + (hasRv ? '<span><i class="rv"></i>отзывы внутри</span>' : "") + (hasPn ? '<span><i class="pn"></i>есть обзор</span>' : "");
-    $("fUpd").textContent = D.obnovleno ? "Сайт обновлён " + day(D.obnovleno) + "." : "";
+    $("fUpd").textContent = ((D.master || {}).chelovek ? "Мастер - " + D.master.chelovek + ". " : "") + (D.obnovleno ? "Сайт обновлён " + day(D.obnovleno) + "." : "");
     if (STAFF) {
       $("staff").hidden = false;
       $("staffNote").innerHTML = DRAFT ? "<b>Черновик</b> из Мастерской - так увидит клиент после публикации." :

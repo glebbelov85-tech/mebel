@@ -46,7 +46,7 @@
   function renderHead() {
     var m = V.master || {};
     $("ttl").textContent = A.zagolovok || "Закрытая витрина";
-    $("sub").textContent = [m.znak, m.imya, m.gorod].filter(Boolean).join(" · ");
+    $("sub").textContent = [A.zagolovok === m.imya ? "" : m.imya, m.gorod].filter(Boolean).join(" · ");
     document.title = (A.zagolovok || "Закрытая витрина");
     $("privet").textContent = A.privet || "";
     var R = V.raboty || [];
@@ -133,7 +133,7 @@
   // ---------- текст для отправки ----------
   function compose() {
     var blocks = [], m = V.master || {};
-    var head = (A.zagolovok || "Закрытая витрина") + ": ответы" + (m.imya ? " - " + m.imya : "") + " (" + new Date().toLocaleDateString("ru-RU") + ")";
+    var head = (A.zagolovok || "Закрытая витрина") + ": ответы" + ((m.chelovek || m.imya) ? " - " + (m.chelovek || m.imya) : "") + " (" + new Date().toLocaleDateString("ru-RU") + ")";
     var w = (V.raboty || []).map(function (x) {
       var v = verdict(x.id), t = txt("w:" + x.id).trim();
       if (!v && !t) return "";
