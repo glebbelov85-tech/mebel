@@ -5,8 +5,10 @@
 // петли, направляющие, ножки, полкодержатели, кромка. Цена показывается на шаге "Итог" или по слову "сколько стоит".
 // Состояние шага лежит в S.zm (сохраняется вместе с расчётом - если телефон перезагрузил страницу, замер продолжится).
 // Логика (zmRun и всё, что выше zmInit) работает без экрана - её проверяет test/t6.js.
-const ZM={on:false, undo:[], log:[], eng:null, mic:false};
-const zmS=()=>{ if(!S.zm||typeof S.zm!=="object") S.zm={step:"layout"}; const z=S.zm; if(!z.dir) z.dir={}; if(!z.len) z.len={}; if(!Array.isArray(z.queue)) z.queue=[]; return z; };
+const ZM={on:false, undo:[], log:[], eng:null, mic:false, draft:"", prev:null,
+  // строгий режим (по просьбе мастера): один вопрос - один ответ - "Стоп" - "Я понял так" - подтверждение. Свободный режим - как раньше.
+  strict:(()=>{ try{ return localStorage.getItem("zm-strict")!=="0"; }catch(e){ return true; } })()};
+const zmS=()=>{ if(!S.zm||typeof S.zm!=="object") S.zm={step:"layout"}; const z=S.zm; if(!z.dir) z.dir={}; if(!z.len) z.len={}; if(!Array.isArray(z.queue)) z.queue=[]; if(!Array.isArray(z.pend)) z.pend=[]; return z; };
 const ZM_WALL=["основная стена","правая стена","левая стена"], ZM_WALL_G=["основной стены","правой стены","левой стены"];
 const ZM_STEP_NAMES={layout:"Планировка",len:"Размеры стен",ceil:"Высота",corner:"Угол",low:"Нижний ряд",up:"Верхний ряд",fac:"Фасады",body:"Корпус",top:"Столешница",hw:"Фурнитура",dlv:"Доставка",total:"Итог"};
 const ZM_FAC_WORD={mdf:"плёнка",mdf_plastic:"пластик",mdf_enamel:"эмаль",mdf_acryl:"акрил",mdf_veneer:"шпон",mdf_wood:"массив",ldsp16f:"ЛДСП"};
@@ -85,7 +87,7 @@ const ZM_SPEC=/^(мойк|раковин|посудомо|пмм|ящик|пен
 const ZM_GEN=/^(шкаф|модул|тумб)/;
 const ZM_CON=/^(под|с|со|для|над|в|во|из)$/;
 const ZM_SEP=/^(и|потом|затем|далее|следующ[а-я]*|плюс|еще|рядом|после)$/;
-const ZM_CNT=/^(ящик|шт|двер|полк|полок|больш|мал|мелк|глубок|небольш|узк|одинак|высок|низк)/;
+const ZM_CNT=/^(ящик|шт|двер|полк|полок|больш|мал|мелк|глубок|небольш|узк|одинак|высок|низк|распаш|фасад|створ)/;
 function zmSplit(t){
   const segs=[];
   t.split(/\s*[,;]\s*/).forEach(chunk=>{
@@ -152,7 +154,7 @@ const ZM_FIXW={l_dish:600,l_oven:600,l_gap:600,t_fridge:600,t_oven:600,u_hood:60
 function zmFit(m,lo,hi){ if(m.mm>=lo&&m.mm<=hi) return m.mm; if(!m.unit&&m.second==null) for(const k of [1,10,1000]){ const v=m.raw*k; if(v>=lo&&v<=hi) return Math.round(v); } return null; }
 function zmWidthOf(f,t){
   if(/остат|до конца|до стены|до угла|что осталось|оставш|все место|на все/.test(f)) return "rest";
-  const f2=f.replace(/\d+\s*(?:-?х\s*)?(ящик[а-я]*|шт[а-я.]*|двер[а-я]*|полк[а-я]*|полок|больш[а-я]*|мал[а-я]*|мелк[а-я]*|глубок[а-я]*|небольш[а-я]*|узк[а-я]*|одинак[а-я]*|высок[а-я]*|низк[а-я]*)/g," $1").replace(/(?:^|\s)\d\s+((?:шкаф|тумб|модул|пенал)[а-я]*\s+по\s)/," $1");
+  const f2=f.replace(/(?<![\d.])[1-4]\s+((?:[а-я]+\s+)?(?:распаш|фасад|створ)[а-я]*)/g," | $1").replace(/(?<![\d.])\d{1,2}\s*(?:-?х\s*)?(ящик[а-я]*|шт[а-я.]*|двер[а-я]*|полк[а-я]*|полок|больш[а-я]*|мал[а-я]*|мелк[а-я]*|глубок[а-я]*|небольш[а-я]*|узк[а-я]*|одинак[а-я]*|высок[а-я]*|низк[а-я]*)/g," | $1").replace(/(?:^|\s)\d\s+((?:шкаф|тумб|модул|пенал)[а-я]*\s+по\s)/," $1");
   const ms=vMeasures(" "+f2+" "), fill=/fill/.test(t||""), lo=fill?20:150, hi=fill?300:1500;
   for(let i=ms.length-1;i>=0;i--){ const v=zmFit(ms[i],lo,hi); if(v!=null) return Math.round(v); }
   return null;
@@ -184,7 +186,7 @@ function zmSteps(){
   return s.concat(["fac","body","top","hw","dlv","total"]);
 }
 const zmKind=st=>String(st||"").replace(/\d$/,""), zmWi=st=>+String(st||"").slice(-1)||0;
-function zmGo(st){ const z=zmS(); z.step=st; z.sub=null; z.queue=[]; }
+function zmGo(st){ const z=zmS(); z.step=st; z.sub=null; z.queue=[]; z.pend=[]; }
 function zmNextStep(){ const z=zmS(), ss=zmSteps(), i=ss.indexOf(z.step); zmGo(ss[Math.min(ss.length-1,i<0?0:i+1)]); }
 function zmPrevStep(){ const z=zmS(), ss=zmSteps(), i=ss.indexOf(z.step); zmGo(ss[Math.max(0,i-1)]); }
 function zmInfo(){ return genKitchen(S.kit).info; }
@@ -196,7 +198,7 @@ function zmDirTxt(wi){ const lay=S.kit.layout, d=zmDir(wi), z=zmS();
 function zmWallName(wi){ return S.kit.layout==="1" ? "стена" : ZM_WALL[wi]; }
 // поставить модуль в ряд: по порядку диктовки
 function zmPut(md,wi){
-  const z=zmS(), list=S.kit.walls[wi][md.row], rtl=zmDir(wi)==="rtl", o={t:md.t,w:md.w};
+  const z=zmS(), list=S.kit.walls[wi][md.row], rtl=zmDir(wi)==="rtl", o={t:md.t,w:md.w}; if(md.dn) o.dn=md.dn;
   if(rtl) list.unshift(o); else list.push(o);
   z.last={wi,row:md.row,j:rtl?0:list.length-1}; z.wall=wi;
   SEL={part:-1,mod:`${wi}${md.row==="lower"?"l":"u"}${z.last.j}`};
@@ -258,8 +260,52 @@ function zmCheaper(){
 }
 function zmNormT(text){
   const s=String(text).replace(/(\d+(?:[.,]\d+)?)\s*(?:тыс[а-я]*\.?)(?=[\s,.]|$)/gi,(m,a)=>String(Math.round(parseFloat(a.replace(",","."))*1000)));
-  return vNorm(s).replace(/(?<!\d)[.!?]+|[.!?]+(?!\d)/g,",").replace(/^[\s,]+|[\s,]+$/g,"").trim();
+  return vNorm(s).replace(/(?<!\d)[.!?]+|[.!?]+(?!\d)/g,",").replace(/^[\s,]+|[\s,]+$/g,"").trim()
+    // "с тремя ящиками", "с одним фасадом", "на двух дверях": числа в падежах -> цифры
+    .replace(/(^|\s)(одним|одной|одного|одну)(?=\s+(?:больш|мал|мелк|глубок|небольш|узк|высок|низк|распаш|двер|фасад|створ|ящик|полк|откид|подъем|стекл))/g,"$11")
+    .replace(/(^|\s)(двумя|двух)(?=\s)/g,"$12").replace(/(^|\s)(тремя|трех)(?=\s)/g,"$13").replace(/(^|\s)(четырьмя|четырех)(?=\s)/g,"$14");
 }
+// ---------- строгий режим: один ответ - один модуль ----------
+// "мойка, модуль 800" - это ОДИН модуль (мойка 800), "450, посудомоечная машина" - тоже один.
+// Если мастер всё же назвал несколько модулей с ширинами, возвращаем их по отдельности - экран спросит про каждый.
+const zmSegW=s=>s.bare||s.num>0||s.num0>0;
+function zmOneSegs(t){
+  // "потом", "затем", "следующий" - явная граница между модулями; внутри куска склеиваем части одного модуля
+  const chunks=String(t).split(/(?:^|[\s,]+)(?:потом|затем|далее|следующ[а-я]*|после (?:него|этого|нее))(?=[\s,]|$)/).map(x=>x.replace(/^[\s,-]+|[\s,-]+$/g,"")).filter(Boolean);
+  if(chunks.length>1) return chunks.reduce((a,c)=>a.concat(zmOneSegs(c)),[]);
+  const segs=zmSplit(t); if(!segs.length) return [];
+  const out=[segs[0]];
+  for(let i=1;i<segs.length;i++){
+    const a=out[out.length-1], b=segs[i], aw=zmSegW(a), bw=zmSegW(b);
+    const nameOnly=x=>!zmSegW(x)&&!x.unknown, numOnly=x=>x.bare||(x.gen&&!x.spec&&zmSegW(x)), plainNoW=x=>x.gen&&!x.spec&&!zmSegW(x);
+    // имя без ширины + "модуль 800" / голое число; голое число + имя без ширины; "модуль" + что угодно с шириной; уточнение без названия
+    if((nameOnly(a)&&numOnly(b)) || (numOnly(a)&&!a.spec&&nameOnly(b)) || (plainNoW(a)&&bw) || (aw&&plainNoW(b)) || b.unknown){
+      a.w.push(...b.w); a.spec+=b.spec; a.gen+=b.gen; a.num+=b.num; a.num0+=b.num0; if(b.bare||a.bare){ a.num0=Math.max(1,a.num0); } a.bare=false; a.unknown=false; continue; }
+    out.push(b);
+  }
+  return out;
+}
+// фраза -> {mods:[{t,w,dn,def,txt}], bad?:true}; def - ширину не назвали, взята обычная
+function zmOne(t,row){
+  const segs=zmOneSegs(t), mods=[];
+  for(const s of segs){
+    const f=s.w.join(" ");
+    const rowW=/верхн|навесн|сверху|наверх/.test(f)?"upper":/нижн|напольн|снизу|вниз/.test(f)?"lower":row;
+    let type=zmType(f,rowW);
+    if(!type && zmSegW(s) && !/[а-я]{3,}/.test(f.replace(/мм|см|миллиметр[а-я]*|сантиметр[а-я]*|модул[а-я]*|шкаф[а-я]*|тумб[а-я]*/g,""))) type=rowW==="upper"?"u_shelf":"l_shelf";
+    if(!type) return {mods:[],bad:true,txt:f};
+    const d=modDef(type); let w=zmWidthOf(f,type), def=false;
+    if(w==null && type==="l_dish" && /узк/.test(f)) w=450;
+    if(w==null && ZM_FIXW[type]){ w=type==="l_bottle"?modDefW(type):ZM_FIXW[type]; def=true; }
+    let dn=0; const dm=f.match(/(?:^|\s)(\d)\s+(?:[а-я]+\s+)?(?:распаш|двер|фасад|створ)/);
+    if(dm && !d.drawers && !/fill|gap|dish|hood|lift|open/.test(type)) dn=clamp(+dm[1],1,4);
+    else if(/(одн[а-я]*|одинарн[а-я]*)\s+(распаш|двер|фасад|створ)|одностворч/.test(f) && !d.drawers) dn=1;
+    else if(/двустворч|двухстворч/.test(f) && !d.drawers) dn=2;
+    mods.push({t:type,w,dn,def,row:d.cat==="up"?"upper":"lower",txt:f});
+  }
+  return {mods};
+}
+const zmModFull=m=>zmModName(m.t)+(m.dn?(m.dn===1?", одна дверца":", дверц: "+m.dn):"");
 // начать новую кухню
 function zmFresh(){
   const K=kitDefaults(); K.walls.forEach(w=>{ w.lower=[]; w.upper=[]; }); K.layout="1";
@@ -281,6 +327,12 @@ function zmAsk(){
   if(kind==="len") return {q: lay==="1" ? "Какая длина стены?" : `Какая длина ${ZM_WALL_G[wi]}?`, hint:"Например: \"3 метра 20\" или \"3200\".", chips:[]};
   if(kind==="ceil") return {q:"Какая высота потолка?", hint:"Или сразу высота верхних шкафов: \"верхние 720\".", chips:[["2500","потолок 2500"],["2600","потолок 2600"],["2700","потолок 2700"],["Верхние 720","верхние 720"],["Верхние 900","верхние 900"],["Пропустить","дальше"]]};
   if(kind==="corner") return {q:"Что ставим в угол?", hint:"Угловой шкаф занимает по 900 мм на каждой стене. Свой размер: \"угловой 1000 на 900\".", chips:[["Угловой шкаф","угловой шкаф"],["Глухой угол","глухой угол"],["Без углового","без углового"]]};
+  if((kind==="low"||kind==="up") && z.pend.length){ const p=z.pend[0];
+    return {q:`Следующий модуль из названных: ${zmModFull(p)}${p.w?" "+p.w:""}. Ставим?`, hint:p.w?"":"Ширину вы не назвали - спрошу после.", status:zmRowState(wi,kind==="low"?"lower":"upper"), chips:[["Да, ставим","да"],["Нет, назову другой","нет"]]}; }
+  if(ZM.strict && (kind==="low"||kind==="up")){ const row=kind==="low"?"lower":"upper", n=(K.walls[wi][row]||[]).length+1;
+    return {q:`${kind==="low"?"Нижний":"Верхний"} ряд, ${zmWallName(wi)}. Модуль ${n}, ${zmDirTxt(wi)}: какой?`, hint:`Назовите один модуль: что это и ширину. Например: ${kind==="low"?"\"мойка 800\", \"посудомойка 450\", \"3 ящика, 1 большой 2 маленьких, 600\", \"шкаф 400, одна дверца\"":"\"шкаф 600\", \"сушка 800\", \"над вытяжкой\""}.`, status:zmRowState(wi,row),
+      chips:kind==="low"?[["Мойка","мойка"],["Посудомойка","посудомойка"],["Ящики","ящики"],["Духовка","духовка"],["Шкаф","шкаф"],["Холодильник","холодильник"],["Пенал под технику","пенал под технику"],["Ряд готов","дальше"]]
+        :[["Как внизу","как внизу"],["Шкаф","шкаф"],["Сушка","сушка"],["Над вытяжкой","вытяжка"],["Подъёмник","подъёмник"],["Открытая полка","открытая полка"],["Без верхних","без верхних"],["Ряд готов","дальше"]]}; }
   if(kind==="low") return {q:`Нижний ряд, ${zmWallName(wi)}. Называйте модули по порядку, ${zmDirTxt(wi)}.`, hint:"Например: \"мойка 800, посудомойка 60, три ящика 600, распашной 600\". Пеналы называйте здесь же.", status:zmRowState(wi,"lower"),
     chips:[["Мойка","мойка"],["Посудомойка","посудомойка"],["Ящики","ящики"],["Духовка","духовка"],["Шкаф 600","шкаф 600"],["Холодильник","холодильник"],["Пенал под технику","пенал под технику"],["Убрать последний","отмена"]]};
   if(kind==="up") return {q:`Верхний ряд, ${zmWallName(wi)}. Называйте модули, ${zmDirTxt(wi)}.`, hint:"Или одной кнопкой: \"как внизу\" - шкафы встанут над нижними, над мойкой сушка, над духовкой вытяжка.", status:zmRowState(wi,"upper"),
@@ -366,7 +418,7 @@ function zmDrain(say,wi){
     if(m.w==="rest"){ const min=/fill/.test(m.t)?20:150; if(free<min){ say(`Под "${zmModName(m.t).toLowerCase()}" места не осталось (свободно ${fmt(Math.max(0,free))} мм).`,"zm-err"); z.queue.shift(); continue; } m.w=Math.min(free,1500); }
     if(m.w==null){ z.sub={k:"w",wi}; return false; }
     zmPut(m,wi); z.queue.shift();
-    say(`${m.row!==zmRowOf(z.step)&&zmRowOf(z.step)?(m.row==="upper"?"В верхний ряд: ":"В нижний ряд: "):""}<b>${esc(zmModName(m.t))} ${m.w}</b>`);
+    say(`${m.row!==zmRowOf(z.step)&&zmRowOf(z.step)?(m.row==="upper"?"В верхний ряд: ":"В нижний ряд: "):""}<b>${esc(zmModFull(m))} ${m.w}</b>`+(m.def?` <small>(обычная ширина - другую скажите: "ширина 450")</small>`:""));
   }
   z.sub=null; return true;
 }
@@ -504,6 +556,11 @@ function zmRun(text){
   }
   if(kind==="ceil"){ if(zmCeil(t,say)){ zmNextStep(); return R; } }
   if(kind==="corner"){ if(zmCorner(t,say)){ zmNextStep(); return R; } }
+  if(row && z.pend.length && !z.sub){
+    if(/^(да|ага|угу|верно|правильно|ставим|ставь|ок|окей|хорошо|давай|подтверждаю)$/.test(t)){ z.queue=[z.pend.shift()]; const r0=z.queue[0].row; if(zmDrain(say,wi)) zmAfterAdd(say,wi,r0); return R; }
+    if(/^(нет|не надо|не ставь|не ставим|пропусти|пропустить|другой|не то)$/.test(t)){ z.pend=[]; say("Хорошо, называйте следующий модуль сами."); return R; }
+    z.pend=[];
+  }
   if(row){
     let m;
     // переходы между рядами и стенами
@@ -532,7 +589,9 @@ function zmRun(text){
   // --- модули: в шагах рядов - любые, в остальных - только с понятным названием ("пенал под технику") ---
   if(!/^(убер|удал|убрат|замен|поменя|перенес|передвин|подвин|сдвин|сколько|как[аои][яйе] |цен|открой|покажи|сохрани|скидк|клиент|телефон|фасад|столешниц|корпус|лист|петл|направля|ручк|доставк|подсветк|фартук|потол|цокол)/.test(t) && row){
     const body=t.replace(/^(добав[а-я]*|постав[а-я]*|ставим|пишем|пиши|запиши|дальше ид[её]т|потом ид[её]т|потом|затем|далее|следующ[а-я]*|еще|и)\s+/,"");
-    const mods=zmMods(body,row||"lower");
+    let mods;
+    if(ZM.strict){ const o=zmOne(body,row||"lower"); mods=o.bad||!o.mods.length?null:[o.mods[0]]; if(mods) z.pend=o.mods.slice(1); }
+    else mods=zmMods(body,row||"lower");
     if(mods && mods.length){
       const w=wi;
       z.queue=mods;
@@ -554,6 +613,8 @@ function zmRun(text){
   }
   // --- всё остальное понимает обычный помощник: правки, цены, вопросы ---
   if(HARD.test(t)||SOFT.test(t)){ R.need=kind==="layout"?"Сначала выберите форму кухни: нажмите вариант ниже или скажите, например, \"прямая\".":"Ответьте на вопрос: нажмите вариант или назовите его голосом."; return R; }
+  // пробный разбор для "Я понял так": команды помощника (открыть, сохранить, показать) не выполняем, правки - пробуем (расчёт потом вернётся)
+  if(ZM.dry && typeof edWhole==="function"){ let w=null; try{ w=edWhole(zmNormT(text)); }catch(e){} if(w){ R.edit=true; say("Команда: "+esc(text)); return R; } }
   if(edNewBody(t)!=null){ say("Сейчас идёт замер по шагам. Чтобы начать с начала, скажите \"начать заново\".","zm-note"); return R; }
   ED.noBuild=true; ED.noNav=true; ED.noBalance=zmSteps().indexOf(z.step)<zmSteps().indexOf("fac");
   let r; try{ r=editProject(text);
@@ -569,16 +630,51 @@ function zmRun(text){
 // ================= ЭКРАН ЗАМЕРА =================
 function zmLog(cls,html){ ZM.log.push({cls,html}); if(ZM.log.length>40) ZM.log.shift(); }
 function zmSnapKey(){ return JSON.stringify(S)+"\u0001"+JSON.stringify(PRICE); }
-function zmAskKey(){ const z=zmS(); return z.step+"/"+(z.sub?z.sub.k+":"+(z.queue[0]?z.queue[0].t:"")+(z.sub.free||z.sub.over||""):""); }
+function zmAskKey(){ const z=zmS(), wl=S.kit&&S.kit.walls&&S.kit.walls[zmWi(z.step)]; return z.step+"/"+(z.sub?z.sub.k+":"+(z.queue[0]?z.queue[0].t:"")+(z.sub.free||z.sub.over||""):"")+"/"+z.pend.length+(ZM.strict&&wl?":"+wl.lower.length+"."+wl.upper.length:""); }
 function zmSpeak(text){
   if(!text||!window.MebelVoice||(MebelVoice.muted&&MebelVoice.muted())) return;
   const was=ZM.eng&&ZM.mic; if(was) ZM.eng.stop();
-  MebelVoice.say(text,()=>{ if(was&&ZM.on&&ZM.eng) ZM.eng.start(); });
+  MebelVoice.say(text,()=>{ if(was&&!ZM.strict&&ZM.on&&ZM.eng) ZM.eng.start(); });
 }
-function zmUser(text,byVoice){
+// ---------- строгий режим: "Я понял так" и подтверждение ----------
+const ZM_CMD=/^(да|нет|ага|угу|верно|ок|окей|хорошо|ладно|дальше|далее|следующ[а-я]*( шаг| вопрос| ряд)?|пропус[а-я]*|готово|все|это все|ряд готов|назад|вернись|вернуться|отмена|отмени(ть)?( последн[а-я]*)?|верни( как было)?|повтори( вопрос)?|еще раз|что дальше|какой вопрос|сколько стоит( все| всего| кухня)?|итог|итого|цена|раскрой|листы|закрой|закрыть|выход|выйти|хватит|стоп|начать заново|заново|сначала|новая кухня|продолжить)$/;
+const ZM_YES=/^(да|ага|угу|верно|правильно|все верно|так|подтверждаю|ок|окей|хорошо|точно|да верно|ставим|ставь|принято)$/, ZM_NO=/^(нет|не так|неверно|не то|неправильно|заново|сказать заново|еще раз|отмена)$/;
+// разобрать ответ "на пробу": что изменится, если его принять (сам расчёт не меняется)
+function zmDry(text){
+  const kS=JSON.stringify(S), kP=JSON.stringify(PRICE), kSel=SEL, kU=ED.undo.length, kW=ED.wantDesc; let r;
+  const sp=typeof savePrice==="function"?savePrice:null; ZM.dry=true; if(sp) savePrice=()=>{};
+  try{ r=zmRun(text); }catch(e){ r={out:[{cls:"zm-err",html:esc(e.message||String(e))}]}; }
+  finally{ ZM.dry=false; if(sp) savePrice=sp; }
+  const z=zmS(), res={r, changed:JSON.stringify(S)!==kS, sub:z.sub?z.sub.k:null, q0:z.queue[0]?Object.assign({},z.queue[0]):null, pend:z.pend.map(p=>Object.assign({},p))};
+  S=JSON.parse(kS); PRICE=JSON.parse(kP); SEL=kSel; ED.undo.length=kU; ED.wantDesc=kW;
+  return res;
+}
+function zmPropose(text,byVoice){
+  const d=zmDry(text), r=d.r;
+  // команда или ответ не дан - подтверждать нечего
+  if(r.need || r.total || r.map || r.close || (!d.changed && !r.out.some(o=>o.cls!=="zm-note") && !d.sub)) return false;
+  ZM.prev={text, out:r.out, needW:d.sub==="w"&&d.q0?d.q0:null, pend:d.pend, bad:!!r.miss&&!d.changed};
+  ZM.need=null; zmRender();
+  if(byVoice) zmSpeak(ZM.prev.bad?"Не понял. Скажите ещё раз.":"Я понял так: "+r.out.filter(o=>o.cls!=="zm-note").map(o=>String(o.html).replace(/<[^>]+>/g,"")).join(". ").slice(0,140)+". Верно?");
+  return true;
+}
+function zmConfirm(byVoice){
+  const p=ZM.prev; if(!p) return; ZM.prev=null;
+  if(p.bad){ zmRender(); return; }
+  zmUser(p.text,byVoice,true);
+}
+function zmUser(text,byVoice,direct){
   text=String(text||"").trim(); if(!text||!ZM.on) return;
   if(voiceCmd(text)==="stop"){ if(ZM.eng) ZM.eng.stop(); return; }
   const t=zmNormT(text);
+  if(ZM.prev && !direct){
+    if(ZM_YES.test(t)){ zmConfirm(byVoice); return; }
+    if(ZM_NO.test(t)){ ZM.prev=null; zmRender(); if(byVoice) zmSpeak(zmAsk().q); return; }
+    // назвали только ширину - дописываем к тому, что уже понято
+    if(ZM.prev.needW && /^\d[\d.]*( ?(мм|см|миллиметр[а-я]*|сантиметр[а-я]*))?$/.test(t)){ const base=ZM.prev.text; ZM.prev=null; if(!zmPropose(base+" "+text,byVoice)) zmUser(base+" "+text,byVoice,true); return; }
+    ZM.prev=null;
+  }
+  if(ZM.strict && !direct && !ZM_CMD.test(t)){ if(zmPropose(text,byVoice)) return; }
   if(!/^(отмена|отмени(ть)?( последн[а-я]*)?|верни( как было)?|не то|не так|ошибка|убери это|сотри)$/.test(t)){
     const before=zmSnapKey(); let r;
     try{ r=zmRun(text); }catch(e){ r={out:[{cls:"zm-err",html:esc(e.message||String(e))}]}; }
@@ -645,12 +741,25 @@ function zmRender(){
   $("zmCnt").innerHTML=cnt.length ? `<span class="zm-c-t">Итог по названному:</span>`+cnt.map(c=>`<${c.k==="sheet"?'button type="button" data-za="map"':"span"} class="zm-c zm-c-${c.k}"><i>${esc(c.label)}</i><b>${esc(c.val)}</b></${c.k==="sheet"?"button":"span"}>`).join("") : (empty?"":`<span class="zm-c0">Счёт появится, когда назовёте модули: листы по раскрою, петли, направляющие, кромка</span>`);
   const tot=$("zmTotal"); tot.classList.toggle("hide",!z.price); if(z.price) tot.innerHTML=zmTotalHtml();
   const log=$("zmLog"); log.innerHTML=ZM.log.map(x=>`<div class="${x.cls}">${x.html}</div>`).join(""); log.scrollTop=log.scrollHeight;
+  $("zm").classList.toggle("zm-prev-on",!!ZM.prev);
+  if(ZM.prev){ const p=ZM.prev, nm=p.needW, lines=p.out.filter(o=>!(p.bad&&o.cls==="zm-err"));
+    const wch=nm?((/fill/.test(nm.t)?[30,50,80,100]:[300,400,450,500,600,700,800,900]).map(w=>`<button type="button" class="zm-chip" data-zpw="${w}">${w}</button>`).join("")):"";
+    $("zmQ").innerHTML=p.bad ? `<div class="zm-pv bad"><b>Не понял ответ</b><span class="zm-pv-heard">Вы сказали: "${esc(p.text)}"</span><small>Скажите ещё раз одним модулем: что это и ширину, например "мойка 800".</small></div>`
+      : `<div class="zm-pv"><b>Я понял так:</b>`+lines.map(o=>`<div class="zm-pv-l ${o.cls==="zm-err"?"err":o.cls==="zm-note"?"note":""}">${o.html}</div>`).join("")
+        +(nm?`<div class="zm-pv-l"><b>${esc(zmModFull(nm))}</b> - ширину не назвали. Нажмите ширину или скажите её:</div><div class="zm-pv-w">${wch}</div>`:"")
+        +(p.pend&&p.pend.length?`<div class="zm-pv-l note">Вы назвали ещё ${p.pend.length} ${plur(p.pend.length,"модуль","модуля","модулей")}: ${p.pend.map(x=>esc(zmModFull(x).toLowerCase())+(x.w?" "+x.w:"")).join(", ")}. Спрошу про каждый по очереди.</div>`:"")
+        +`<span class="zm-pv-heard">Вы сказали: "${esc(p.text)}"</span></div>`;
+    $("zmChips").innerHTML=(p.bad?"":`<button type="button" class="zm-chip zm-ok" data-zp="ok">Да, верно</button>`)+`<button type="button" class="zm-chip" data-zp="again">${p.bad?"Сказать ещё раз":"Нет, сказать заново"}</button>`;
+    $("zmBack").disabled=false; const nx=$("zmNext"); nx.textContent=p.bad?"Дальше":"Верно, дальше"; nx.classList.add("b1"); nx.classList.remove("b2");
+    $("zmHow").textContent=p.bad?'Нажмите "Говорить" и скажите ответ ещё раз':'Проверьте и нажмите "Да, верно". Если не так - "Нет, сказать заново" или сразу скажите правильно.';
+    return; }
   $("zmQ").innerHTML=`<b>${esc(a.q)}</b>`+(a.status?`<span class="zm-status ${/Не помещ/.test(a.status)?"bad":/ровно/.test(a.status)?"ok":""}">${esc(a.status)}</span>`:"")+(ZM.need?`<span class="zm-need">${esc(ZM.need)}</span>`:a.hint?`<small>${esc(a.hint)}</small>`:"");
   $("zmChips").innerHTML=(a.chips||[]).map(c=>`<button type="button" class="zm-chip" data-say="${esc(c[1])}">${esc(c[0])}</button>`).join("");
   $("zmBack").disabled=i===0&&!z.sub;
   const must=z.step==="layout"&&!z.sub, nx=$("zmNext");
   nx.textContent=z.step==="total"?"Готово":"Дальше"; nx.classList.toggle("b1",!must); nx.classList.toggle("b2",must);
-  $("zmHow").textContent=(a.chips||[]).length?'Нажмите вариант или нажмите "Говорить" и скажите ответ':'Нажмите "Говорить" и скажите ответ, или напишите его ниже';
+  $("zmHow").textContent=ZM.strict?'Нажмите "Говорить", ответьте на вопрос и нажмите "Стоп". Потом проверьте, как я понял.':(a.chips||[]).length?'Нажмите вариант или нажмите "Говорить" и скажите ответ':'Нажмите "Говорить" и скажите ответ, или напишите его ниже';
+  const md=$("zmMode"); if(md){ md.textContent=ZM.strict?"По одному":"Свободно"; md.classList.toggle("on",ZM.strict); }
 }
 // карта раскроя: как детали лягут на листы (движок - тот же, что в инструменте "Карта раскроя")
 function zmCutMap(){
@@ -706,6 +815,7 @@ function zmInit(){
   box.innerHTML=`<div class="zm-box">
     <div class="zm-head"><b>Замер голосом</b><span class="zm-step" id="zmStep"></span>
       <button class="b2 zm-sm" id="zmScanBtn" title="Загрузить замер: приложение попробует прочитать размеры и спросит, верно ли понял"><span class="zm-w">Замер: </span>PDF или фото</button>
+      <button class="b2 zm-sm zm-mode" id="zmMode" title="По одному: один вопрос - один ответ, после &quot;Стоп&quot; приложение показывает, как поняло, и ждёт подтверждения. Свободно: можно диктовать подряд, ответы применяются сразу."></button>
       <button class="b2 zm-sm" id="zmRestart" title="Начать новую кухню с первого вопроса">Заново</button>
       <button class="b2 zm-sm" id="zmSound" title="Задавать вопросы вслух">Звук</button>
       <button class="bx" id="zmX" title="Закрыть - кухня останется в калькуляторе">&times;</button></div>
@@ -739,11 +849,15 @@ function zmInit(){
   // защита от двойного нажатия: второе нажатие в течение 0,4 с не считается
   const once=fn=>()=>{ const n=Date.now(); if(n-(ZM.tap||0)<400) return; ZM.tap=n; fn(); };
   $("zmBack").onclick=once(()=>zmUser("назад"));
-  $("zmNext").onclick=once(()=>{ if(zmS().step==="total"&&!zmS().sub) zmClose(); else zmUser("дальше"); });
+  $("zmNext").onclick=once(()=>{ if(ZM.prev){ if(ZM.prev.bad){ ZM.prev=null; zmUser("дальше"); } else zmConfirm(); return; } if(zmS().step==="total"&&!zmS().sub) zmClose(); else zmUser("дальше"); });
+  $("zmMode").onclick=()=>{ ZM.strict=!ZM.strict; ZM.prev=null; try{ localStorage.setItem("zm-strict",ZM.strict?"1":"0"); }catch(e){}
+    zmLog("zm-note",ZM.strict?"Режим \"По одному\": отвечайте на один вопрос, нажимайте \"Стоп\" и подтверждайте, как я понял.":"Режим \"Свободно\": можно диктовать подряд, ответы применяются сразу."); zmRender(); };
   $("zmGo").onclick=()=>{ const v=inp.value; inp.value=""; zmUser(v); };
   inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); const v=inp.value; inp.value=""; zmUser(v); } });
   box.addEventListener("click",e=>{
-    const s=e.target.closest("[data-say]"); if(s){ zmUser(s.dataset.say); return; }
+    const zp=e.target.closest("[data-zp]"); if(zp){ if(zp.dataset.zp==="ok") zmConfirm(); else { ZM.prev=null; zmRender(); if(ZM.eng&&!ZM.mic) ZM.eng.start(); } return; }
+    const zw=e.target.closest("[data-zpw]"); if(zw && ZM.prev){ const base=ZM.prev.text; ZM.prev=null; if(!zmPropose(base+" "+zw.dataset.zpw)) zmUser(base+" "+zw.dataset.zpw,false,true); return; }
+    const s=e.target.closest("[data-say]"); if(s){ zmUser(s.dataset.say,false,true); return; }
     const a=e.target.closest("[data-za]"); if(!a) return; const k=a.dataset.za;
     if(k==="map") zmCutMap(); else if(k==="show"){ zmClose(); if(typeof clientShow==="function") clientShow(true); }
     else if(k==="save") saveCalc(); else if(k==="calc") zmClose(); else if(k==="kp") zmSendTo("kp"); else if(k==="rk") zmSendTo("raskroy");
@@ -753,11 +867,19 @@ function zmInit(){
   $("zmFile").onchange=e=>{ const f=e.target.files[0]; e.target.value=""; if(f && typeof zmScanFile==="function") zmScanFile(f); };
   // микрофон: каждая договорённая фраза - сразу ответ
   const listen=()=>`<span class="ed-wait">Слушаю - говорите...</span>`;
-  const H={ final(f){ live.innerHTML=`<span class="ed-heard">Принял: ${esc(f)}</span>`; zmUser(f,true); clearTimeout(ZM.heardT); ZM.heardT=setTimeout(()=>{ if(ZM.mic) live.innerHTML=listen(); },1600); },
-    interim(s){ if(s){ live.textContent=s; live.classList.remove("hide"); } else if(ZM.mic){ if(!live.querySelector(".ed-heard")) live.innerHTML=listen(); } else live.classList.add("hide"); },
+  // По одному: всё сказанное копится, пока мастер не нажмёт "Стоп" (или не скажет "стоп"), потом - "Я понял так".
+  // Свободно: каждая договорённая фраза - сразу ответ.
+  const draftHtml=extra=>`<span class="ed-heard">Слышу: ${esc((ZM.draft+" "+(extra||"")).trim())}</span><small class="zm-live-tip">Закончили - нажмите "Стоп"</small>`;
+  const H={ final(f){
+      if(ZM.strict){ let x=String(f).trim(); const stop=/(^|\s)стоп[.!]?$/i.test(x)||/^(все|всё|готово)[.!]?$/i.test(x); if(stop) x=x.replace(/(^|\s)(стоп|все|всё|готово)[.!]?$/i,"").trim();
+        if(x) ZM.draft=(ZM.draft+" "+x).trim(); live.innerHTML=ZM.draft?draftHtml():listen(); live.classList.remove("hide"); if(stop&&ZM.eng) ZM.eng.stop(); return; }
+      live.innerHTML=`<span class="ed-heard">Принял: ${esc(f)}</span>`; zmUser(f,true); clearTimeout(ZM.heardT); ZM.heardT=setTimeout(()=>{ if(ZM.mic) live.innerHTML=listen(); },1600); },
+    interim(s){ if(ZM.strict&&ZM.mic){ live.innerHTML=ZM.draft||s?draftHtml(s):listen(); live.classList.remove("hide"); return; }
+      if(s){ live.textContent=s; live.classList.remove("hide"); } else if(ZM.mic){ if(!live.querySelector(".ed-heard")) live.innerHTML=listen(); } else live.classList.add("hide"); },
     state(on,m){ ZM.mic=on; mic.classList.toggle("rec",on); mic.querySelector("span").textContent=on?"Стоп":"Говорить";
-      if(on){ live.innerHTML=listen(); live.classList.remove("hide"); } else live.classList.add("hide");
-      if(m){ zmLog("zm-err",esc(m)); zmRender(); } } };
+      if(on){ if(ZM.strict) ZM.draft=""; live.innerHTML=listen(); live.classList.remove("hide"); } else live.classList.add("hide");
+      if(m){ zmLog("zm-err",esc(m)); zmRender(); }
+      if(!on && ZM.strict && ZM.draft.trim()){ const d=ZM.draft; ZM.draft=""; zmUser(d,true); } } };
   const SR=!window.claude && (window.SpeechRecognition||window.webkitSpeechRecognition);
   if(window.claude&&window.claude.use) Promise.resolve(window.claude.use("dictation")).then(d=>{ if(d) ZM.eng=claudeEngine(d,H); else mic.classList.add("off"); }).catch(()=>mic.classList.add("off"));
   else if(SR) ZM.eng=webSpeechEngine(SR,H);

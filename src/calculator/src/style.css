@@ -405,3 +405,17 @@ button.zm-c i{color:var(--accent)}
 .zm-head .bx{margin-left:auto}
 @media(max-width:939px){ .zm-step{order:9;flex:1 1 100%} .zm-w{display:none} .zm-acts{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none} .zm-acts>*{flex:none;white-space:nowrap} .zm-q small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden} .zm-total{padding:8px 10px} .zm-tot-h b{font-size:24px} }
 @media(min-width:940px){ .zm-left:has(.zm-total:not(.hide)){max-height:none} .zm-left:has(.zm-total:not(.hide)) .zm-svg{height:auto;min-height:200px} .zm-head .bx{margin-left:0} }
+/* замер: строгий режим "по одному" - карточка "Я понял так" */
+.zm-pv{display:flex;flex-direction:column;gap:4px}
+.zm-pv>b{font-size:17px}
+.zm-pv-l{font-size:15px;line-height:1.35}
+.zm-pv-l.note{color:var(--muted);font-size:13px}
+.zm-pv-l.err{color:#b3261e}
+.zm-pv-heard{display:block;color:var(--muted);font-size:12px;font-style:italic;margin-top:2px}
+.zm-pv-w{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0}
+.zm-prev-on .zm-q{border-left-color:#2e7d32;background:#f3faf3}
+.zm-pv.bad>b{color:#b3261e}
+.zm-prev-on .zm-q:has(.zm-pv.bad){border-left-color:#b3261e;background:#fdf3f2}
+.zm-chip.zm-ok{background:#2e7d32;color:#fff;border-color:#2e7d32;font-weight:700}
+.zm-mode.on{background:#2e7d32;color:#fff;border-color:#2e7d32}
+.zm-live-tip{display:block;color:var(--muted);font-size:12px;margin-top:2px}

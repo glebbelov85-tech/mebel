@@ -1,0 +1,44 @@
+// Режим "По одному" (отзыв мастера) на сайте: ответ -> "Я понял так" -> "Да, верно". Модули мастера по одному.
+// Запуск: node test/pw_strict.js  (сайт берётся из папки репо - сначала python3 site/build.py . --project src)
+const {chromium,devices}=require('playwright');
+const path=require('path'), fs=require('fs');
+const ROOT=path.resolve(__dirname,'../../..');
+const TYPES={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png'};
+let fail=0; const ok=(c,m)=>{ console.log((c?'  ok  ':'  FAIL ')+m); if(!c) fail++; };
+(async()=>{ const b=await chromium.launch();
+ const ctx=await b.newContext({...devices['Pixel 7']});
+ await ctx.route('http://site.test/**',r=>{ let u=new URL(r.request().url()).pathname; if(u.endsWith('/')) u+='index.html'; const f=path.join(ROOT,decodeURIComponent(u));
+   if(!f.startsWith(ROOT)||!fs.existsSync(f)) return r.fulfill({status:404,body:''}); r.fulfill({status:200,contentType:TYPES[path.extname(f)]||'application/octet-stream',body:fs.readFileSync(f)}); });
+ const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+ await p.goto('http://site.test/kalkulyator/?zamer=1'); await p.waitForTimeout(900);
+ ok(await p.evaluate(()=>ZM.strict),'режим "По одному" включён сам');
+ ok(/По одному/.test(await p.textContent('#zmMode')),'кнопка режима: По одному');
+ const say=async t=>{ await p.fill('#zmIn',t); await p.click('#zmGo'); await p.waitForTimeout(250); };
+ const yes=async()=>{ await p.click('[data-zp="ok"]'); await p.waitForTimeout(350); };
+ const q=async()=>(await p.textContent('#zmQ')).replace(/\s+/g,' ');
+ await say('угловая, угол слева');
+ ok(/Я понял так/.test(await q()) && await p.evaluate(()=>S.zm.step)==='layout','ответ не применён до подтверждения: '+(await q()).slice(0,70));
+ await yes(); ok(await p.evaluate(()=>S.zm.step)==='len0','после "Да" - следующий вопрос');
+ await say('3600'); await yes(); await say('1800'); await yes(); await say('2700'); await yes(); await say('угловой шкаф'); await yes();
+ ok(/Модуль 1/.test(await q()),'вопрос про модуль 1: '+(await q()).slice(0,80));
+ await say('мойка, модуль 800'); const pv=await q(); ok(/Под мойку 800/.test(pv) && !/Шкаф с дверцами/.test(pv),'"мойка, модуль 800" - понял одним модулем: '+pv.slice(0,90));
+ ok((await p.evaluate(()=>S.kit.walls[0].lower.length))===0,'пока не подтвердил - в кухне пусто');
+ await yes(); await say('450, посудомоечная машина'); ok(/Посудомойка.*450/.test(await q()),'450 посудомойка: '+(await q()).slice(0,80)); await yes();
+ await say('модуль с тремя ящиками, один большой, два маленьких'); ok(/ширину не назвали/.test(await q()),'ящики без ширины - спрашивает ширину в "Я понял так"');
+ await p.click('[data-zpw="600"]'); await p.waitForTimeout(300); ok(/2 малых \+ 1 глубокий 600/.test(await q()),'нажал 600 - '+(await q()).slice(0,80)); await yes();
+ await say('модуль с одним распашным фасадом'); await p.click('[data-zpw="400"]'); await p.waitForTimeout(300); ok(/одна дверца 400/.test(await q()),'одна дверца 400: '+(await q()).slice(0,90)); await yes();
+ const L=await p.evaluate(()=>S.kit.walls[0].lower.map(m=>m.t+' '+m.w+(m.dn?'/'+m.dn:'')).join(', '));
+ ok(L==='l_sink 800, l_dish 450, l_dr3b 600, l_shelf 400/1','в кухне ровно 4 модуля мастера: '+L);
+ await say('бла бла бла'); ok(/Не понял/.test(await q()),'непонятное - "Не понял", ничего не добавлено');
+ await p.click('[data-zp="again"]'); await p.waitForTimeout(200);
+ await say('модуль 300, потом заглушка 100'); ok(/ещё 1 модуль/.test(await q()),'два модуля подряд - предупреждает, спросит по очереди');
+ await yes(); ok(/Ставим\?/.test(await q()),'второй модуль - отдельным вопросом');
+ await p.click('[data-say="нет"]'); await p.waitForTimeout(300);
+ ok((await p.evaluate(()=>S.kit.walls[0].lower.length))===5,'"Нет" - второй не поставлен');
+ await p.screenshot({path:__dirname+'/shots/zm_strict.png'});
+ // свободный режим - как раньше
+ await p.click('#zmMode'); ok(!(await p.evaluate(()=>ZM.strict)),'переключил на "Свободно"');
+ await say('шкаф 300'); ok(!/Я понял так/.test(await q()),'в свободном режиме применяется сразу');
+ ok(!errs.length,'ошибок страницы нет '+errs.join('; '));
+ await b.close(); console.log(fail?'\nПРОВАЛОВ: '+fail:'\nВсё прошло'); process.exit(fail?1:0);
+})();

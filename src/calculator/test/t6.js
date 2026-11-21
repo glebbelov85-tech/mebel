@@ -1,4 +1,5 @@
 // замер по шагам: фразы мастера -> кухня. node test/run2.js test/t6.js
+ZM.strict=false;   // этот тест - для свободного режима; строгий проверяет test/t8.js
 const strip=h=>String(h).replace(/<[^>]+>/g,"");
 function go(title,phrases){
   console.log("\n===== "+title); zmFresh();
