@@ -29,7 +29,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .big{display:block}
 body:not(.v-home) .big{display:none}
 body:not(.v-home) .hero{padding-bottom:12px}
-.quick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:16px}
+.quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}
 .q{display:flex;flex-direction:column;gap:2px;text-align:left;text-decoration:none;color:#fff;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);border-radius:18px;padding:14px;cursor:pointer;min-height:104px;transition:background .15s,transform .15s}
 .q:hover{background:rgba(255,255,255,.12);transform:translateY(-2px)}
 .q .qi{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.1);color:#e8b878;margin-bottom:auto}
@@ -343,7 +343,7 @@ footer .copy{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);f
 <header class="hero" id="top">
   <div class="in">
     <div class="brand">
-      <nav data-variants aria-label="Варианты продукта"></nav>
+      <nav data-variants aria-label="Переход"></nav>
     </div>
     <div class="big">
       <h1 id="hello">Здравствуйте!</h1>
@@ -364,10 +364,6 @@ footer .copy{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);f
         <a class="q" href="#ceh" data-go="ceh">
           <span class="qi"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm7 1.5V9h5.5zM8 13v2h8v-2zm0 4v2h5v-2z"/></svg></span>
           <b>ТЗ для цеха</b><span>С картинкой и пометками "Внимание"</span>
-        </a>
-        <a class="q" href="../vitrina/redaktor/">
-          <span class="qi"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 12h16l-5-6-4 5-3-3z"/></svg></span>
-          <b>Витрина работ</b><span>Ваши работы и отзывы для клиентов - Вариант 3</span>
         </a>
       </div>
     </div>
@@ -410,11 +406,11 @@ footer .copy{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);f
         <li>Готовый запрос для ИИ-рендера по фото комнаты и эскизу</li>
         <li>Примерная смета строками, ваши цены</li>
       </ul></div>
-      <div class="of a"><h3>Уже есть на сайте</h3><ul>
-        <li><a href="../konfigurator/">Примерка мебели на фото комнаты</a> - клиент сам двигает и поворачивает</li>
-        <li><a href="../kalkulyator/">Калькулятор</a> для простых шкафов и кухонь: детали и листы точно</li>
-        <li><a href="../kalkulyator/?zamer=1">Замер голосом</a> - кухня по шагам</li>
-        <li><a href="../raskroy/">Раскрой листов</a>, если цех просит карту</li>
+      <div class="of a"><h3>Есть в Конструкторе (первая версия)</h3><ul>
+        <li>Примерка мебели на фото комнаты - клиент сам двигает и поворачивает</li>
+        <li>Калькулятор для простых шкафов и кухонь: детали и листы точно</li>
+        <li>Замер голосом - кухня по шагам</li>
+        <li>Раскрой листов, если цех просит карту</li>
         <li>Голосовой помощник на каждой странице</li>
       </ul></div>
       <div class="of c"><h3>Можем добавить, если нужно</h3><ul>

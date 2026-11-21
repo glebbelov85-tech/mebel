@@ -114,7 +114,10 @@ def main():
     assert "/*SITE_VERSION*/null" in sj
     wr(os.path.join(OUT, "shared", "site.js"), sj.replace("/*SITE_VERSION*/null", json.dumps(ver, ensure_ascii=False)))
     wr(os.path.join(OUT, "shared", "mebel-order.js"), ORDER_JS)
-    wr(os.path.join(OUT, "index.html"), rd(os.path.join(HERE, "home", "index.html")))
+    # Корень сайта - стартовая страница: выбор продукта (Конструктор, Блокнот мастера, Витрины).
+    # Главная Конструктора (сводка, путь заказа, настройки) - в konstruktor/.
+    wr(os.path.join(OUT, "index.html"), rd(os.path.join(HERE, "start", "index.html")))
+    wr(os.path.join(OUT, "konstruktor", "index.html"), rd(os.path.join(HERE, "home", "index.html")))
     wr(os.path.join(OUT, ".nojekyll"), "")
     wr(os.path.join(OUT, "404.html"), rd(os.path.join(HERE, "home", "404.html")))
     wr(os.path.join(OUT, "otzyv", "index.html"), rd(os.path.join(HERE, "home", "otzyv.html")))
@@ -122,7 +125,7 @@ def main():
     shutil.copytree(os.path.join(HERE, "bloknot"), os.path.join(OUT, "bloknot"))
     # Витрина мастера - третий вариант: страница для клиентов + Мастерская (redaktor/)
     shutil.copytree(os.path.join(HERE, "vitrina"), os.path.join(OUT, "vitrina"))
-    # Вкладка "Витрины" в верхней полосе: экран выбора витрины (мастера, путешествие, Краснодар)
+    # Карточка "Витрины" на стартовой странице: экран выбора витрины (мастера, путешествие, Краснодар)
     shutil.copytree(os.path.join(HERE, "vitriny"), os.path.join(OUT, "vitriny"))
     # Закрытая витрина для Краснодара: страница входа по пин-коду + зашифрованные данные и фото (enc/).
     # Внутри - те же витрины вариантов 3 и 4, но данные они получают из расшифровки (zamok.js).

@@ -33,7 +33,7 @@
   // соберём одно итоговое. Новый вариант = одна запись здесь + его папка в site/ (см. build.py).
   // pages - какие страницы сайта относятся к варианту (по MEBEL_TOOL), path - адрес от корня сайта.
   var VARIANTS = [
-    { id: "v1", n: 1, name: "Мебельный конструктор", short: "Конструктор", path: "",
+    { id: "v1", n: 1, name: "Мебельный конструктор", short: "Конструктор", path: "konstruktor/",
       pages: ["home", "kalkulyator", "konfigurator", "kp", "raskroy", "zakazy"],
       who: "Полный набор для мастерской: точный расчёт и документы",
       points: ["Точный расчёт деталей и листов", "Конфигуратор 3D для клиента", "КП и договор в PDF, карта раскроя", "Учёт заказов, оплаты, напоминания"] },
@@ -80,10 +80,11 @@
 
   // --- мелочи ---
   function tool(id) { for (var i = 0; i < TOOLS.length; i++) if (TOOLS[i].id === id) return TOOLS[i]; return null; }
-  function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Главная" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id === "vitrina" ? "Витрина мастера" : id === "vitrina-red" ? "Мастерская витрины" : id === "vitrina-put" ? "Витрина: путешествие" : id === "vitriny" ? "Витрины" : /^(krasnodar|kr-)/.test(id) ? "Витрина для Краснодара" : id; }
+  function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Конструктор" : id === "start" ? "Главная" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id === "vitrina" ? "Витрина мастера" : id === "vitrina-red" ? "Мастерская витрины" : id === "vitrina-put" ? "Витрина: путешествие" : id === "vitriny" ? "Витрины" : /^(krasnodar|kr-)/.test(id) ? "Витрина для Краснодара" : id; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
-  function root() { return me === "home" ? "./" : me === "vitrina-red" || me === "vitrina-put" || me === "kr-vitrina" || me === "kr-dom" ? "../../" : "../"; }
-  function urlOf(id) { return root() + id + "/"; }
+  // "start" - стартовая страница (корень сайта), "home" - главная Конструктора (konstruktor/, в ней <base href="../">)
+  function root() { return me === "home" || me === "start" ? "./" : me === "vitrina-red" || me === "vitrina-put" || me === "kr-vitrina" || me === "kr-dom" ? "../../" : "../"; }
+  function urlOf(id) { return id === "start" ? root() : root() + (id === "home" ? "konstruktor" : id) + "/"; }
   function money(n, cur) {
     if (window.MebelOrder) return MebelOrder.money(n, cur || MebelOrder.region().currency);
     n = Math.round(+n || 0); return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " ₸";
@@ -231,7 +232,7 @@
     var host = adapter && adapter.mount ? document.querySelector(adapter.mount) : null;
     if (host) el.className = "inline";
     el.innerHTML =
-      '<a class="ms-home" href="' + root() + '" title="Все инструменты"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 4h8v7H3zM13 4h8v4h-8zM13 10h8v10h-8zM3 13h8v7H3z"/></svg><span>Все инструменты</span></a>' +
+      '<a class="ms-home" href="' + urlOf("home") + '" title="Все инструменты Конструктора"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 4h8v7H3zM13 4h8v4h-8zM13 10h8v10h-8zM3 13h8v7H3z"/></svg><span>Все инструменты</span></a>' +
       '<span class="ms-name">' + esc(t ? t.full : "") + "</span>" +
       '<button type="button" class="ms-send" id="msSend" title="Передать заказ в другой инструмент"><svg class="ms-ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M14 4l7 7-7 7v-4c-5 0-8.5 1.6-11 5 1-5 4-10 11-11z"/></svg><span>Передать заказ</span><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg></button>';
     if (host) host.insertBefore(el, host.firstChild); else document.body.insertBefore(el, document.body.firstChild);
@@ -325,7 +326,7 @@
   var NAV = [
     [/калькулятор|расчет|посчитать|смет/, "kalkulyator"], [/конфигуратор/, "konfigurator"],
     [/(^|\s)кп(\s|$)|коммерческ|договор|pdf|пдф/, "kp"], [/раскро|распил|раскладк/, "raskroy"],
-    [/учет|заказы|список заказов|журнал/, "zakazy"], [/блокнот|вариант (2|два)|второй вариант/, "bloknot"], [/витрин|вариант (3|три)|третий вариант/, "vitriny"], [/главн|(^|\s)домой|все инструменты|меню сайта|начальн|конструктор|основно[йм] продукт|вариант (1|один)|первый вариант/, "home"]
+    [/учет|заказы|список заказов|журнал/, "zakazy"], [/блокнот|вариант (2|два)|второй вариант/, "bloknot"], [/витрин|вариант (3|три)|третий вариант/, "vitriny"], [/главн|(^|\s)домой|начальн|выбор продукт|стартов/, "start"], [/все инструменты|меню сайта|конструктор|основно[йм] продукт|вариант (1|один)|первый вариант/, "home"]
   ];
   var VSTOP = { "нажми": 1, "нажать": 1, "кликни": 1, "кнопку": 1, "кнопка": 1, "на": 1, "открой": 1, "вкладку": 1, "вкладка": 1, "перейди": 1, "в": 1, "во": 1, "выбери": 1, "включи": 1, "пожалуйста": 1, "давай": 1, "покажи": 1, "раздел": 1, "пункт": 1 };
   function vn(t) { return String(t || "").toLowerCase().replace(/ё/g, "е").replace(/[.,!?;:"«»]/g, " ").replace(/\s+/g, " ").trim(); }
@@ -364,7 +365,7 @@
     if (adapter && adapter.voice) { try { var r = adapter.voice(t); if (r) return r; } catch (e) { return e.message; } }
     // передать заказ: "передай заказ в раскрой", "отправь в КП"
     if ((m = t.match(/^(передай|отправь|перекинь|перенеси)[а-я]*( заказ| расчет| проект)?( в| во)?(?=\s) (.+)$/))) {
-      for (i = 0; i < NAV.length; i++) if (NAV[i][0].test(m[4]) && NAV[i][1] !== "home") {
+      for (i = 0; i < NAV.length; i++) if (NAV[i][0].test(m[4]) && NAV[i][1] !== "home" && NAV[i][1] !== "start" && sameProduct(NAV[i][1])) {
         if (NAV[i][1] === me) return "Заказ уже здесь";
         setTimeout(function (id) { return function () { send(id); }; }(NAV[i][1]), 400); return "Передаю заказ в \"" + toolName(NAV[i][1]) + "\"";
       }
@@ -375,7 +376,8 @@
     if (!bare || what.split(" ").length <= 3) for (i = 0; i < NAV.length; i++) if (NAV[i][0].test(what) && !(bare && what.split(" ").length > 2)) {
       var id = NAV[i][1];
       if (id === me) return "Вы уже здесь: " + toolName(id);
-      setTimeout(function () { location.href = id === "home" ? root() : urlOf(id); }, 400);
+      if (!sameProduct(id)) return "Это другой продукт. Скажите \"на главную\" и выберите его там.";
+      setTimeout(function () { location.href = urlOf(id); }, 400);
       return "Открываю: " + toolName(id);
     }
     if (/^(открой |покажи )?(условия( использования)?|лицензи[а-я]*|об авторе|кто автор[а-я ]*|автор[а-я]* (сайта|разработки))$/.test(t)) { setTimeout(openTerms, 300); return "Открываю условия использования"; }
@@ -399,7 +401,7 @@
     w.innerHTML = '<button type="button" class="msv-pill" id="msvPill">' + mic + ' Голосом</button>' +
       '<div class="msv-panel" id="msvPanel" hidden><div class="msv-top"><b>Голосовой помощник</b><span id="msvSt"></span><button type="button" class="msv-set" id="msvSet" title="Отвечать вслух и каким голосом">звук</button><button type="button" class="msv-x" id="msvX" aria-label="Свернуть">&times;</button></div>' +
       '<div class="msv-tts" id="msvTts" hidden></div>' +
-      '<div class="msv-log" id="msvLog"><div class="msv-info">' + (adapter && adapter.voiceHint ? esc(adapter.voiceHint) + " Или куда перейти: \"открой " + (me === "bloknot" ? "конструктор" : "калькулятор") + "\"." : 'Скажите, куда перейти или что нажать: "открой калькулятор", "передай заказ в раскрой", "нажми сохранить", "что здесь можно нажать".') + '</div></div>' +
+      '<div class="msv-log" id="msvLog"><div class="msv-info">' + (adapter && adapter.voiceHint ? esc(adapter.voiceHint) + " Или куда перейти: \"" + (me === "bloknot" ? "на главную" : "открой калькулятор") + "\"." : 'Скажите, куда перейти или что нажать: "открой калькулятор", "передай заказ в раскрой", "нажми сохранить", "что здесь можно нажать".') + '</div></div>' +
       '<div class="msv-live" id="msvLive" hidden></div>' +
       '<div class="msv-row">' + (SR ? '<button type="button" class="msv-mic" id="msvMic" title="Включить или выключить микрофон">' + mic + '<span> Говорить</span></button>' : '') + '<input id="msvIn" placeholder="' + (adapter && adapter.voiceHint ? "Что поменять или куда перейти" : "Куда перейти или что нажать") + '" autocomplete="off"><button type="button" class="msv-go" id="msvGo">OK</button></div></div>';
     document.body.appendChild(w);
@@ -441,23 +443,20 @@
   // --- переключатель вариантов: любой <nav data-variants> заполняется сам ---
   function variantOf(page) { for (var i = 0; i < VARIANTS.length; i++) if (VARIANTS[i].pages.indexOf(page) >= 0) return VARIANTS[i]; return VARIANTS[0]; }
   function variantUrl(v) { return root() + v.path; }
+  // Продукты разделены (просьба Александра, 2026-11-21): переходы между ними - только через
+  // стартовую страницу. Внутри продукта ни вкладок, ни полосы с другими продуктами нет -
+  // <nav data-variants> превращается в небольшую кнопку "На главную" (а у витрин ещё "Все витрины").
+  function prodOf(page) { if (page === "vitriny") return "vg"; var v = variantOf(page); return v.group || v.id; }
+  function sameProduct(id) { return me === "start" || id === "start" || prodOf(me) === prodOf(id); }
+  var BACK = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M14.7 5.3a1 1 0 0 1 0 1.4L9.4 12l5.3 5.3a1 1 0 0 1-1.4 1.4l-6-6a1 1 0 0 1 0-1.4l6-6a1 1 0 0 1 1.4 0z"/></svg>';
   function variantsNav() {
-    var cur = me === "vitriny" ? VG : variantOf(me), tab = cur.group ? VG : cur;
-    function link(v, on, label, short) {
-      return '<a href="' + esc(variantUrl(v)) + '"' + (on ? ' class="on" aria-current="page"' : "") + ' title="' + esc(v.name) + (v.locked ? " (вход по пин-коду)" : "") + '">' +
-        (label ? "" : "<b>" + v.n + "</b>") + '<span class="ms-l">' + esc(label || v.name) + '</span><span class="ms-s">' + esc(short || v.short) + "</span>" + (v.locked ? LOCK : "") + "</a>";
-    }
+    var cur = me === "vitriny" ? VG : variantOf(me);
     [].forEach.call(document.querySelectorAll("[data-variants]"), function (el) {
       el.classList.add("ms-prod");
-      if (!el.getAttribute("aria-label")) el.setAttribute("aria-label", "Варианты продукта");
-      var h = '<div class="ms-main">' + TABS.map(function (v) { return link(v, v === tab); }).join("") + "</div>";
-      if (cur.group) h += '<div class="ms-sub" aria-label="Витрины">' + VG.kids.map(function (v) { return link(v, v === cur, v.sub || v.name, v.short); }).join("") + "</div>";
+      el.setAttribute("aria-label", "Переход");
+      var h = '<a class="ms-back" href="' + esc(root()) + '" title="К выбору продукта">' + BACK + "<span>На главную</span></a>";
+      if (cur.group) h += '<a class="ms-back ms-up" href="' + esc(root() + VG.path) + '" title="К выбору витрины"><span>Все витрины</span></a>';
       el.innerHTML = h;
-      // если полоса не влезла и прокручивается - показать выбранную вкладку
-      [].forEach.call(el.querySelectorAll(".ms-main,.ms-sub"), function (row) {
-        var on = row.querySelector(".on");
-        if (on && on.offsetLeft + on.offsetWidth > row.clientWidth) row.scrollLeft = Math.max(0, on.offsetLeft + on.offsetWidth - row.clientWidth + 16);
-      });
     });
   }
 
@@ -466,6 +465,8 @@
     variantsNav();
     watchUpdates();
     if (me === "home" || me === "vitriny") { setStaff(); voicePanel(); return; }
+    // стартовая страница: выбор продукта, голос - общий
+    if (me === "start") { setStaff(); voicePanel(); return; }
     // Блокнот мастера - отдельный продукт со своей шапкой: без полоски "Передать заказ", голос - общий
     if (me === "bloknot") { setStaff(); voicePanel(); return; }
     // Витрина - страница для клиентов: ничего не добавляем и мастером не помечаем. Мастерская витрины - для мастера.
@@ -482,7 +483,7 @@
   window.MebelSite = {
     TOOLS: TOOLS, tool: tool, toolName: toolName, read: read, write: write, clear: clear,
     summary: summary, ago: ago, money: money, toast: toast, saveFile: saveFile, urlOf: urlOf, isStaff: isStaff,
-    voiceNav: voiceNav, version: VER, VARIANTS: VARIANTS, TABS: TABS, VG: VG, variantOf: variantOf, variantUrl: variantUrl, checkUpdate: checkUpdate, terms: openTerms, sign: SIGN,
+    voiceNav: voiceNav, version: VER, VARIANTS: VARIANTS, sameProduct: sameProduct, TABS: TABS, VG: VG, variantOf: variantOf, variantUrl: variantUrl, checkUpdate: checkUpdate, terms: openTerms, sign: SIGN,
     register: function (a) {
       adapter = a || {};
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
@@ -490,7 +491,7 @@
     }
   };
   // страница без адаптера (главная) запускается сама
-  if (me === "home" || me === "vitriny" || me === "vitrina" || me === "vitrina-red" || me === "vitrina-put" || me === "krasnodar" || me === "kr-vitrina" || me === "kr-dom") {
+  if (me === "home" || me === "start" || me === "vitriny" || me === "vitrina" || me === "vitrina-red" || me === "vitrina-put" || me === "krasnodar" || me === "kr-vitrina" || me === "kr-dom") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
   }
 })();

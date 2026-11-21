@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<!-- Главная Конструктора лежит в konstruktor/, а ссылки в ней - от корня сайта (как было, когда она была корнем). -->
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#24302c">
+<title>Мебельный конструктор - инструменты для мебельщика</title>
+<meta name="description" content="Расчёт шкафов-купе и кухонь, конфигуратор для клиента, КП и договор в PDF, карта раскроя и учёт заказов.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%2324302c'/%3E%3Cpath fill='%23d9b48a' d='M5 5h6v6H5zM13 5h6v3h-6zM13 10h6v9h-6zM5 13h6v6H5z'/%3E%3C/svg%3E">
+<script>document.documentElement.className += " js";</script>
+<style>
+/* Главная: сверху - "что делаем сейчас" (быстрые действия), дальше секции по порядку работы:
+   текущий заказ, мои заказы (сводка из учёта), путь заказа (все инструменты), настройки и помощь.
+   Навигация по секциям: на компьютере - закреплённая полоска сверху, на телефоне - панель внизу экрана. */
+:root{--bg:#f4f1ec;--card:#fffdf9;--ink:#25221f;--muted:#70675f;--line:#e4dbd0;--dark:#24302c;--dark2:#2e3d38;--accent:#2f6f5e;--accent-l:#e3f0ec;--wood:#b98a5a;--wood-l:#f6ebdd;--warn:#b5651d;--warn-l:#fdf0e2;--bad:#b3412f;--bad-l:#fbe7e3;--nav:58px}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+html,body{margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+a{color:var(--accent)}
+button{font:inherit;color:inherit}
+.hide{display:none!important}
+.in{max-width:1080px;margin:0 auto;padding:0 16px}
+
+/* ---------- шапка: приветствие и быстрые действия ---------- */
+.hero{background:radial-gradient(1200px 400px at 85% -10%,rgba(217,180,138,.22),transparent 60%),linear-gradient(160deg,#24302c,#1d2724);color:#eef2f0;padding:18px 0 26px}
+.brand{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-weight:600;font-size:16px}
+.brand svg{flex:none}
+.beta{margin-left:auto;background:rgba(217,180,138,.16);color:#f1dcc3;border:1px solid rgba(217,180,138,.4);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:500;text-decoration:none;white-space:nowrap}
+.beta:hover{background:rgba(217,180,138,.3)}
+.hero h1{margin:22px 0 2px;font-size:30px;line-height:1.15;letter-spacing:-.015em}
+.hero .sub{margin:0;opacity:.75;font-size:16px}
+.quick{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:18px}
+.q{position:relative;display:flex;flex-direction:column;gap:2px;text-align:left;text-decoration:none;color:#fff;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:14px;min-height:118px;cursor:pointer;transition:background .15s,transform .15s,border-color .15s}
+.q:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);transform:translateY(-2px)}
+.q:active{transform:scale(.98)}
+.q .qi{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.1);color:#d9b48a;margin-bottom:auto}
+.q div{display:flex;flex-direction:column;gap:2px}
+.q b{font-size:16px;margin-top:12px}
+.q span{font-size:13px;opacity:.72;line-height:1.3}
+.q.main{background:#3d8a73;border-color:#3d8a73}
+.q.main .qi{background:rgba(255,255,255,.18);color:#fff}
+.q.main:hover{background:#469880}
+.upd{margin-top:16px;font-size:13px;color:#cfe3db;display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.upd b{background:rgba(61,138,115,.35);border:1px solid rgba(110,190,165,.45);color:#e6f4ef;border-radius:999px;padding:3px 11px;font-weight:600}
+.upd span{opacity:.85}
+
+/* ---------- навигация по секциям ---------- */
+.nav{position:sticky;top:0;z-index:40;background:rgba(244,241,236,.88);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid var(--line)}
+.nav .in{display:flex;gap:4px;padding-top:8px;padding-bottom:8px;overflow-x:auto;scrollbar-width:none}
+.nav .in::-webkit-scrollbar{display:none}
+.nav a{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;text-decoration:none;color:var(--muted);font-size:14px;font-weight:600;white-space:nowrap;transition:background .15s,color .15s}
+.nav a:hover{color:var(--ink);background:rgba(0,0,0,.04)}
+.nav a.on{background:var(--dark);color:#fff}
+.nav a svg{width:18px;height:18px;flex:none}
+.nav .cnt{background:var(--wood);color:#fff;border-radius:999px;font-size:11px;padding:1px 6px;min-width:18px;text-align:center}
+.nav a.on .cnt{background:#d9b48a;color:#24302c}
+
+/* ---------- секции ---------- */
+main{padding:6px 0 40px}
+section{padding-top:26px}
+.sh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.sh h2{margin:0;font-size:22px;letter-spacing:-.01em}
+.sh p{margin:0;color:var(--muted);font-size:14px;flex:1 1 260px}
+.sh a{font-size:14px;font-weight:600;text-decoration:none;white-space:nowrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 1px 2px rgba(40,30,20,.04)}
+.js .rv{opacity:0;transform:translateY(14px);transition:opacity .5s ease,transform .5s ease}
+.js .rv.seen{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.js .rv{opacity:1;transform:none;transition:none}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:10px 14px;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none;transition:border-color .15s,background .15s}
+.btn:hover{border-color:var(--accent)}
+.btn.p{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.p:hover{background:#3a806c}
+.btn.l{border:0;background:none;color:var(--muted);padding:8px 6px}
+.btn.l:hover{color:var(--ink)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+
+/* текущий заказ */
+.ord-top{display:flex;gap:14px;align-items:flex-start}
+.ord-ic{flex:none;width:48px;height:48px;border-radius:14px;background:var(--wood-l);color:var(--wood);display:flex;align-items:center;justify-content:center}
+.ord-t{font-size:19px;font-weight:700;line-height:1.25}
+.ord-m{color:var(--muted);font-size:14px;margin-top:3px}
+.ord-sum{margin-left:auto;text-align:right;font-weight:700;font-size:19px;white-space:nowrap}
+.ord-sum small{display:block;font-size:12px;font-weight:500;color:var(--muted)}
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:16px 0 4px;counter-reset:st}
+.steps a{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:var(--muted);font-size:12.5px;text-align:center;padding:4px 2px;border-radius:12px}
+.steps a::before{counter-increment:st;content:counter(st);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff;border:2px solid var(--line);font-weight:700;color:var(--muted);position:relative;z-index:1;transition:border-color .15s}
+.steps a::after{content:"";position:absolute;top:21px;left:calc(50% + 17px);right:calc(-50% + 14px);height:2px;background:var(--line)}
+.steps a:last-child::after{display:none}
+.steps a:hover::before{border-color:var(--accent);color:var(--accent)}
+.steps a.was::before{content:"✓";background:var(--accent-l);border-color:var(--accent-l);color:var(--accent)}
+.steps a.next{color:var(--ink);font-weight:600}
+.steps a.next::before{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 0 5px rgba(47,111,94,.15)}
+
+/* мои заказы */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.stat{display:block;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;transition:border-color .15s}
+.stat:hover{border-color:var(--accent)}
+.stat b{display:block;font-size:24px;line-height:1.2;letter-spacing:-.01em;overflow-wrap:anywhere}
+.stat span{font-size:13px;color:var(--muted)}
+.stat.warn b{color:var(--warn)}
+.stat.bad b{color:var(--bad)}
+.stages{display:flex;gap:6px;overflow-x:auto;padding:12px 0 2px;scrollbar-width:none;scroll-snap-type:x proximity}
+.stages::-webkit-scrollbar{display:none}
+.stages a{flex:none;scroll-snap-align:start;display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;color:var(--ink);text-decoration:none}
+.stages a i{font-style:normal;background:var(--accent-l);color:var(--accent);border-radius:999px;padding:0 7px;font-weight:700;font-size:12px}
+.stages a.zero{color:var(--muted)}
+.stages a.zero i{background:#efe9e1;color:var(--muted)}
+.ev{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+.ev a{display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;transition:border-color .15s}
+.ev a:hover{border-color:var(--accent)}
+.ev .d{flex:none;width:50px;text-align:center;border-radius:10px;background:var(--accent-l);color:var(--accent);padding:4px 0;line-height:1.1}
+.ev .d b{display:block;font-size:18px}
+.ev .d small{font-size:11px}
+.ev .late .d{background:var(--bad-l);color:var(--bad)}
+.ev .now .d{background:var(--warn-l);color:var(--warn)}
+.ev .x{min-width:0;flex:1}
+.ev .x b{display:block;font-size:15px}
+.ev .x span{display:block;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev .w{font-size:12px;color:var(--muted);text-align:right;max-width:34%}
+.ev .late .w{color:var(--bad);font-weight:600}
+.empty{display:flex;gap:14px;align-items:center}
+.empty .ei{flex:none;width:52px;height:52px;border-radius:16px;background:var(--accent-l);color:var(--accent);display:flex;align-items:center;justify-content:center}
+.empty b{display:block;font-size:16px}
+.empty p{margin:2px 0 0;color:var(--muted);font-size:14px}
+
+/* путь заказа - все инструменты по шагам */
+.path{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;counter-reset:p}
+.path li{position:relative;display:flex}
+.tool{flex:1;display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 14px;text-decoration:none;color:inherit;transition:border-color .15s,transform .15s,box-shadow .15s}
+.tool:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 22px rgba(40,30,20,.08)}
+.tool .k{display:flex;align-items:center;gap:8px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--wood);font-weight:700}
+.tool .k::before{counter-increment:p;content:counter(p);width:22px;height:22px;border-radius:50%;background:var(--wood-l);color:var(--wood);display:flex;align-items:center;justify-content:center;font-size:12px;letter-spacing:0}
+.tool .ic{width:46px;height:46px;border-radius:14px;background:var(--accent-l);color:var(--accent);display:flex;align-items:center;justify-content:center;margin:14px 0 10px}
+.tool h3{margin:0 0 4px;font-size:17px;line-height:1.25}
+.tool p{margin:0;color:var(--muted);font-size:13.5px;flex:1}
+.tool .go{margin-top:12px;font-weight:600;color:var(--accent);font-size:14px}
+.tool .sub{margin-top:8px;font-size:13px}
+.tool .sub button,.tool .sub span{background:none;border:0;padding:0;color:var(--accent);cursor:pointer;text-decoration:underline;font-size:13px}
+.path li:not(:last-child)::after{content:"";position:absolute;top:27px;right:-12px;width:12px;height:2px;background:var(--line)}
+
+/* настройки и помощь */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card h3{margin:0 0 4px;font-size:16px}
+.card .note{margin:0;color:var(--muted);font-size:13.5px}
+.fld{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.fld label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.fld select{font:inherit;font-size:15px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);width:100%}
+.faq{margin-top:12px;display:grid;gap:8px}
+.faq details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 14px}
+.faq summary{cursor:pointer;list-style:none;padding:13px 0;font-weight:600;display:flex;align-items:center;gap:10px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";margin-left:auto;font-size:20px;line-height:1;color:var(--muted);transition:transform .2s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq details p{margin:0 0 14px;color:var(--muted);font-size:14px}
+footer{padding:4px 0 34px;font-size:13px;color:var(--muted)}
+footer p{margin:0 0 6px}
+footer .copy{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:11px;opacity:.75}
+
+
+/* два продукта сайта */
+/* ---------- планшет ---------- */
+@media(max-width:960px){
+  .path{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .path li::after{display:none}
+  .path li:last-child{grid-column:1/-1}
+}
+/* ---------- телефон: всё в одну колонку, навигация - панель внизу ---------- */
+@media(max-width:720px){
+  html{scroll-padding-top:12px}
+  body{padding-bottom:calc(var(--nav) + env(safe-area-inset-bottom))}
+  .hero{padding:14px 0 22px}
+  .hero h1{font-size:26px;margin-top:18px}
+  .brand{flex-wrap:wrap;font-size:15px;row-gap:8px}
+  .brand>svg{display:none}
+  .beta .bl{display:none}
+  .quick{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+  .q{min-height:0;padding:12px 6px 10px;border-radius:16px;align-items:center;text-align:center}
+  .q .qi{margin:0}
+  .q b{font-size:13.5px;margin-top:8px;line-height:1.2}
+  .q span{display:none}
+  .q.main{padding:14px;text-align:left}
+  .q.main span{display:block}
+  .upd span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .q.main{grid-column:1/-1;min-height:0;flex-direction:row;align-items:center;gap:12px}
+  .q.main .qi{margin:0}
+  .q.main b{margin:0}
+  .q.main div{display:flex;flex-direction:column}
+  .nav{position:fixed;top:auto;bottom:0;left:0;right:0;border-bottom:0;border-top:1px solid var(--line);background:rgba(255,253,249,.94);padding-bottom:env(safe-area-inset-bottom)}
+  .nav .in{padding:4px 4px;gap:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);overflow:hidden}
+  .nav a{min-width:0;white-space:nowrap;letter-spacing:-.01em;flex-direction:column;gap:2px;padding:6px 2px;border-radius:12px;font-size:10.5px;font-weight:600;position:relative}
+  .nav a svg{width:22px;height:22px}
+  .nav a.on{background:none;color:var(--accent)}
+  .nav a.on svg{background:var(--accent-l);border-radius:999px;padding:2px 12px;box-sizing:content-box;margin:-2px 0}
+  .nav .cnt{position:absolute;top:2px;left:calc(50% + 6px);font-size:10px;padding:0 5px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat b{font-size:21px}
+  .ord-top{flex-wrap:wrap}
+  .ord-sum{margin-left:62px;text-align:left}
+  .steps a{font-size:11px}
+  .steps a::before{width:30px;height:30px}
+  .steps a::after{top:19px;left:calc(50% + 15px);right:calc(-50% + 12px)}
+  /* путь заказа на телефоне - лента сверху вниз с линией слева */
+  .path{grid-template-columns:minmax(0,1fr);gap:10px}
+  .path li:last-child{grid-column:auto}
+  .tool{display:grid;grid-template-columns:46px 1fr;column-gap:12px;padding:14px}
+  .tool .k{grid-column:1/-1}
+  .tool .ic{margin:10px 0 0;grid-row:span 4}
+  .tool h3{margin-top:10px}
+  .two,.fld{grid-template-columns:1fr}
+  section{padding-top:22px}
+  .sh h2{font-size:20px}
+  /* кнопка "Голосом" - над нижней панелью */
+  html[data-tool="home"] #msVoice{bottom:calc(var(--nav) + 10px + env(safe-area-inset-bottom))}
+  /* полоса голосового помощника не перекрывает нажатия на всю ширину, а низ страницы виден над кнопкой */
+  html[data-tool="home"] #msVoice{pointer-events:none}
+  html[data-tool="home"] #msVoice>*{pointer-events:auto}
+  footer{padding-bottom:84px}
+  html[data-tool="home"] #msVoice .msv-pill{font-size:0;gap:0;padding:14px}
+  html[data-tool="home"] #msVoice .msv-pill svg{width:22px;height:22px}
+}
+@media(max-width:380px){.q b{font-size:12.5px}}
+</style>
+<link rel="stylesheet" href="shared/site.css">
+</head>
+<body>
+<header class="hero" id="top">
+  <div class="in">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="#d9b48a" d="M3 4h8v7H3zM13 4h8v4h-8zM13 10h8v10h-8zM3 13h8v7H3z"/></svg>
+      <nav data-variants aria-label="Переход"></nav>
+      <span class="pn">Мебельный конструктор</span>
+      <a class="beta" href="otzyv/"><span class="bl">Тестовая версия - </span>ваш отзыв</a>
+    </div>
+    <h1 id="hello">Здравствуйте!</h1>
+    <p class="sub">Что делаем сейчас?</p>
+    <div class="quick" id="quick">
+      <a class="q main" href="kalkulyator/">
+        <span class="qi"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg></span>
+        <div><b>Новый расчёт</b><span>Шкаф-купе, кухня или любое изделие - можно голосом</span></div>
+      </a>
+      <a class="q" href="kalkulyator/?zamer=1">
+        <span class="qi"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V22h2v-3.1A7 7 0 0 0 19 12z"/></svg></span>
+        <div><b>Замер голосом</b><span>Кухня по шагам: диктуете модули - цена сразу</span></div>
+      </a>
+      <button class="q" type="button" data-a="file" id="qOpen">
+        <span class="qi"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 4h6l2 2h8v3H8.5l-2.5 9H4zm4.4 7H22l-3 9H5.6z"/></svg></span>
+        <b>Открыть заказ</b><span id="qOpenSub">Из сохранённого файла</span>
+      </button>
+      <button class="q" type="button" data-copy="konfigurator">
+        <span class="qi"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M10.6 13.4a1 1 0 0 1 0-1.4l3.5-3.5a3 3 0 1 1 4.2 4.2l-2 2-1.4-1.4 2-2a1 1 0 1 0-1.4-1.4L12 13.4a1 1 0 0 1-1.4 0zM8.3 11.1l1.4 1.4-2 2a1 1 0 1 0 1.4 1.4l3.5-3.5 1.4 1.4-3.5 3.5a3 3 0 1 1-4.2-4.2z"/></svg></span>
+        <b>Ссылка клиенту</b><span>Клиент сам соберёт шкаф в 3D</span>
+      </button>
+      <a class="q" href="zakazy/">
+        <span class="qi"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm2 4v2h2V7zm4 0v2h6V7zm-4 4v2h2v-2zm4 0v2h6v-2zm-4 4v2h2v-2zm4 0v2h6v-2z"/></svg></span>
+        <b>Мои заказы</b><span>Этапы, оплаты, напоминания</span>
+      </a>
+    </div>
+    <div class="upd" id="msUpd" hidden></div>
+  </div>
+</header>
+
+<nav class="nav" id="nav" aria-label="Разделы главной">
+  <div class="in">
+    <a href="#top" data-s="top"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3l9 8h-3v9h-5v-6h-2v6H6v-9H3z"/></svg>Главное</a>
+    <a href="#now" data-s="now" id="navNow"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm7 1.5V9h5.5zM8 13v2h8v-2zm0 4v2h5v-2z"/></svg>Заказ</a>
+    <a href="#orders" data-s="orders"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 2h2v2h6V2h2v2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2zm-2 8v10h14V10zm2 2h4v4H7z"/></svg>Сегодня<em class="cnt hide" id="navCnt"></em></a>
+    <a href="#tools" data-s="tools" aria-label="Инструменты"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm8-2h8v8h-8zm2 2v4h4v-4z"/></svg>Инструменты</a>
+    <a href="#more" data-s="more"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM10.5 2h3l.5 2.6 1.9.8 2.2-1.5 2.1 2.1-1.5 2.2.8 1.9 2.5.4v3l-2.6.5-.8 1.9 1.5 2.2-2.1 2.1-2.2-1.5-1.9.8-.4 2.5h-3l-.5-2.6-1.9-.8-2.2 1.5-2.1-2.1 1.5-2.2-.8-1.9L2 13.5v-3l2.6-.5.8-1.9-1.5-2.2L6 3.8l2.2 1.5 1.9-.8z"/></svg>Ещё</a>
+  </div>
+</nav>
+
+<main>
+  <div class="in">
+    <section id="now" class="hide">
+      <div class="sh"><h2>Текущий заказ</h2><p>Тот, что вы открыли или передали последним. Нажмите шаг - заказ откроется в нужном инструменте.</p></div>
+      <div class="card rv" id="order"></div>
+    </section>
+
+    <section id="orders">
+      <div class="sh"><h2>Сегодня в заказах</h2><p id="ordNote">Сводка из учёта заказов на этом устройстве.</p><a href="zakazy/">Весь учёт →</a></div>
+      <div id="board" class="rv"></div>
+    </section>
+
+    <section id="tools">
+      <div class="sh"><h2>Путь заказа</h2><p>Пять шагов от расчёта до сдачи. Каждый инструмент работает и сам по себе, а заказ переходит дальше одной кнопкой "Передать заказ".</p></div>
+      <ol class="path rv" id="path"></ol>
+    </section>
+
+    <section id="more">
+      <div class="sh"><h2>Настройки и помощь</h2></div>
+      <div class="two rv">
+        <div class="card" id="region">
+          <h3>Страна и валюта</h3>
+          <p class="note" id="rgNote"></p>
+          <div class="fld">
+            <label>Страна <select id="rgCountry"></select></label>
+            <label>Валюта <select id="rgCur"></select></label>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Файл заказа</h3>
+          <p class="note">Заказ можно сохранить файлом (.mebel.json) и открыть на другом телефоне или компьютере, или отправить коллеге.</p>
+          <div class="btns">
+            <button class="btn" type="button" data-a="file">Открыть файл заказа</button>
+            <button class="btn" type="button" data-a="save" id="saveBtn" hidden>Скачать текущий заказ</button>
+          </div>
+        </div>
+      </div>
+      <div class="faq rv">
+        <details><summary>Как заказ переходит между инструментами?</summary><p>Посчитали в калькуляторе - нажмите "Передать заказ" вверху страницы и выберите, куда: КП, раскрой, учёт заказов или конфигуратор. Здесь, на главной, последний заказ виден в разделе "Текущий заказ".</p></details>
+        <details><summary>Где хранятся мои данные?</summary><p>Заказы, цены и клиенты лежат в памяти этого браузера, на сервер они не уходят. На другом телефоне или компьютере их не будет - переносите файлом заказа.</p></details>
+        <details><summary>Что видит клиент по ссылке?</summary><p>Клиент видит только конфигуратор: сам подбирает размеры, фасады и столешницу и отправляет заявку в WhatsApp. Ваших инструментов и цен закупки он не видит.</p></details>
+        <details><summary>Можно управлять голосом?</summary><p>Да. Нажмите "Голосом" внизу экрана и скажите, например, "открой раскрой" или "передай заказ в КП". В калькуляторе голосом можно описать весь заказ. Работает в Chrome, Edge и Safari.</p></details>
+        <details><summary>Как поставить сайт на телефон как приложение?</summary><p>В браузере "Поделиться" - "На экран Домой" (iPhone) или меню - "Добавить на главный экран" (Android). Сайт откроется одной кнопкой, как приложение.</p></details>
+      </div>
+    </section>
+  </div>
+</main>
+<footer><div class="in">
+  <p><a href="otzyv/">Оставить отзыв или идею</a> - это тестовая версия, ваше мнение поможет её доделать.</p>
+  <a href="kalkulyator/demo/">Демо калькулятора для коллег</a> - тот же калькулятор с пояснениями, чтобы показать другим мебельщикам.
+  <p class="copy" data-sign>Разработка в тестовом режиме. Все права защищены. <button type="button" class="ms-tlink" data-terms>Условия использования</button></p>
+</div></footer>
+
+<input type="file" id="file" accept=".json,.mebel.json,application/json" class="hide">
+<script src="shared/mebel-order.js"></script>
+<script>window.MEBEL_TOOL = "home";</script>
+<script src="shared/golos.js"></script>
+<script src="shared/site.js"></script>
+<script>
+"use strict";
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var S = window.MebelSite, MO = window.MebelOrder;
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+  var svg = function (p, s) { return '<svg viewBox="0 0 24 24" width="' + (s || 24) + '" height="' + (s || 24) + '" aria-hidden="true">' + p + "</svg>"; };
+  var ICONS = {
+    kalkulyator: '<path fill="currentColor" d="M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm1 3v4h10V5zm0 7v2h2v-2zm4 0v2h2v-2zm4 0v6h2v-6zm-8 4v2h2v-2zm4 0v2h2v-2z"/>',
+    konfigurator: '<path fill="currentColor" d="M12 2l9 5v10l-9 5-9-5V7zm0 2.3L5.2 8 12 11.7 18.8 8zM5 9.7v6.1l6 3.4v-6.2zm14 0l-6 3.3v6.2l6-3.4z"/>',
+    kp: '<path fill="currentColor" d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm7 1.5V9h5.5zM8 13v2h8v-2zm0 4v2h5v-2z"/>',
+    raskroy: '<path fill="currentColor" d="M3 3h18v18H3zm2 2v6h6V5zm8 0v4h6V5zm0 6v8h6v-8zm-8 2v6h6v-6z"/>',
+    zakazy: '<path fill="currentColor" d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm2 4v2h2V7zm4 0v2h6V7zm-4 4v2h2v-2zm4 0v2h6v-2zm-4 4v2h2v-2zm4 0v2h6v-2z"/>'
+  };
+  // путь заказа: шаг -> инструмент
+  var PATH = [
+    { id: "kalkulyator", step: "Посчитать", short: "Расчёт" },
+    { id: "konfigurator", step: "Показать клиенту", short: "Клиенту" },
+    { id: "kp", step: "Оформить", short: "КП" },
+    { id: "raskroy", step: "Раскроить", short: "Раскрой" },
+    { id: "zakazy", step: "Вести до сдачи", short: "Учёт" }
+  ];
+  // какой шаг предложить следующим, если заказ пришёл из этого инструмента
+  var NEXT = { kalkulyator: "kp", konfigurator: "kalkulyator", kp: "raskroy", raskroy: "zakazy", zakazy: "kp", file: "kalkulyator", home: "kalkulyator" };
+
+  // ---------- приветствие ----------
+  (function () {
+    var h = new Date().getHours();
+    $("hello").textContent = h >= 5 && h < 12 ? "Доброе утро!" : h >= 12 && h < 18 ? "Добрый день!" : h >= 18 && h < 23 ? "Добрый вечер!" : "Доброй ночи!";
+  })();
+
+  // ---------- путь заказа (все инструменты) ----------
+  function tools() {
+    $("path").innerHTML = PATH.map(function (p) {
+      var t = S.tool(p.id); if (!t) return "";
+      var sub = p.id === "konfigurator" ? '<div class="sub"><button type="button" data-copy="konfigurator">Скопировать ссылку для клиента</button></div>'
+        : p.id === "kalkulyator" ? '<div class="sub"><span data-href="kalkulyator/demo/">Демо для коллег</span></div>' : "";
+      return '<li><a class="tool" href="' + p.id + '/"><div class="k">' + esc(p.step) + '</div><div class="ic">' + svg(ICONS[p.id]) + "</div><h3>" + esc(t.full) + "</h3><p>" + esc(t.desc) + '</p><div class="go">Открыть →</div>' + sub + "</a></li>";
+    }).join("");
+  }
+  function copyLink() {
+    var url = new URL("konfigurator/", document.baseURI).href;
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function () { S.toast("Ссылка для клиента скопирована - отправьте её в WhatsApp"); }, function () { prompt("Скопируйте ссылку", url); });
+  }
+
+  // ---------- текущий заказ ----------
+  function order() {
+    var rec = S.read(), el = $("order");
+    $("now").classList.toggle("hide", !rec);
+    $("navNow").classList.toggle("hide", !rec);
+    $("saveBtn").hidden = !rec;
+    $("qOpen").dataset.a = rec ? "cont" : "file";
+    $("qOpen").querySelector("b").textContent = rec ? "Продолжить заказ" : "Открыть заказ";
+    if (!rec) { el.innerHTML = ""; $("qOpenSub").textContent = "Из сохранённого файла"; return; }
+    var s = S.summary(rec.order);
+    $("qOpenSub").textContent = s.title;
+    var next = NEXT[rec.from] || "kalkulyator", nt = S.tool(next);
+    var meta = [s.client, s.products > 1 ? s.products + " изделия" : "", "из инструмента \"" + S.toolName(rec.from) + "\"", S.ago(rec.at)].filter(Boolean).join(" · ");
+    el.innerHTML =
+      '<div class="ord-top"><div class="ord-ic">' + svg(ICONS.kp, 26) + '</div><div style="min-width:0"><div class="ord-t">' + esc(s.title) + '</div><div class="ord-m">' + esc(meta) + "</div></div>" +
+      (s.total ? '<div class="ord-sum"><small>Сумма</small>' + esc(S.money(s.total, s.cur)) + "</div>" : "") + "</div>" +
+      '<div class="steps">' + PATH.map(function (p) {
+        return '<a href="' + p.id + '/?from=home" class="' + (p.id === rec.from ? "was" : p.id === next ? "next" : "") + '" title="Открыть заказ: ' + esc(S.toolName(p.id)) + '">' + esc(p.short) + "</a>";
+      }).join("") + "</div>" +
+      '<div class="btns"><a class="btn p" href="' + next + '/?from=home">Дальше: ' + esc(nt ? nt.name : next) + " →</a>" +
+      '<button class="btn l" type="button" data-a="save">Скачать файл</button><button class="btn l" type="button" data-a="file">Открыть другой</button><button class="btn l" type="button" data-a="clear">Убрать</button></div>';
+  }
+
+  // ---------- сводка из учёта заказов (те же данные браузера, что у раздела "Учёт заказов") ----------
+  var STAGES = [["lead", "Заявка"], ["measure", "Замер"], ["design", "Проект"], ["contract", "Договор"], ["production", "Производство"], ["install", "Монтаж"], ["done", "Сдан"]];
+  var SIDX = {}; STAGES.forEach(function (s, i) { SIDX[s[0]] = i; });
+  var MON = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+  function d10(d) { return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+  function days(a, b) { return Math.round((new Date(a + "T12:00") - new Date(b + "T12:00")) / 864e5); }
+  function loadOrders() {
+    try { var raw = JSON.parse(localStorage.getItem("uz_orders") || "{}"), out = []; for (var k in raw) if (raw[k] && typeof raw[k] === "object") out.push(raw[k]); return out; } catch (e) { return []; }
+  }
+  function paidOf(o) { return (o.payments || []).reduce(function (s, p) { return s + (p.kind === "refund" ? -1 : 1) * (+p.amount || 0); }, 0); }
+  function board() {
+    var list = loadOrders(), el = $("board"), today = d10(new Date());
+    if (!list.length) {
+      $("ordNote").textContent = "Здесь будут ближайшие замеры, монтажи и оплаты.";
+      el.innerHTML = '<div class="card empty"><div class="ei">' + svg('<path fill="currentColor" d="M7 2h2v2h6V2h2v2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2zm-2 8v10h14V10zm2 2h4v4H7z"/>', 26) + '</div><div><b>Заказов пока нет</b><p>Заведите заказ в учёте или передайте его туда из калькулятора - здесь появятся замеры, монтажи и кто сколько должен.</p>' +
+        '<div class="btns"><a class="btn p" href="zakazy/">Открыть учёт заказов</a></div></div></div>';
+      $("navCnt").classList.add("hide");
+      return;
+    }
+    var active = list.filter(function (o) { return SIDX[o.stage] !== undefined && o.stage !== "done"; });
+    var ev = [], debt = {}, leads = 0, cnt = {};
+    list.forEach(function (o) {
+      var si = SIDX[o.stage]; if (si === undefined) return;
+      cnt[o.stage] = (cnt[o.stage] || 0) + 1;
+      if (o.stage === "lead") leads++;
+      var who = [(o.client && o.client.name) || "Без имени", o.title || ((o.products || [])[0] || {}).name || ""].filter(Boolean).join(" - ");
+      var tr = (o.x && o.x.tracker && o.x.tracker.dates) || {};
+      var total = (o.quote && +o.quote.total) || 0;
+      if (total > 0 && si >= SIDX.contract) { var dbt = total - paidOf(o); if (dbt > 0) { var c = o.currency || "KZT"; debt[c] = (debt[c] || 0) + dbt; } }
+      if (o.stage === "done") return;
+      var NAMES = { measure: "Замер", design: "Сдать проект клиенту", production: "Готовность в цеху", install: "Монтаж" };
+      (o.timeline || []).forEach(function (t) {
+        if (!t || !t.plan || !NAMES[t.stage] || SIDX[t.stage] < si) return;
+        ev.push({ date: String(t.plan).slice(0, 10), time: t.stage === "measure" ? tr.measureTime : t.stage === "install" ? tr.installTime : "", text: NAMES[t.stage], who: who });
+      });
+      if (o.deadline) ev.push({ date: String(o.deadline).slice(0, 10), text: "Срок по договору", who: who });
+      (o.reminders || []).forEach(function (r) { if (r && r.date && !r.done) ev.push({ date: String(r.date).slice(0, 10), time: r.time || "", text: r.text || "Напоминание", who: who }); });
+    });
+    ev.sort(function (a, b) { return (a.date + (a.time || "")) < (b.date + (b.time || "")) ? -1 : 1; });
+    var late = ev.filter(function (e) { return e.date < today; }).length, now = ev.filter(function (e) { return e.date === today; }).length;
+    var debtTxt = Object.keys(debt).map(function (c) { return S.money(debt[c], c); }).join(" + ") || "0";
+    var urgent = late + now;
+    $("navCnt").textContent = urgent; $("navCnt").classList.toggle("hide", !urgent);
+    $("ordNote").textContent = "Сводка из учёта заказов на этом устройстве.";
+    var stat = function (cls, big, small, href) { return '<a class="stat ' + cls + '" href="zakazy/' + href + '"><b>' + esc(big) + "</b><span>" + esc(small) + "</span></a>"; };
+    var h = '<div class="stats">' +
+      stat("", active.length, "в работе", "#orders") +
+      stat(late ? "bad" : now ? "warn" : "", urgent, late ? "сегодня и просрочено" : "дел на сегодня", "#today") +
+      stat("", leads, "новых заявок", "#orders") +
+      stat(debtTxt !== "0" ? "warn" : "", debtTxt, "ждём оплату", "#money") + "</div>";
+    h += '<div class="stages">' + STAGES.map(function (s) { var n = cnt[s[0]] || 0; return '<a class="' + (n ? "" : "zero") + '" href="zakazy/#orders">' + esc(s[1]) + " <i>" + n + "</i></a>"; }).join("") + "</div>";
+    var near = ev.filter(function (e) { return e.date >= today || days(today, e.date) <= 60; }).slice(0, 5);
+    if (near.length) {
+      h += '<ul class="ev">' + near.map(function (e) {
+        var d = new Date(e.date + "T12:00"), dd = days(e.date, today);
+        var cls = dd < 0 ? "late" : dd === 0 ? "now" : "";
+        var w = dd < 0 ? "просрочено на " + (-dd) + " дн." : dd === 0 ? "сегодня" + (e.time ? " в " + e.time : "") : dd === 1 ? "завтра" + (e.time ? " в " + e.time : "") : "через " + dd + " дн.";
+        return '<li class="' + cls + '"><a href="zakazy/#today"><div class="d"><b>' + d.getDate() + "</b><small>" + MON[d.getMonth()] + '</small></div><div class="x"><b>' + esc(e.text) + "</b><span>" + esc(e.who) + '</span></div><div class="w">' + esc(w) + "</div></a></li>";
+      }).join("") + "</ul>";
+    } else {
+      h += '<div class="card" style="margin-top:12px;color:var(--muted);font-size:14px">Ближайших дел нет - даты замеров и монтажей ставятся в карточке заказа в учёте.</div>';
+    }
+    el.innerHTML = h;
+  }
+
+  // ---------- кнопки ----------
+  document.addEventListener("click", function (e) {
+    var c = e.target.closest("[data-copy]"); if (c) { e.preventDefault(); copyLink(); return; }
+    var hr = e.target.closest("[data-href]"); if (hr) { e.preventDefault(); location.href = hr.dataset.href; return; }
+    var b = e.target.closest("[data-a]"); if (!b) return;
+    var a = b.dataset.a;
+    if (a === "file") { $("file").value = ""; $("file").click(); }
+    else if (a === "cont") $("now").scrollIntoView({ behavior: "smooth", block: "start" });
+    else if (a === "save") { var r = S.read(); if (r) S.saveFile(r.order); }
+    else if (a === "clear") { S.clear(); order(); spy(); }
+  });
+  $("file").onchange = function (e) {
+    var f = e.target.files[0]; if (!f) return;
+    f.text().then(function (text) {
+      var res = MO.parse(text), one = Array.isArray(res) ? res[0] : res;
+      if (!one || !one.order) throw new Error("В файле нет заказа");
+      S.write(one.order, "file"); order(); S.toast("Заказ открыт - выберите, куда его передать");
+      setTimeout(function () { $("now").scrollIntoView({ block: "start" }); }, 50);
+    }).catch(function (er) { S.toast("Не получилось прочитать файл: " + (er.message || er)); });
+  };
+  window.addEventListener("storage", function (e) { if (e.key === "mebel-site-order") order(); if (e.key === "uz_orders") board(); });
+  window.addEventListener("pageshow", function () { order(); board(); });
+
+  // ---------- страна и валюта - одна настройка для всех инструментов ----------
+  function region() {
+    if (!MO) { $("region").classList.add("hide"); return; }
+    var r = MO.region();
+    $("rgCountry").innerHTML = Object.keys(MO.COUNTRIES).map(function (k) { var c = MO.COUNTRIES[k]; return '<option value="' + k + '"' + (k === r.country ? " selected" : "") + ">" + esc(c.name) + "</option>"; }).join("");
+    $("rgCur").innerHTML = Object.keys(MO.CURRENCIES).map(function (k) { var c = MO.CURRENCIES[k]; return '<option value="' + k + '"' + (k === r.currency ? " selected" : "") + ">" + esc(c.name) + ", " + esc(c.sign) + "</option>"; }).join("");
+    $("rgNote").textContent = (r.set ? "" : "Выбрано по часовому поясу - проверьте. ") + "От страны зависят договор и реквизиты, от валюты - цены и суммы во всех инструментах.";
+  }
+  $("rgCountry").onchange = function (e) { MO.setRegion({ country: e.target.value, currency: MO.countryInfo(e.target.value).currency }); region(); board(); S.toast("Сохранено для всех инструментов"); };
+  $("rgCur").onchange = function (e) { MO.setRegion({ currency: e.target.value }); region(); board(); S.toast("Сохранено для всех инструментов"); };
+
+  // ---------- навигация: подсветка текущей секции и плавное появление ----------
+  var links = [].slice.call(document.querySelectorAll("#nav a"));
+  function spy() {
+    var y = window.innerHeight * 0.35, cur = "top";
+    ["now", "orders", "tools", "more"].forEach(function (id) { var s = $(id); if (!s || s.classList.contains("hide")) return; if (s.getBoundingClientRect().top <= y) cur = id; });
+    if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) cur = "more";
+    links.forEach(function (a) { a.classList.toggle("on", a.dataset.s === cur); });
+  }
+  var ticking = false;
+  window.addEventListener("scroll", function () { if (!ticking) { ticking = true; requestAnimationFrame(function () { ticking = false; spy(); }); } }, { passive: true });
+  window.addEventListener("resize", spy);
+  links.forEach(function (a) { a.addEventListener("click", function (e) { var t = $(a.dataset.s); if (!t) return; e.preventDefault(); t.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }); history.replaceState(null, "", a.dataset.s === "top" ? location.pathname : "#" + a.dataset.s); }); });
+  var rv = [].slice.call(document.querySelectorAll(".rv"));
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (x) { if (x.isIntersecting) { x.target.classList.add("seen"); io.unobserve(x.target); } }); });
+    rv.forEach(function (el) { io.observe(el); });
+  } else rv.forEach(function (el) { el.classList.add("seen"); });
+
+  tools(); order(); board(); region(); spy();
+})();
+</script>
+</body>
+</html>

@@ -102,22 +102,11 @@ html[data-tool="kp"] input,html[data-tool="kp"] select,html[data-tool="kp"] text
 #msTerms .ms-ok:hover{background:#ece5dc}
 @media(max-width:560px){#msTerms{align-items:flex-end;padding:0}#msTerms .ms-card{border-radius:16px 16px 0 0;max-height:92vh;font-size:14.5px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}}
 
-/* ===== Переключатель вариантов продукта (заполняет site.js в <nav data-variants>), в тёмной шапке =====
-   Верхняя строка: Конструктор / Блокнот / Витрины. На страницах витрин под ней вторая строка - какие витрины.
-   Пункты не сжимаются (не налезают друг на друга): если строка не влезла, она прокручивается пальцем. */
-.ms-prod{display:flex;flex-direction:column;align-items:flex-start;gap:7px;max-width:100%;min-width:0;font:600 14px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.ms-prod .ms-main,.ms-prod .ms-sub{position:relative;display:flex;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.ms-prod .ms-main::-webkit-scrollbar,.ms-prod .ms-sub::-webkit-scrollbar{display:none}
-.ms-prod .ms-main{gap:2px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px}
-.ms-prod a{flex:none;display:flex;align-items:center;gap:7px;color:rgba(255,255,255,.78);text-decoration:none;white-space:nowrap;border-radius:999px;transition:background .15s,color .15s,border-color .15s}
-.ms-prod .ms-main a{min-height:34px;padding:6px 14px 6px 7px}
-.ms-prod a:hover{color:#fff;background:rgba(255,255,255,.08)}
-.ms-prod .ms-main a.on{background:#fff;color:#24302c}
-.ms-prod b{flex:none;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;background:rgba(255,255,255,.14);color:#fff}
-.ms-prod a.on b{background:#24302c;color:#fff}
-.ms-prod .ms-s{display:none}
-.ms-prod .ms-lock{flex:none;opacity:.75}
-.ms-prod .ms-sub{gap:6px;padding:0 2px 0 6px;font-size:13px;font-weight:600}
-.ms-prod .ms-sub a{min-height:30px;padding:5px 12px;border:1px solid rgba(255,255,255,.16)}
-.ms-prod .ms-sub a.on{background:rgba(232,184,120,.18);border-color:#e8b878;color:#f6e1c4}
-@media(max-width:600px){.ms-prod{font-size:13px}.ms-prod .ms-l{display:none}.ms-prod .ms-s{display:inline}.ms-prod .ms-main a{gap:5px;padding:5px 10px 5px 5px}.ms-prod b{width:20px;height:20px;font-size:11px}.ms-prod .ms-sub{gap:5px;padding-left:4px}.ms-prod .ms-sub a{padding:5px 10px}}
+/* ===== Кнопка "На главную" внутри продукта (site.js заполняет <nav data-variants>), в тёмной шапке =====
+   Переходов между продуктами внутри нет: только назад к выбору на стартовой странице
+   (у витрин ещё "Все витрины" - к выбору витрины). */
+.ms-prod{display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%;min-width:0;font:600 13.5px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.ms-prod a{flex:none;display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:5px 13px 5px 8px;color:rgba(255,255,255,.86);text-decoration:none;white-space:nowrap;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(255,255,255,.06);transition:background .15s,color .15s,border-color .15s}
+.ms-prod a:hover{color:#fff;background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.34)}
+.ms-prod a.ms-up{padding-left:13px}
+.ms-prod svg{flex:none}
