@@ -169,6 +169,8 @@ a.prod:hover{border-color:var(--wood);transform:translateY(-2px);box-shadow:0 8p
 .prod .ph i{font-style:normal}.prod .ph i b{font-size:20px}
 .prod h3{margin:0;font-size:17px}
 .prod .who{font-size:12.5px;color:var(--muted)}
+.prod .kids{display:flex;flex-direction:column;gap:6px;margin:6px 0 2px;flex:1}
+.prod .kids span{font-size:14px;background:var(--wood-l);border-radius:10px;padding:7px 10px}
 .prod p{margin:0;font-size:14px;color:var(--muted);flex:1}
 .prod ul{margin:2px 0 0;padding-left:18px;font-size:13.5px;display:grid;gap:3px}
 .prod .go{font-weight:600;color:var(--accent);font-size:14px;margin-top:6px}
@@ -536,10 +538,13 @@ a.prod:hover{border-color:var(--wood);transform:translateY(-2px);box-shadow:0 8p
   // ---------- варианты продукта (список - в shared/site.js, VARIANTS) ----------
   function variants() {
     var cur = S.variantOf("home");
-    $("variants").innerHTML = S.VARIANTS.map(function (v) {
+    $("variants").innerHTML = S.TABS.map(function (v) {
       var here = v === cur, tag = here ? "div" : "a";
-      return "<" + tag + ' class="prod' + (here ? " here" : "") + '"' + (here ? "" : ' href="' + esc(S.variantUrl(v)) + '"') + '><div class="ph"><i><b>' + v.n + "</b></i><div><h3>Вариант " + v.n + ": " + esc(v.name) + '</h3><div class="who">' + esc(v.who) + "</div></div>" + (here ? '<span class="hr">Вы здесь</span>' : "") + "</div>" +
-        "<ul>" + v.points.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" + (here ? "" : '<div class="go">' + (v.locked ? "Вход по пин-коду" : "Открыть вариант " + v.n) + " →</div>") + "</" + tag + ">";
+      var kids = v.kids ? '<div class="kids">' + v.kids.map(function (k) { return '<span>' + esc(k.name) + (k.locked ? " (по пин-коду)" : "") + "</span>"; }).join("") + "</div>" : "";
+      var who = v.kids ? "Сайт для клиентов мастера: работы, отзывы и расчёт. Несколько вариантов на выбор" : v.who;
+      var pts = v.kids ? [] : v.points;
+      return "<" + tag + ' class="prod' + (here ? " here" : "") + '"' + (here ? "" : ' href="' + esc(S.variantUrl(v)) + '"') + '><div class="ph"><i><b>' + v.n + "</b></i><div><h3>Вариант " + v.n + ": " + esc(v.name) + '</h3><div class="who">' + esc(who) + "</div></div>" + (here ? '<span class="hr">Вы здесь</span>' : "") + "</div>" +
+        (pts.length ? "<ul>" + pts.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" : "") + kids + (here ? "" : '<div class="go">' + (v.kids ? "Выбрать витрину" : "Открыть вариант " + v.n) + " →</div>") + "</" + tag + ">";
     }).join("");
   }
 
