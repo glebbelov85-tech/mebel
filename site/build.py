@@ -59,6 +59,35 @@ def version():
     return {"v": now.strftime("%Y%m%d%H%M%S"), "at": now.isoformat().replace("+00:00", "Z"), "note": note}
 
 
+def krasnodar():
+    out = os.path.join(OUT, "krasnodar")
+    shutil.copytree(os.path.join(HERE, "krasnodar"), out)
+    assert os.path.exists(os.path.join(out, "enc", "d.bin")), "нет krasnodar/enc - запустите site/tools/zashifrovat-krasnodar.js"
+    noindex = '<meta name="robots" content="noindex, nofollow, noarchive, noimageindex">\n<meta name="referrer" content="no-referrer">\n'
+
+    def locked(html, tool, scripts, repl):
+        html = html.replace("<head>\n", "<head>\n" + noindex, 1)
+        html = re.sub(r"<title>.*?</title>", "<title>Закрытая витрина</title>", html, count=1)
+        html = re.sub(r'<meta (name="description"|property="og:[a-z]+")[^>]*>\n', "", html)
+        for a, b in repl:
+            assert a in html, (tool, a)
+            html = html.replace(a, b)
+        i, j = html.index('<script>window.MEBEL_TOOL'), html.rindex("</script>") + len("</script>")
+        tail = ('<script>window.MEBEL_TOOL = "%s";</script>\n<script src="../../shared/site.js"></script>\n'
+                '<script src="../zamok.js"></script>\n<script>KrZamok.page({ scripts: %s });</script>' % (tool, json.dumps(scripts)))
+        return html[:i] + tail + html[j:]
+
+    v3 = rd(os.path.join(HERE, "vitrina", "index.html"))
+    wr(os.path.join(out, "vitrina", "index.html"), locked(v3, "kr-vitrina", ["../../vitrina/risunki.js", "../../vitrina/vitrina.js"], [
+        ('href="../shared/site.css"', 'href="../../shared/site.css"'),
+        ('href="redaktor/"', 'href="../../vitrina/redaktor/"'),
+        ('href="../konfigurator/"', 'href="../../konfigurator/"')]))
+    v4 = rd(os.path.join(HERE, "vitrina", "puteshestvie", "index.html"))
+    wr(os.path.join(out, "dom", "index.html"), locked(v4, "kr-dom", ["../../vitrina/risunki.js", "../../vitrina/puteshestvie/puteshestvie.js"], [
+        ('href="../redaktor/"', 'href="../../vitrina/redaktor/"'),
+        ('href="../#raschet"', 'href="../vitrina/#raschet"')]))
+
+
 def run_build(folder):
     subprocess.run([sys.executable, "build.py"], cwd=P(folder), check=True, stdout=subprocess.DEVNULL)
 
@@ -93,6 +122,9 @@ def main():
     shutil.copytree(os.path.join(HERE, "bloknot"), os.path.join(OUT, "bloknot"))
     # Витрина мастера - третий вариант: страница для клиентов + Мастерская (redaktor/)
     shutil.copytree(os.path.join(HERE, "vitrina"), os.path.join(OUT, "vitrina"))
+    # Закрытая витрина для Краснодара: страница входа по пин-коду + зашифрованные данные и фото (enc/).
+    # Внутри - те же витрины вариантов 3 и 4, но данные они получают из расшифровки (zamok.js).
+    krasnodar()
 
     # 1. Калькулятор (+ демо для коллег без полоски сайта)
     run_build("calculator")
