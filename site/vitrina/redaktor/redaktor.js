@@ -231,7 +231,7 @@
 
   // ---------- о себе и контакты ----------
   function viewMaster() {
-    $("v-master").innerHTML = '<h2>О себе</h2><div class="card"><div class="g2">' + fld("Имя или название мастерской", "master.imya") + fld("Чем занимаетесь", "master.rol") +
+    $("v-master").innerHTML = '<h2>О себе</h2><div class="card"><div class="g2">' + fld("Имя или название мастерской", "master.imya") + fld("Имя мастера мелко внизу", "master.chelovek", { hint: "Если выше название мастерской. Можно оставить пустым." }) + fld("Чем занимаетесь", "master.rol") +
       fld("Город", "master.gorod") + fld("Опыт", "master.opyt", { ph: "12 лет" }) + fld("Сколько работ сделано", "master.rabot", { ph: "300+" }) + fld("Водяной знак на фото", "master.znak", { hint: "Для новых фото. Уже добавленные не меняются." }) + "</div>" +
       '<div style="margin-top:10px">' + fld("О себе - одна-две строки от первого лица", "master.o_sebe", { area: true }) + "</div></div>" +
       '<h2>Контакты</h2><div class="card"><div class="g2">' + fld("WhatsApp - номер с кодом страны", "kontakty.whatsapp", { mode: "tel", ph: "77001234567" }) + fld("Telegram - имя без @", "kontakty.telegram") +

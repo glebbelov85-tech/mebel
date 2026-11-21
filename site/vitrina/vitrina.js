@@ -21,7 +21,7 @@
   var MON2 = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
   function month(s) { var m = /^(\d{4})-(\d{2})/.exec(s || ""); return m ? MON[+m[2] - 1] + " " + m[1] : (s || ""); }
   function day(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ""); return m ? +m[3] + " " + MON2[+m[2] - 1] + " " + m[1] : month(s); }
-  function initials(n) { return String(n || "?").trim().split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0).toUpperCase(); }).join(""); }
+  function initials(n) { var w = String(n || "?").trim().split(/\s+/), l = w.filter(function (x) { return x.length > 1; }); return (l.length ? l : w).slice(0, 2).map(function (x) { return x.charAt(0).toUpperCase(); }).join(""); }
   function money(n) {
     n = Math.round(+n || 0);
     return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " " + (D.valyuta || "₸");
@@ -387,7 +387,7 @@
     if (tgUrl()) d.push('<a class="btn tg" target="_blank" rel="noopener" href="' + esc(tgUrl()) + '">' + IC.tg + "Telegram</a>");
     if (hasCalc()) d.push('<a class="btn" href="#raschet">' + IC.calc + "Цена</a>");
     $("dock").innerHTML = d.join("");
-    $("fUpd").textContent = D.obnovleno ? "Сайт обновлён " + day(D.obnovleno) + "." : "";
+    $("fUpd").textContent = ((D.master || {}).chelovek ? "Мастер - " + D.master.chelovek + ". " : "") + (D.obnovleno ? "Сайт обновлён " + day(D.obnovleno) + "." : "");
   }
 
   // ---------- полоска мастера ----------
