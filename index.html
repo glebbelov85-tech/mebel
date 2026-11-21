@@ -539,7 +539,7 @@ a.prod:hover{border-color:var(--wood);transform:translateY(-2px);box-shadow:0 8p
     $("variants").innerHTML = S.VARIANTS.map(function (v) {
       var here = v === cur, tag = here ? "div" : "a";
       return "<" + tag + ' class="prod' + (here ? " here" : "") + '"' + (here ? "" : ' href="' + esc(S.variantUrl(v)) + '"') + '><div class="ph"><i><b>' + v.n + "</b></i><div><h3>Вариант " + v.n + ": " + esc(v.name) + '</h3><div class="who">' + esc(v.who) + "</div></div>" + (here ? '<span class="hr">Вы здесь</span>' : "") + "</div>" +
-        "<ul>" + v.points.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" + (here ? "" : '<div class="go">Открыть вариант ' + v.n + " →</div>") + "</" + tag + ">";
+        "<ul>" + v.points.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" + (here ? "" : '<div class="go">' + (v.locked ? "Вход по пин-коду" : "Открыть вариант " + v.n) + " →</div>") + "</" + tag + ">";
     }).join("");
   }
 

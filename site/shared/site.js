@@ -48,7 +48,11 @@
     { id: "v4", n: 4, name: "Витрина: путешествие по дому", short: "Путешествие", path: "vitrina/puteshestvie/", isNew: true,
       pages: ["vitrina-put"],
       who: "Та же витрина, но клиент не листает, а ходит по дому мастера: комната за комнатой",
-      points: ["Дом в разрезе: каждая комната - раздел работ", "Работы 3D-лентой, фото на весь экран", "Точки на фото: наезд на деталь и рассказ", "\"Хочу так же\" - готовое сообщение в WhatsApp"] }
+      points: ["Дом в разрезе: каждая комната - раздел работ", "Работы 3D-лентой, фото на весь экран", "Точки на фото: наезд на деталь и рассказ", "\"Хочу так же\" - готовое сообщение в WhatsApp"] },
+    { id: "v5", n: 5, name: "Витрина для Краснодара", short: "Краснодар", path: "krasnodar/", isNew: true, locked: true,
+      pages: ["krasnodar", "kr-vitrina", "kr-dom"],
+      who: "Закрытая витрина с настоящими работами мастера: вход только по пин-коду",
+      points: ["Работы мастера в двух видах: лентой и путешествием по дому", "Фото и тексты зашифрованы, без пин-кода их не открыть", "Мастер проверяет подписи работ и отвечает на вопросы", "Отзыв и ответы уходят Александру в WhatsApp"] }
   ];
 
   var me = window.MEBEL_TOOL || "home";
@@ -69,9 +73,9 @@
 
   // --- мелочи ---
   function tool(id) { for (var i = 0; i < TOOLS.length; i++) if (TOOLS[i].id === id) return TOOLS[i]; return null; }
-  function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Главная" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id === "vitrina" ? "Витрина мастера" : id === "vitrina-red" ? "Мастерская витрины" : id === "vitrina-put" ? "Витрина: путешествие" : id; }
+  function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Главная" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id === "vitrina" ? "Витрина мастера" : id === "vitrina-red" ? "Мастерская витрины" : id === "vitrina-put" ? "Витрина: путешествие" : /^(krasnodar|kr-)/.test(id) ? "Витрина для Краснодара" : id; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
-  function root() { return me === "home" ? "./" : me === "vitrina-red" || me === "vitrina-put" ? "../../" : "../"; }
+  function root() { return me === "home" ? "./" : me === "vitrina-red" || me === "vitrina-put" || me === "kr-vitrina" || me === "kr-dom" ? "../../" : "../"; }
   function urlOf(id) { return root() + id + "/"; }
   function money(n, cur) {
     if (window.MebelOrder) return MebelOrder.money(n, cur || MebelOrder.region().currency);
@@ -451,6 +455,8 @@
     if (me === "bloknot") { setStaff(); voicePanel(); return; }
     // Витрина - страница для клиентов: ничего не добавляем и мастером не помечаем. Мастерская витрины - для мастера.
     if (me === "vitrina" || me === "vitrina-put") return;
+    // Закрытая витрина для Краснодара: страница для одного мастера, вход по пин-коду - тоже ничего не добавляем
+    if (me === "krasnodar" || me === "kr-vitrina" || me === "kr-dom") return;
     if (me === "vitrina-red") { setStaff(); return; }
     var fromHub = /[?&]from=/.test(location.search);
     // конфигуратор - страница для клиента: полоску видит только мастер (кто уже заходил на сайт)
@@ -469,7 +475,7 @@
     }
   };
   // страница без адаптера (главная) запускается сама
-  if (me === "home" || me === "vitrina" || me === "vitrina-red" || me === "vitrina-put") {
+  if (me === "home" || me === "vitrina" || me === "vitrina-red" || me === "vitrina-put" || me === "krasnodar" || me === "kr-vitrina" || me === "kr-dom") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
   }
 })();
