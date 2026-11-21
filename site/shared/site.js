@@ -242,7 +242,7 @@
       var s = summary(rec.order);
       h += '<button type="button" data-last>Открыть здесь последний переданный заказ: ' + esc(s.title) + (s.client ? ", " + esc(s.client) : "") + " (" + esc(toolName(rec.from)) + ", " + esc(ago(rec.at)) + ")</button>";
     }
-    h += '<p class="ms-author">' + authorHTML(true) + "</p>";
+    h += '<p class="ms-author">' + signHTML() + "</p>";
     h += "</div></div>";
     var wrap = document.createElement("div");
     wrap.id = "msMenu"; wrap.innerHTML = h;
@@ -262,20 +262,28 @@
   function closeMenu() { var m = document.getElementById("msMenu"); if (m) m.remove(); document.removeEventListener("keydown", escClose); }
 
 
-  // --- автор и условия использования ---
-  // Любой элемент с атрибутом data-terms открывает окно условий (на главной, в меню инструментов).
-  var AUTHOR = "Александр Наумов", YEAR = "2026";
-  function authorHTML(full) {
-    return 'Автор разработки: ' + AUTHOR + ", " + YEAR + '. <button type="button" class="ms-tlink" data-terms>' + (full ? "Условия использования" : "Условия") + "</button>";
+  // --- тихая подпись и условия использования ---
+  // Имя автора на сайте не показываем (просьба Александра, 2026-11-21): внизу страниц только
+  // неброская строка SIGN. Любой элемент с атрибутом data-terms открывает окно условий.
+  var SIGN = "Разработка в тестовом режиме. Все права защищены.", YEAR = "2026";
+  function signHTML() {
+    return SIGN + ' <button type="button" class="ms-tlink" data-terms>Условия</button>';
+  }
+  // маленькая строка в самом низу страницы инструмента (у главной, Блокнота и витрины - свой подвал)
+  function signLine() {
+    if (document.getElementById("msSign") || document.querySelector("[data-sign]")) return;
+    var p = document.createElement("p");
+    p.id = "msSign"; p.innerHTML = signHTML();
+    document.body.appendChild(p);
   }
   var TERMS = [
-    'Сайт "Мебельный конструктор" и его инструменты - калькулятор, замер голосом, конфигуратор для клиента, КП и договор, карта раскроя, учёт заказов, Блокнот мастера - авторская работа. Автор разработки: ' + AUTHOR + ", " + YEAR + ".",
-    "Автору принадлежат тексты, расчёты и формулы, дизайн, интерфейс и код.",
+    'Сайт "Мебельный конструктор" и его инструменты - калькулятор, замер голосом, конфигуратор для клиента, КП и договор, карта раскроя, учёт заказов, Блокнот мастера, витрина мастера - работают в тестовом режиме.',
+    "Тексты, расчёты и формулы, дизайн, интерфейс и код сайта защищены, все права на них сохраняются.",
     "Инструменты в свободном доступе. <b>Можно:</b> пользоваться ими в работе, давать клиентам ссылку на конфигуратор, делиться ссылкой на сайт.",
-    "<b>Нельзя:</b> перепродавать инструменты или доступ к ним, копировать и выкладывать у себя, выдавать за своё и убирать имя автора.",
+    "<b>Нельзя:</b> перепродавать инструменты или доступ к ним, копировать и выкладывать у себя, выдавать за своё.",
     "Ваши заказы, цены и клиенты хранятся в вашем браузере и остаются вашими.",
     "Сторонние части остаются под своими лицензиями: three.js (MIT) - 3D, pdfmake (MIT) - PDF документов, pdf.js (Apache 2.0) - чтение PDF, Tesseract.js (Apache 2.0) - чтение текста с фото, SheetJS (Apache 2.0) - таблицы Excel, шрифты Inter, Golos Text, Manrope и JetBrains Mono (SIL Open Font License 1.1).",
-    "История создания с датами правок хранится в репозитории автора."
+    "История разработки с датами правок сохраняется."
   ];
   function openTerms() {
     closeTerms(); closeMenu();
@@ -283,7 +291,7 @@
     w.id = "msTerms";
     w.innerHTML = '<div class="ms-card" role="dialog" aria-modal="true" aria-labelledby="msTermsH"><div class="ms-head"><b id="msTermsH">Условия использования</b><button type="button" class="ms-x" data-tx aria-label="Закрыть">×</button></div>' +
       "<ul>" + TERMS.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>" +
-      '<p class="ms-copy">© ' + YEAR + " " + AUTHOR + ". Все права защищены.</p>" +
+      '<p class="ms-copy">© ' + YEAR + ". " + SIGN + "</p>" +
       '<button type="button" class="ms-ok" data-tx>Понятно</button></div>';
     w.addEventListener("click", function (e) { if (e.target === w || e.target.closest("[data-tx]")) closeTerms(); });
     document.body.appendChild(w);
@@ -442,14 +450,14 @@
     if (me === "vitrina-red") { setStaff(); return; }
     var fromHub = /[?&]from=/.test(location.search);
     // конфигуратор - страница для клиента: полоску видит только мастер (кто уже заходил на сайт)
-    if (me !== "konfigurator" || isStaff() || fromHub) { setStaff(); bar(); if (!(adapter && adapter.voicePanel)) voicePanel(); }
+    if (me !== "konfigurator" || isStaff() || fromHub) { setStaff(); bar(); signLine(); if (!(adapter && adapter.voicePanel)) voicePanel(); }
     incoming();
   }
 
   window.MebelSite = {
     TOOLS: TOOLS, tool: tool, toolName: toolName, read: read, write: write, clear: clear,
     summary: summary, ago: ago, money: money, toast: toast, saveFile: saveFile, urlOf: urlOf, isStaff: isStaff,
-    voiceNav: voiceNav, version: VER, VARIANTS: VARIANTS, variantOf: variantOf, variantUrl: variantUrl, checkUpdate: checkUpdate, terms: openTerms, author: { name: AUTHOR, year: YEAR },
+    voiceNav: voiceNav, version: VER, VARIANTS: VARIANTS, variantOf: variantOf, variantUrl: variantUrl, checkUpdate: checkUpdate, terms: openTerms, sign: SIGN,
     register: function (a) {
       adapter = a || {};
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);

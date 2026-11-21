@@ -84,10 +84,12 @@ html[data-tool="kp"] input,html[data-tool="kp"] select,html[data-tool="kp"] text
 #msNew .msn-x{background:none;border:0;color:#fff;opacity:.7;font-size:22px;line-height:1;padding:0 4px}
 #msMenu .ms-ver{margin:8px 0 0;font-size:12px;color:#7a7068}
 
-/* автор разработки и окно "Условия использования" */
+/* тихая подпись внизу и окно "Условия использования" */
 .ms-tlink,#msMenu .ms-more .ms-tlink{display:inline;background:none;border:0;border-radius:0;box-shadow:none;padding:0;margin:0;min-height:0;width:auto;font:inherit;color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .ms-tlink:hover{opacity:.8}
-#msMenu .ms-author{margin:6px 0 0;font-size:12px;color:#7a7068}
+#msMenu .ms-author{margin:10px 0 0;font-size:11px;color:#a39a92}
+.ms-tlink,#msMenu .ms-more .ms-tlink{text-decoration-color:rgba(0,0,0,.2)}
+#msSign{margin:0;padding:18px 16px 130px;text-align:left;font:11px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#a39a92;opacity:.85}
 #msTerms{position:fixed;inset:0;background:rgba(20,26,24,.5);z-index:1300;display:flex;align-items:center;justify-content:center;padding:12px;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#2b2622}
 #msTerms .ms-card{background:#fffdf9;border-radius:16px;max-width:520px;width:100%;max-height:100%;overflow:auto;padding:16px 18px;box-shadow:0 10px 40px rgba(0,0,0,.3);box-sizing:border-box}
 #msTerms .ms-head{display:flex;align-items:center;justify-content:space-between;font-size:18px;gap:10px}
@@ -95,9 +97,9 @@ html[data-tool="kp"] input,html[data-tool="kp"] select,html[data-tool="kp"] text
 #msTerms ul{margin:10px 0 0;padding:0 0 0 20px}
 #msTerms li{margin:0 0 8px}
 #msTerms a{color:#2f6f5e}
-#msTerms .ms-copy{margin:10px 0 14px;font-size:13px;color:#7a7068}
-#msTerms .ms-ok{display:block;width:100%;margin:0;border:0;border-radius:12px;padding:12px;background:#2f6f5e;color:#fff;font:600 15px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;cursor:pointer}
-#msTerms .ms-ok:hover{background:#3d8a73}
+#msTerms .ms-copy{margin:10px 0 14px;font-size:12px;color:#a39a92}
+#msTerms .ms-ok{display:block;width:100%;margin:0;border:1px solid #e3dcd3;border-radius:12px;padding:11px;background:#f4efe8;color:#2b2622;font:500 15px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;cursor:pointer}
+#msTerms .ms-ok:hover{background:#ece5dc}
 @media(max-width:560px){#msTerms{align-items:flex-end;padding:0}#msTerms .ms-card{border-radius:16px 16px 0 0;max-height:92vh;font-size:14.5px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}}
 
 /* ===== Переключатель вариантов продукта (заполняет site.js в <nav data-variants>), в тёмной шапке ===== */

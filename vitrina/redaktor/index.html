@@ -81,7 +81,7 @@ ol.how li+li{margin-top:6px}
 .bar .btn{min-height:40px}
 #toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%) translateY(20px);background:#000;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:90;max-width:90vw;text-align:center}
 #toast.on{opacity:1;transform:translateX(-50%)}
-footer{font-size:13px;color:var(--muted);padding:10px 0 30px}
+footer{font-size:11px;color:var(--muted);opacity:.75;padding:10px 0 30px}
 .ms-tlink{background:none;border:0;padding:0;color:inherit;text-decoration:underline;cursor:pointer;font:inherit}
 @media(max-width:600px){.g2,.g3{grid-template-columns:minmax(0,1fr)}.photos{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
@@ -112,7 +112,7 @@ footer{font-size:13px;color:var(--muted);padding:10px 0 30px}
       <ol class="how">
         <li>Проверьте черновик: <a href="../?chernovik=1" target="_blank">так увидит клиент</a>.</li>
         <li>Нажмите "Скачать файлы для сайта" - получится архив с текстами и фото (фото уже с водяным знаком).</li>
-        <li>Отправьте архив Александру - он выложит его на сайт. Обычно это несколько минут.</li>
+        <li>Отправьте архив тому, кто ведёт сайт, - он выложит его. Обычно это несколько минут.</li>
       </ol>
       <div class="btns">
         <button type="button" class="btn p" data-a="zip">Скачать файлы для сайта</button>
@@ -128,7 +128,7 @@ footer{font-size:13px;color:var(--muted);padding:10px 0 30px}
   </div>
 </main>
 
-<footer><div class="in">Шаблон витрины: © 2026 Александр Наумов. <button type="button" class="ms-tlink" data-terms>Условия использования</button></div></footer>
+<footer><div class="in" data-sign>Разработка в тестовом режиме. Все права защищены. <button type="button" class="ms-tlink" data-terms>Условия использования</button></div></footer>
 
 <div class="bar"><div class="in">
   <span class="st" id="st">Черновик сохранён</span>
