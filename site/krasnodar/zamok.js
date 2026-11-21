@@ -91,7 +91,12 @@
     "#krLock .msg.ok{color:#c9bdb0}",
     "#krLock .foot{margin-top:26px;font-size:12px;color:#8a7d70}",
     "#krBack{position:fixed;right:10px;top:calc(10px + env(safe-area-inset-top));z-index:2147482000;display:inline-flex;align-items:center;gap:6px;background:rgba(31,27,24,.9);color:#f3ede6;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:7px 12px;font:600 13px system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;text-decoration:none;box-shadow:0 4px 18px rgba(0,0,0,.25);backdrop-filter:blur(6px)}",
-    "#krBack.bl{top:auto;right:auto;left:12px;bottom:calc(14px + env(safe-area-inset-bottom))}"
+    "#krBack.bl{top:auto;right:auto;left:12px;bottom:calc(14px + env(safe-area-inset-bottom))}",
+    // путешествие по дому: кнопка видна только на экране дома, в комнате и работе есть свои "назад" - ничего не налезает
+    "#krBack{transition:opacity .4s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1),visibility 0s}",
+    "body[data-vp]:not([data-vp=home]) #krBack{opacity:0;transform:translateY(-16px) scale(.9);pointer-events:none;visibility:hidden;transition:opacity .3s,transform .4s,visibility 0s linear .4s}",
+    "body[data-vp] .home-in .who{padding-right:92px}",
+    "@media (prefers-reduced-motion:reduce){#krBack{transition:none!important}}"
   ].join("\n");
   function style() { if (document.getElementById("krCss")) return; var s = document.createElement("style"); s.id = "krCss"; s.textContent = CSS; document.head.appendChild(s); }
   function lockScreen() {

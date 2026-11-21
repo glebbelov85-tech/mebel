@@ -74,7 +74,7 @@ def krasnodar():
             html = html.replace(a, b)
         i, j = html.index('<script>window.MEBEL_TOOL'), html.rindex("</script>") + len("</script>")
         tail = ('<script>window.MEBEL_TOOL = "%s";</script>\n<script src="../../shared/site.js"></script>\n'
-                '<script src="../zamok.js"></script>\n<script>KrZamok.page({ scripts: %s, back: "%s" });</script>' % (tool, json.dumps(scripts), "bl" if tool == "kr-dom" else "tr"))
+                '<script src="../zamok.js"></script>\n<script>KrZamok.page({ scripts: %s, back: "%s" });</script>' % (tool, json.dumps(scripts), "tr"))
         return html[:i] + tail + html[j:]
 
     v3 = rd(os.path.join(HERE, "vitrina", "index.html"))
