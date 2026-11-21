@@ -282,13 +282,77 @@
     box.appendChild(el("span", "", esc(lvl > 1 ? S.work.nazvanie : k.nazvanie)));
   }
 
-  // ---------- 2. комната: 3D-лента ----------
-  var deckP = 0, deckT = 0, deckEls = [], deckN = 0, deckList = [], deckRaf = 0, deckLast = 0, deckCenter = -1;
-  function renderRoom(k, idx, sweep) {
+  // ---------- 2. комната: работы карусель / лента / плитки / журнал ----------
+  // Вид выбирает клиент переключателем под названием комнаты, выбор запоминается (localStorage vp-vid).
+  var VIEWS = ["karusel", "lenta", "plitki", "zhurnal"], VKEY = "vp-vid", RV = "karusel";
+  try { var v0 = localStorage.getItem(VKEY); if (VIEWS.indexOf(v0) >= 0) RV = v0; } catch (e) {}
+  var SUB = { karusel: "листайте и открывайте", lenta: "прокручивайте вниз", plitki: "все сразу - нажмите на любую", zhurnal: "листайте страницы" };
+  function renderRoom(k, idx, anim) {
     S.room = k; S.work = null;
-    var ws = k.works;
     $("roomTitle").textContent = k.nazvanie;
-    $("roomSub").textContent = ws.length + " " + plural(ws.length, ["работа", "работы", "работ"]) + " - листайте и открывайте";
+    S.ri = Math.max(0, Math.min(k.works.length - 1, idx || 0));
+    crumbs($("crumbsR"), 1); mini($("miniR"));
+    buildView(anim);
+  }
+  function buildView(anim) {
+    var n = S.room.works.length;
+    $("room").setAttribute("data-view", RV);
+    markViews(RV, !anim);
+    $("roomSub").textContent = n + " " + plural(n, ["работа", "работы", "работ"]) + " - " + SUB[RV];
+    $("rlist").hidden = !(RV === "lenta" || RV === "plitki");
+    $("book").hidden = RV !== "zhurnal";
+    $("roomMain").scrollTop = 0;
+    if (RV === "karusel") buildDeck(S.ri, anim);
+    else if (RV === "zhurnal") buildBook(S.ri, anim);
+    else buildList(S.ri, anim);
+  }
+  // подсветка выбранного вида едет к кнопке
+  function markViews(v, inst) {
+    var on = null, pill = $("vpill");
+    [].forEach.call($("views").querySelectorAll("button"), function (b) { var a = b.getAttribute("data-v") === v; b.setAttribute("aria-checked", a ? "true" : "false"); b.tabIndex = a ? 0 : -1; if (a) on = b; });
+    if (!on) return;
+    var put = function () { pill.style.width = on.offsetWidth + "px"; pill.style.transform = "translateX(" + (on.offsetLeft - 4) + "px)"; };
+    if (inst) { pill.classList.add("inst"); put(); void pill.offsetWidth; pill.classList.remove("inst"); } else put();
+  }
+  function setView(v) {
+    if (v === RV || VIEWS.indexOf(v) < 0 || !S.room) return;
+    try { localStorage.setItem(VKEY, v); } catch (e) {}
+    markViews(v);
+    var stg = $("roomStage");
+    if (reduce || !stg.animate) { RV = v; buildView(false); return; }
+    // старый вид тает, новый собирается своей анимацией
+    stg.getAnimations().forEach(function (a) { a.cancel(); });
+    stg.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(.97)" }], { duration: 200, easing: "ease-in", fill: "forwards" }).onfinish = function () {
+      RV = v; flip = null; buildView(true);
+      stg.getAnimations().forEach(function (a) { a.cancel(); });
+    };
+  }
+  // экран комнаты сам не прокручивается (иначе фокус или 3D-карточки сдвигают его); прокручивается только лента/плитки
+  $("room").addEventListener("scroll", function () { if (this.scrollTop || this.scrollLeft) { this.scrollTop = 0; this.scrollLeft = 0; } });
+  $("roomMain").addEventListener("scroll", function () {
+    if (this.scrollLeft) this.scrollLeft = 0;
+    if (this.scrollTop && (RV === "karusel" || RV === "zhurnal")) this.scrollTop = 0;
+    $("room").classList.toggle("sc", this.scrollTop > 8);
+  }, { passive: true });
+  $("views").addEventListener("click", function (e) { var b = e.target.closest("button[data-v]"); if (b) setView(b.getAttribute("data-v")); });
+  $("views").addEventListener("keydown", function (e) {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    e.preventDefault(); e.stopPropagation();
+    var i = (VIEWS.indexOf(RV) + (e.key === "ArrowRight" ? 1 : -1) + VIEWS.length) % VIEWS.length;
+    setView(VIEWS[i]); $("views").querySelector('[data-v="' + VIEWS[i] + '"]').focus();
+  });
+  // точки под каруселью и журналом; если работ много - "3 / 36"
+  function setDots(n) { $("dots").innerHTML = n > 12 ? '<span class="dn"></span>' : new Array(n + 1).join("<i></i>"); }
+  function updDots(i, n) {
+    var d = $("dots"), dn = d.firstChild;
+    if (dn && dn.className === "dn") { dn.textContent = (i + 1) + " / " + n; return; }
+    [].forEach.call(d.children, function (e, j) { e.classList.toggle("on", j === i); });
+  }
+
+  // --- карусель (3D) ---
+  var deckP = 0, deckT = 0, deckEls = [], deckN = 0, deckList = [], deckRaf = 0, deckLast = 0, deckCenter = -1;
+  function buildDeck(idx, sweep) {
+    var ws = S.room.works;
     var d = $("deck"); d.innerHTML = ""; deckEls = [];
     deckList = ws.map(function (w) { return { w: w }; });
     if (ws.length < 3) {
@@ -317,8 +381,7 @@
     deckT = Math.max(0, Math.min(ws.length - 1, idx || 0));
     deckP = sweep && !reduce ? deckT - 1.6 : deckT;
     deckCenter = -1;
-    $("dots").innerHTML = deckList.map(function () { return "<i></i>"; }).join("");
-    crumbs($("crumbsR"), 1); mini($("miniR"));
+    setDots(deckN);
     deckRender(); kick();
   }
   function setRoomBg(src) {
@@ -328,6 +391,7 @@
     off.classList.add("on"); if (on) on.classList.remove("on");
   }
   function deckRender() {
+    if (RV !== "karusel") return;
     deckEls.forEach(function (c, i) {
       var d = i - deckP, ad = Math.abs(d);
       c.style.transform = "translateX(" + (-50 + d * 68) + "%) translateZ(" + (-ad * 220) + "px) rotateY(" + Math.max(-50, Math.min(50, -d * 32)) + "deg)";
@@ -339,11 +403,11 @@
       if (c.tagName === "BUTTON") c.tabIndex = Math.round(deckT) === i ? 0 : -1;
     });
     var ci = Math.max(0, Math.min(deckN - 1, Math.round(deckP)));
-    [].forEach.call($("dots").children, function (e, i) { e.classList.toggle("on", i === ci); });
+    updDots(ci, deckN);
     if (ci !== deckCenter) {
       deckCenter = ci;
       var it = deckList[ci];
-      if (it && it.w) { setRoomBg(cover(it.w)); $("deckLive").textContent = it.w.nazvanie + ", " + (ci + 1) + " из " + S.room.works.length; }
+      if (it && it.w) { S.ri = ci; setRoomBg(cover(it.w)); $("deckLive").textContent = it.w.nazvanie + ", " + (ci + 1) + " из " + S.room.works.length; }
     }
   }
   function kick() { if (!deckRaf) { deckLast = performance.now(); deckRaf = requestAnimationFrame(deckFrame); } }
@@ -356,7 +420,7 @@
       if (Math.abs(deckT - deckP) < 0.0015) deckP = deckT;
     }
     deckRender();
-    if (cur === "room" && (deckDrag || deckP !== deckT)) deckRaf = requestAnimationFrame(deckFrame);
+    if (cur === "room" && RV === "karusel" && (deckDrag || deckP !== deckT)) deckRaf = requestAnimationFrame(deckFrame);
   }
   function deckGo(i) { deckT = Math.max(0, Math.min(deckN - 1, i)); kick(); }
   function deckAct(i) {
@@ -395,8 +459,190 @@
     wheelAcc += d;
     if (Math.abs(wheelAcc) > 50 && now - wheelT > 260) { deckGo(Math.round(deckT) + (wheelAcc > 0 ? 1 : -1)); wheelAcc = 0; wheelT = now; }
   }, { passive: false });
-  $("dPrev").onclick = function () { deckGo(Math.round(deckT) - 1); };
-  $("dNext").onclick = function () { deckGo(Math.round(deckT) + 1); };
+  $("dPrev").onclick = function () { if (RV === "zhurnal") turn(-1); else deckGo(Math.round(deckT) - 1); };
+  $("dNext").onclick = function () { if (RV === "zhurnal") turn(1); else deckGo(Math.round(deckT) + 1); };
+
+  // --- лента и плитки ---
+  var listIO = null;
+  function buildList(idx, anim) {
+    var box = $("rlist"), ws = S.room.works, mode = RV, go = !!anim && !reduce;
+    box.className = "rlist " + mode; box.innerHTML = "";
+    if (listIO) { listIO.disconnect(); listIO = null; }
+    ws.forEach(function (w, i) {
+      var f0 = fotos(w)[0], nt = (w.tochki || []).length, nf = (w.foto || []).length, rv = otzyvy(w).length;
+      var c = el("button", "rcard" + (mode === "lenta" && go ? "" : " in"));
+      c.type = "button"; c.style.setProperty("--i", i);
+      c.innerHTML = '<span class="ri"><img src="' + esc(cover(w)) + '" alt="" draggable="false" decoding="async"' + (i > 7 ? ' loading="lazy"' : "") + ">" + wmHTML(f0) + "</span>" +
+        '<span class="tag">' + (nf > 1 ? "<span>" + nf + " фото</span>" : "") + (nt ? "<span>" + nt + " " + plural(nt, ["деталь", "детали", "деталей"]) + "</span>" : "") + (rv ? "<span>отзыв</span>" : "") + "</span>" +
+        '<span class="rm"><b>' + esc(w.nazvanie) + "</b><span>" + esc(w.gde || "") + '</span></span><span class="open">' + IC.open + "</span>";
+      c.setAttribute("aria-label", w.nazvanie);
+      c.onclick = function () { S.ri = i; nav({ s: "work", w: w }); };
+      box.appendChild(c);
+    });
+    if (mode === "lenta" && go) {
+      if (window.IntersectionObserver) {
+        listIO = new IntersectionObserver(function (es) { es.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add("in"); listIO.unobserve(en.target); } }); }, { root: $("roomMain"), rootMargin: "0px 0px -5% 0px" });
+        [].forEach.call(box.children, function (c) { listIO.observe(c); });
+      } else [].forEach.call(box.children, function (c) { c.classList.add("in"); });
+    }
+    box.classList.remove("go"); if (go) { void box.offsetWidth; box.classList.add("go"); }
+    if (idx > 0) roomEl(idx, true);
+    if (ws[idx]) setRoomBg(cover(ws[idx]));
+  }
+  // элемент работы i в текущем виде (с ним связаны анимации открытия и возврата)
+  function roomEl(i, reveal) {
+    if (RV === "karusel") return deckEls[i] || null;
+    if (RV === "zhurnal") return i === JP ? (bookSingle ? $("pgR") : $("pgL")).querySelector(".pim") : null;
+    var c = $("rlist").children[i]; if (!c) return null;
+    if (reveal) {
+      var m = $("roomMain"), r = c.getBoundingClientRect(), mr = m.getBoundingClientRect();
+      if (r.top < mr.top + 80 || r.bottom > mr.bottom - 10) m.scrollTop += r.top - mr.top - (mr.height - r.height) / 2;
+      c.classList.add("in");
+    }
+    return c;
+  }
+  function srcEl(w) {
+    if (!S.room) return null;
+    var i = S.room.works.indexOf(w); if (i < 0) return null;
+    if (RV === "karusel" && Math.round(deckT) !== i) return null;
+    var e = roomEl(i); if (!e) return null;
+    var r = e.getBoundingClientRect();
+    return r.width > 20 && r.bottom > 0 && r.top < innerHeight ? e : null;
+  }
+
+  // --- журнал: страница переворачивается ---
+  // Широкий экран - разворот: слева фото, справа рассказ; лист переворачивается через корешок.
+  // Телефон - одна страница (фото сверху, текст снизу), лист уходит влево. Можно тянуть пальцем/мышью.
+  var JP = 0, flip = null, bookSingle = false;
+  var BLANK = '<div class="paper"></div><i class="lsh"></i>';
+  var ARR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+  function bookSize() {
+    var r = $("roomStage").getBoundingClientRect(), W = r.width - 28, H = r.height - 10, bw, bh;
+    bookSingle = innerWidth <= 860 || W < 700;
+    if (!bookSingle) { bw = Math.min(W, H * 1.5, 1180); bh = bw / 1.5; }
+    else { bw = Math.min(W, H / 1.38, 540); bh = Math.min(H, bw * 1.45); }
+    var b = $("book"); b.classList.toggle("single", bookSingle);
+    b.style.width = Math.round(bw) + "px"; b.style.height = Math.round(bh) + "px";
+  }
+  function folio(i) { return '<div class="fol"><span>' + esc(S.room.nazvanie) + "</span><span>" + (i + 1) + " / " + S.room.works.length + "</span></div>"; }
+  function pim(w, i) { return '<div class="pim" data-open="' + i + '"><img src="' + esc(cover(w)) + '" alt="" draggable="false" decoding="async">' + wmHTML(fotos(w)[0]) + "</div>"; }
+  function jText(w) {
+    var t = w.rasskaz || (w.resheniya || []).join(". "), ov = otzyvy(w)[0];
+    return '<h3 class="ttl">' + esc(w.nazvanie) + '</h3><div class="mt">' + [w.gde, w.material, w.srok ? "Срок: " + w.srok : ""].filter(Boolean).map(function (c) { return "<span>" + esc(c) + "</span>"; }).join("") + "</div>" +
+      '<div class="txt">' + esc(t) + (ov ? "<q>" + esc(ov.tekst) + "</q>" : "") + "</div>";
+  }
+  function jGo(i) { return '<button type="button" class="jgo" data-open="' + i + '">Смотреть работу' + ARR + "</button>"; }
+  function pgPhoto(i) { var w = S.room.works[i]; return w ? '<div class="jp jph">' + folio(i) + pim(w, i) + '<div class="pcap">' + esc(w.gde || w.nazvanie) + "</div></div><i class=\"lsh\"></i>" : BLANK; }
+  function pgText(i) { var w = S.room.works[i]; return w ? '<div class="jp jtx">' + folio(i) + jText(w) + jGo(i) + '</div><i class="lsh"></i>' : BLANK; }
+  function pgOne(i) { var w = S.room.works[i]; return w ? '<div class="jp jph jtx jone">' + folio(i) + pim(w, i) + jText(w) + jGo(i) + '</div><i class="lsh"></i>' : BLANK; }
+  function bookStatic() {
+    if (bookSingle) $("pgR").innerHTML = pgOne(JP);
+    else { $("pgL").innerHTML = pgPhoto(JP); $("pgR").innerHTML = pgText(JP); }
+    $("leaf").hidden = true;
+    var n = S.room.works.length, w = S.room.works[JP];
+    S.ri = JP; updDots(JP, n);
+    if (w) { setRoomBg(cover(w)); $("deckLive").textContent = "Страница " + (JP + 1) + " из " + n + ": " + w.nazvanie; }
+    [].forEach.call($("book").querySelectorAll(".jgo"), function (b) { b.tabIndex = cur === "room" || !cur ? 0 : -1; });
+  }
+  function buildBook(idx, anim) {
+    flip = null; JP = Math.max(0, Math.min(S.room.works.length - 1, idx || 0));
+    bookSize(); setDots(S.room.works.length); bookStatic();
+    var b = $("book"); b.classList.remove("go");
+    if (anim && !reduce) { void b.offsetWidth; b.classList.add("go"); }
+  }
+  function flipSetup(dir) {
+    var to = JP + dir; if (to < 0 || to >= S.room.works.length) return null;
+    var lf = $("leaf"), F = $("lfF"), B = $("lfB"), pr = $("pgR"), pl = $("pgL"), i = JP, f = { dir: dir, to: to, p: 0, under: pr };
+    $("book").classList.remove("go");
+    if (!bookSingle) {
+      if (dir > 0) { lf.className = "leaf r"; F.innerHTML = pgText(i); B.innerHTML = pgPhoto(to); pr.innerHTML = pgText(to); }
+      else { lf.className = "leaf l"; F.innerHTML = pgPhoto(i); B.innerHTML = pgText(to); pl.innerHTML = pgPhoto(to); f.under = pl; }
+    } else {
+      lf.className = "leaf s"; B.innerHTML = BLANK;
+      if (dir > 0) { F.innerHTML = pgOne(i); pr.innerHTML = pgOne(to); } else F.innerHTML = pgOne(to);
+    }
+    lf.hidden = false; flipApply(f, 0);
+    return f;
+  }
+  function flipApply(f, p) {
+    f.p = p;
+    var a, op = 1, lf = $("leaf");
+    if (!bookSingle) a = f.dir > 0 ? -180 * p : 180 * p;
+    else { var q = f.dir > 0 ? p : 1 - p; a = -180 * q; op = q < .5 ? 1 : Math.max(0, 1 - (q - .5) / .38); }
+    var t = Math.abs(a) / 180;
+    // лист чуть приподнимается посередине переворота
+    lf.style.transform = "translateZ(" + (Math.sin(t * Math.PI) * 30).toFixed(1) + "px) rotateY(" + a.toFixed(2) + "deg)";
+    lf.style.opacity = op;
+    var fs = $("lfF").querySelector(".lsh"), bs = $("lfB").querySelector(".lsh"), us = f.under.querySelector(".lsh");
+    if (fs) fs.style.opacity = t < .5 ? Math.min(1, t * 2) : 0;
+    if (bs) bs.style.opacity = t > .5 ? Math.min(1, (1 - t) * 2) : 0;
+    if (us) us.style.opacity = (Math.sin(t * Math.PI) * .85 * (bookSingle && f.dir > 0 ? 1 - t * .5 : 1)).toFixed(3);
+  }
+  function flipAnim(f, to, dur, cb) {
+    var p0 = f.p, t0 = performance.now(), ease = to === 1 && p0 === 0 ? eSwift : eEase;
+    (function fr(now) {
+      var k = Math.min(1, (now - t0) / dur);
+      flipApply(f, p0 + (to - p0) * ease(k));
+      if (k < 1) requestAnimationFrame(fr); else cb();
+    })(t0);
+  }
+  function flipEnd(f, done) { if (done) JP = f.to; flip = null; bookStatic(); }
+  function bump(dir) {
+    var b = $("book"); if (reduce || !b.animate) return;
+    b.animate([{ transform: "translate(-50%,-50%)" }, { transform: "translate(-50%,-50%) translateX(" + (-dir * 12) + "px) rotateY(" + (dir * 5) + "deg)" }, { transform: "translate(-50%,-50%)" }], { duration: 420, easing: EASE });
+    toast(dir > 0 ? "Это последняя страница" : "Это первая страница");
+  }
+  function turn(dir) {
+    if (flip || RV !== "zhurnal") return;
+    var f = flipSetup(dir); if (!f) { bump(dir); return; }
+    flip = f;
+    if (reduce) { $("book").animate && $("book").animate([{ opacity: .4 }, { opacity: 1 }], { duration: 250 }); flipEnd(f, true); return; }
+    flipAnim(f, 1, 1000, function () { flipEnd(f, true); });
+  }
+  function openPage() { var w = S.room && S.room.works[JP]; if (w && !flip) { S.ri = JP; nav({ s: "work", w: w }); } }
+  var bd = null;
+  $("book").addEventListener("pointerdown", function (e) {
+    if (e.button > 0 || flip) return;
+    bd = { x: e.clientX, y: e.clientY, id: e.pointerId, m: false, t: performance.now(), lx: e.clientX, v: 0, tgt: e.target };
+  });
+  $("book").addEventListener("pointermove", function (e) {
+    if (!bd || e.pointerId !== bd.id) return;
+    var dx = e.clientX - bd.x;
+    if (!bd.m) {
+      if (Math.abs(dx) < 9 || Math.abs(dx) < Math.abs(e.clientY - bd.y)) return;
+      var f = flipSetup(dx < 0 ? 1 : -1);
+      if (!f) { var d0 = dx < 0 ? 1 : -1; bd = null; bump(d0); return; }
+      bd.m = true; bd.f = flip = f; $("book").classList.add("drag");
+      try { $("book").setPointerCapture(bd.id); } catch (er) {}
+    }
+    var now = performance.now(); bd.v = (e.clientX - bd.lx) / Math.max(1, now - bd.t); bd.lx = e.clientX; bd.t = now;
+    var w = $("book").offsetWidth * (bookSingle ? 1 : .5);
+    flipApply(bd.f, Math.max(0, Math.min(1, (bd.f.dir > 0 ? -dx : dx) / (w * 1.05))));
+  });
+  function bookUp(e) {
+    if (!bd || e.pointerId !== bd.id) return;
+    var b = bd; bd = null; $("book").classList.remove("drag");
+    if (b.m) {
+      var fl = performance.now() - b.t < 120 ? -b.v * b.f.dir : 0, done = e.type === "pointerup" && (b.f.p > .33 || fl > .35);
+      flipAnim(b.f, done ? 1 : 0, Math.round(220 + 480 * (done ? 1 - b.f.p : b.f.p)), function () { flipEnd(b.f, done); });
+      return;
+    }
+    if (e.type !== "pointerup") return;
+    // нажатие: фото или кнопка - открыть работу; иначе правая половина - дальше, левая - назад
+    if (b.tgt.closest && b.tgt.closest("[data-open]")) { openPage(); return; }
+    var r = $("book").getBoundingClientRect();
+    turn(e.clientX > r.left + r.width / 2 ? 1 : -1);
+  }
+  $("book").addEventListener("pointerup", bookUp); $("book").addEventListener("pointercancel", bookUp);
+  $("book").addEventListener("click", function (e) { if (e.detail === 0 && e.target.closest("[data-open]")) openPage(); }); // клавиатура
+  var bWheel = 0, bWheelT = 0;
+  $("book").addEventListener("wheel", function (e) {
+    e.preventDefault();
+    var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY, now = performance.now();
+    if (now - bWheelT > 300) bWheel = 0;
+    bWheel += d;
+    if (Math.abs(bWheel) > 50 && now - bWheelT > 300 && !flip) { turn(bWheel > 0 ? 1 : -1); bWheel = 0; bWheelT = now; }
+  }, { passive: false });
   $("roomBack").onclick = function () { up(); };
 
   // ---------- 3. работа: сцена, масштаб, точки ----------
@@ -410,7 +656,11 @@
   // свободная часть экрана, куда вписываем фото
   function view() {
     var W = innerWidth, H = innerHeight;
-    if (pano || bare) return { l: 0, t: 0, r: W, b: H };
+    if (bare) return { l: 0, t: 0, r: W, b: H };
+    if (pano) {
+      var pm = wide() ? 24 : 0, pt = $("workTop").offsetHeight || 70, pb = ($("workUi").offsetHeight || 46) + (wide() ? 36 : 28);
+      return { l: pm, t: pt, r: W - pm, b: Math.max(pt + 160, H - pb) };
+    }
     var m = wide() ? Math.max(12, Math.min(24, W * .02)) : 10;
     var top = $("workTop").offsetHeight;
     var ui = $("workUi").offsetHeight || 46;
@@ -422,7 +672,7 @@
     return { l: 0, t: top, r: W, b: Math.max(top + 160, H - sh - ui - 30) };
   }
   function clampSt(o) {
-    var v = pano || bare ? { l: 0, t: 0, r: innerWidth, b: innerHeight } : view(), w = st.iw * o.s, h = st.ih * o.s, vw = v.r - v.l, vh = v.b - v.t;
+    var v = bare ? { l: 0, t: 0, r: innerWidth, b: innerHeight } : view(), w = st.iw * o.s, h = st.ih * o.s, vw = v.r - v.l, vh = v.b - v.t;
     // увеличенное фото может заходить под панели, но не дальше краёв экрана
     var L = w > vw ? 0 : v.l, R = w > vw ? innerWidth : v.r, T0 = h > vh ? 0 : v.t, B = h > vh ? innerHeight : v.b;
     if (w > vw && w <= innerWidth) { L = v.l; R = v.r; }
@@ -433,9 +683,7 @@
   }
   var lastLvl = "";
   function applySt() {
-    var tilt = 0;
-    if (pano) { var W = innerWidth, w = st.iw * st.s; tilt = w > W ? ((st.x - (W - w) / 2) / ((w - W) / 2)) * -9 : 0; }
-    stage.style.transform = (tilt ? "perspective(1400px) rotateY(" + tilt.toFixed(2) + "deg) " : "") + "translate(" + st.x + "px," + st.y + "px) scale(" + st.s + ")";
+    stage.style.transform = "translate(" + st.x + "px," + st.y + "px) scale(" + st.s + ")";
     var P = pts();
     [].forEach.call($("spots").children, function (b, i) {
       var t = P[i]; if (!t) return;
@@ -475,13 +723,9 @@
   // "целиком": фото вписано в свободную часть; в обзоре - заполняет экран с запасом, чтобы было куда тянуть
   function restSt() {
     var W = innerWidth, H = innerHeight;
-    if (pano) {
-      st.base = st.min = Math.max(W / st.iw, H / st.ih) * 1.35; st.max = st.base * 3;
-    } else {
-      var v = view();
-      st.base = st.min = Math.min((v.r - v.l) / st.iw, (v.b - v.t) / st.ih);
-      st.max = Math.max(st.base * 5, Math.max(W / st.iw, H / st.ih) * 2.5);
-    }
+    var v = view();
+    st.base = st.min = Math.min((v.r - v.l) / st.iw, (v.b - v.t) / st.ih);
+    st.max = Math.max(st.base * 5, Math.max(W / st.iw, H / st.ih) * 2.5);
     sizeWM();
     return clampSt({ s: st.base, x: 0, y: 0 });
   }
@@ -500,7 +744,7 @@
     var cx = (px - st.x) / st.s, cy = (py - st.y) / st.s;
     var o = { s: s, x: px - cx * s, y: py - cy * s };
     if (dur) animTo(o, dur, eEase); else { tw = null; glide = null; o = clampSt(o); st.s = o.s; st.x = o.x; st.y = o.y; applySt(); }
-    $("dragHint").classList.add("gone");
+    $("dragHint").classList.add("gone"); panoHint(false);
   }
   function vCenter() { var v = view(); return { x: (v.l + v.r) / 2, y: (v.t + v.b) / 2 }; }
   function zoomStep(dir) {
@@ -681,7 +925,6 @@
     if (lastTap && now - lastTap.t < 320 && Math.hypot(x - lastTap.x, y - lastTap.y) < 40) {
       // двойное нажатие: крупно в эту точку / обратно целиком
       clearTimeout(tapTimer); lastTap = null;
-      if (pano) return;
       if (note >= 0) closeNote(true);
       if (st.s > st.base * 1.05) animTo(restSt(), 500, eEase);
       else { zoomAt(st.base * 2.5, x, y, 500); }
@@ -689,19 +932,46 @@
     }
     lastTap = { t: now, x: x, y: y };
     clearTimeout(tapTimer);
-    tapTimer = setTimeout(function () { lastTap = null; if (note >= 0) closeNote(); else if (!pano) setBare(!bare); }, 300);
+    tapTimer = setTimeout(function () { lastTap = null; if (note >= 0) closeNote(); else if (!pano) setBare(!bare); else panoHint(false); }, 300);
   }
   $("area").addEventListener("pointerup", areaUp); $("area").addEventListener("pointercancel", areaUp);
+  // Колесо мыши - приблизить/отдалить. Тачпад ноутбука: щипок (браузер присылает его как колесо с Ctrl) - масштаб,
+  // движение двумя пальцами - двигать увеличенное фото. Тачпад узнаём по мелким шагам и боковому сдвигу.
+  var padT = 0;
+  function isPad(e) {
+    var now = performance.now();
+    if (e.deltaMode === 0 && (Math.abs(e.deltaX) > 0.5 || (Math.abs(e.deltaY) < 40 && e.deltaY % 1 !== 0) || Math.abs(e.deltaY) < 16)) padT = now;
+    return now - padT < 400;
+  }
   $("area").addEventListener("wheel", function (e) {
-    if (cur !== "work" || pano) return;
+    if (cur !== "work") return;
     e.preventDefault();
-    var dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+    var k = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1, dy = e.deltaY * k, dx = e.deltaX * k;
     if (note >= 0) closeNote(true);
+    if (!e.ctrlKey && isPad(e)) {
+      if (st.s > st.base * 1.02) {
+        tw = null; glide = null;
+        var o = clampSt({ s: st.s, x: st.x - dx, y: st.y - dy }); st.x = o.x; st.y = o.y; applySt(); panoHint(false);
+      } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 2) {
+        // фото целиком: два пальца вверх-вниз тоже приближают, чтобы было понятно, что можно
+        zoomAt(st.s * Math.exp(-dy * .006), e.clientX, e.clientY);
+      }
+      return;
+    }
     zoomAt(st.s * Math.exp(-dy * (e.ctrlKey ? .01 : .0022)), e.clientX, e.clientY);
   }, { passive: false });
+  // Safari на Mac: щипок тачпада приходит отдельными событиями
+  var gS = 0;
+  $("area").addEventListener("gesturestart", function (e) { e.preventDefault(); gS = st.s; });
+  $("area").addEventListener("gesturechange", function (e) { e.preventDefault(); if (cur === "work") zoomAt(gS * e.scale, e.clientX || innerWidth / 2, e.clientY || innerHeight / 2); });
+  $("area").addEventListener("gestureend", function (e) { e.preventDefault(); });
   addEventListener("resize", function () {
     if (cur === "work") { measureSheet(); var r = restSt(); tw = null; st.s = r.s; st.x = r.x; st.y = r.y; if (note >= 0) { var n = note; note = -1; focusSpot(n); } else applySt(); }
-    if (cur === "room") deckRender();
+    if (cur === "room") {
+      markViews(RV, true);
+      if (RV === "karusel") deckRender();
+      else if (RV === "zhurnal" && !flip) { bookSize(); bookStatic(); }
+    }
   });
 
   // ----- панели: убрать всё / вернуть; описание: компактно / подробно / убрано -----
@@ -745,8 +1015,9 @@
   });
 
   function fillWork(w) {
-    S.work = w; S.room = w._k; S.foto = 0; note = -1; pano = false;
-    $("work").classList.remove("pano"); $("note").classList.remove("on");
+    S.work = w; S.room = w._k; S.foto = 0; note = -1;
+    if (cur !== "work") { pano = false; $("work").classList.remove("pano"); panoHint(false); } // в обзоре листаем работы, не выходя из него
+    $("note").classList.remove("on");
     renderSheet(w); renderSpots(); crumbs($("crumbsW"), 2); mini($("miniW"));
     $("wantBtn").textContent = "Хочу так же";
   }
@@ -794,7 +1065,7 @@
   function closeWorkToRoom(k, done) {
     var w = S.work, i = k.works.indexOf(w);
     renderRoom(k, i < 0 ? 0 : i, false);
-    var card = i >= 0 ? deckEls[i] : null;
+    var card = i >= 0 ? roomEl(i, true) : null;
     closeNote(true);
     if (!card || reduce || !$("work").animate) { show("room"); done && done(); return; }
     $("room").classList.add("inst"); $("room").classList.add("on"); $("room").inert = false; $("room").removeAttribute("aria-hidden");
@@ -829,17 +1100,31 @@
   $("wPrev").onclick = function () { stepWork(-1); };
   $("workBack").onclick = function () { up(); };
 
-  // обзор: пока демо на обычном фото (честно подписано). Настоящие панорамы 360 - следующий шаг.
+  // Просмотр на весь экран (кнопка "На весь экран"): фото сразу целиком на тёмном фоне, крестик сверху и Esc - закрыть,
+  // внизу - / Целиком / +, колесо, щипок, двойное нажатие. Подсказка сама пропадает.
+  // Настоящие панорамы 360 (raboty[].panorama) - следующий шаг, тогда здесь будет круговой обзор.
   function setPano(on) {
-    var d = $("dive");
+    if (on === pano) return;
     closeNote(true);
     if (on && bare) { bare = false; $("work").classList.remove("bare"); }
-    if (!reduce) restart(d, "go");
-    setTimeout(function () {
-      pano = on; $("work").classList.toggle("pano", on); $("spots").classList.toggle("off", on);
-      var r = restSt(); st.s = r.s; st.x = r.x; st.y = r.y; applySt();
-      if (on && kbd) $("exitPano").focus({ preventScroll: true });
-    }, T(450));
+    pano = on; $("work").classList.toggle("pano", on); $("spots").classList.toggle("off", on);
+    if (on) $("toast").classList.remove("on");
+    panoHint(on);
+    animTo(restSt(), 650, eEase); // фото плавно переезжает и вписывается целиком
+    if (kbd) (on ? $("exitPano") : $("panoBtn")).focus({ preventScroll: true });
+  }
+  var PHINT = "vp-pano-hint";
+  function panoHint(on) {
+    var b = $("badge360");
+    clearTimeout(panoHint.t);
+    if (!on) { b.classList.remove("on"); return; }
+    var n = 0; try { n = +localStorage.getItem(PHINT) || 0; localStorage.setItem(PHINT, n + 1); } catch (e) {}
+    var fine = window.matchMedia && matchMedia("(pointer: fine)").matches;
+    b.innerHTML = fine ?
+      "<b>Приблизить</b> - колесо мыши, щипок на тачпаде или кнопка +. <b>Двигать</b> - тяните фото. <b>Закрыть</b> - крестик или Esc" :
+      "<b>Приблизить</b> - разведите два пальца или нажмите дважды. <b>Двигать</b> - тяните. <b>Закрыть</b> - крестик вверху";
+    b.classList.add("on");
+    panoHint.t = setTimeout(function () { b.classList.remove("on"); }, n < 2 ? 6000 : 3000);
   }
   $("panoBtn").onclick = function () { setPano(true); };
   $("exitPano").onclick = function () { setPano(false); };
@@ -928,7 +1213,7 @@
     closeModal();
     var fin = function () {
       BUSY = false;
-      if (kbd) { var f = cur === "room" ? deckEls[Math.round(deckT)] : cur === "work" ? $("workBack") : null; if (f && f.focus) f.focus({ preventScroll: true }); }
+      if (kbd) { var f = cur === "room" ? (RV === "zhurnal" ? $("pgR").querySelector(".jgo") : roomEl(S.ri || 0)) : cur === "work" ? $("workBack") : null; if (f && f.focus) f.focus({ preventScroll: true }); }
       if (QUEUE) { var q = QUEUE; QUEUE = null; go(q[0], q[1]); }
     };
     BUSY = true;
@@ -949,8 +1234,7 @@
     } else if (t.s === "work") {
       if (cur === "work" && S.work === t.w) return fin();
       if (cur === "work") { switchWork(t.w, o.dir); setTimeout(fin, T(300)); }
-      else if (cur === "room" && deckList[Math.round(deckT)] && deckList[Math.round(deckT)].w === t.w) openWork(t.w, deckEls[Math.round(deckT)], fin);
-      else openWork(t.w, null, fin);
+      else openWork(t.w, cur === "room" ? srcEl(t.w) : null, fin);
     } else fin();
   }
 
@@ -961,22 +1245,27 @@
     if (k === "Escape") {
       if (closeModal()) return;
       if (cur === "doors") { openDoors(); return; }
+      if (cur === "work" && pano) { setPano(false); return; }
       if (cur === "work" && note >= 0) { closeNote(); return; }
       if (cur === "work" && bare) { setBare(false); return; }
       if (cur === "work" && sheetMode === "open") { setSheet("compact"); return; }
-      if (cur === "work" && st.s > st.base * 1.02 && !pano) { animTo(restSt(), 450, eEase); return; }
-      if (cur === "work" && pano) { setPano(false); return; }
+      if (cur === "work" && st.s > st.base * 1.02) { animTo(restSt(), 450, eEase); return; }
       up(); return;
     }
     if ($("modal").classList.contains("on")) return;
     var tag = (document.activeElement && document.activeElement.tagName) || "";
-    if (cur === "room") {
+    if (cur === "room" && RV === "zhurnal") {
+      if (k === "ArrowRight") { turn(1); e.preventDefault(); }
+      else if (k === "ArrowLeft") { turn(-1); e.preventDefault(); }
+      else if ((k === "Enter" || k === " ") && tag !== "BUTTON") { openPage(); e.preventDefault(); }
+    } else if (cur === "room" && RV === "karusel") {
       if (k === "ArrowRight") { deckGo(Math.round(deckT) + 1); e.preventDefault(); }
       else if (k === "ArrowLeft") { deckGo(Math.round(deckT) - 1); e.preventDefault(); }
       else if ((k === "Enter" || k === " ") && tag !== "BUTTON") { deckAct(Math.round(deckT)); e.preventDefault(); }
     } else if (cur === "work") {
-      if ((k === "+" || k === "=") && !pano) zoomStep(1);
-      else if ((k === "-" || k === "_") && !pano) zoomStep(-1);
+      if (k === "+" || k === "=") zoomStep(1);
+      else if (k === "-" || k === "_") zoomStep(-1);
+      else if (k === "0") animTo(restSt(), 450, eEase);
       else if (k === "ArrowRight") stepWork(1);
       else if (k === "ArrowLeft") stepWork(-1);
       else if (k === "ArrowDown" && (S.work.foto || []).length > 1 && !e.target.closest(".sheet-sc")) { showFoto(S.foto + 1); e.preventDefault(); }
@@ -1005,6 +1294,7 @@
 
   // ---------- запуск ----------
   function start() {
+    try { sessionStorage.setItem("vp-dom", location.pathname + location.search); } catch (e) {} // лента работ покажет "назад в путешествие"
     K = D.kontakty || {};
     WM = makeWM();
     prep(); renderMaster(); renderHouse();

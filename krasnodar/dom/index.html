@@ -125,7 +125,7 @@ svg{flex:none}
 .fly i{position:absolute;inset:0;background:#0B0907}
 
 /* ---------- 2. комната ---------- */
-#room{overflow:hidden;background:#0B0907}
+#room{overflow:hidden;overflow:clip;background:#0B0907}
 .room-bg{position:absolute;inset:-60px;background:center/cover no-repeat;filter:blur(28px) brightness(.32) saturate(1.1);transform:scale(1.1);opacity:0;transition:opacity .8s var(--ease)}
 .room-bg.on{opacity:1}
 .topbar{position:absolute;top:0;left:0;right:0;z-index:8;display:flex;align-items:center;gap:12px;padding:calc(16px + var(--st)) clamp(14px,3vw,32px) 16px}
@@ -138,18 +138,121 @@ svg{flex:none}
 .mini button::before{content:"";position:absolute;inset:-4px}
 .mini button.has{background:#7A6A57}
 .mini button.on{background:var(--acc)}
-.room-head{position:absolute;left:0;right:0;top:calc(clamp(76px,11vh,108px) + var(--st));text-align:center;padding:0 16px;z-index:2;pointer-events:none}
-.room-head h2{font-family:var(--serif);font-weight:600;font-size:clamp(40px,6vw,76px);line-height:1}
+/* экран комнаты - колонка: шапка (название, вид), сцена (карусель / журнал), кнопки. Лента и плитки прокручиваются целиком. */
+.room-main{position:absolute;inset:0;display:flex;flex-direction:column;padding-top:calc(78px + var(--st));overflow:hidden;z-index:2}
+.room-head{flex:none;text-align:center;padding:0 16px;position:relative;z-index:4}
+.room-head h2{font-family:var(--serif);font-weight:600;font-size:clamp(40px,5.4vw,70px);line-height:1}
 .room-head p{color:var(--muted);margin-top:6px;font-size:15px}
+.room-stage{position:relative;flex:1 1 auto;min-height:220px;overflow:hidden;overflow:clip}
+/* переключатель вида */
+.views{position:relative;display:inline-flex;margin-top:14px;padding:4px;border-radius:999px;background:rgba(17,15,12,.6);border:1px solid rgba(244,238,228,.16);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.views button{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border-radius:999px;font-size:13px;font-weight:700;color:var(--muted);transition:color .35s var(--ease)}
+.views button svg{width:18px;height:18px}
+.views button[aria-checked=true]{color:var(--acc-ink)}
+@media (hover:hover){.views button:not([aria-checked=true]):hover{color:var(--ink)}}
+.vpill{position:absolute;z-index:0;left:0;top:4px;bottom:4px;width:0;border-radius:999px;background:var(--acc);box-shadow:0 4px 14px rgba(224,180,126,.3);transition:transform .55s var(--ease),width .55s var(--ease)}
+.vpill.inst{transition:none}
+#room[data-view=lenta] .room-main,#room[data-view=plitki] .room-main{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+#room[data-view=lenta] .room-stage,#room[data-view=plitki] .room-stage{flex:none;min-height:0;overflow:visible}
+#room[data-view=lenta] .deck-ui,#room[data-view=plitki] .deck-ui{display:none}
+#room .topbar{transition:background-color .4s}
+#room.sc .topbar{background:linear-gradient(180deg,rgba(11,9,7,.94) 55%,rgba(11,9,7,0))}
+#room:not([data-view=karusel]) .deck,#room:not([data-view=zhurnal]) .book{display:none}
+/* лента и плитки */
+.rlist{padding:22px clamp(14px,3vw,32px) calc(40px + var(--sb));margin:0 auto}
+.rlist.lenta{max-width:880px;display:grid;gap:clamp(18px,3vw,30px)}
+.rlist.plitki{max-width:1240px;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,230px));justify-content:center;gap:12px}
+.rcard{position:relative;display:block;width:100%;text-align:left;border-radius:20px;overflow:hidden;background:#1B1712;box-shadow:0 24px 50px rgba(0,0,0,.45);isolation:isolate;padding:0}
+.rcard .ri{position:relative;display:block;aspect-ratio:16/10;overflow:hidden}
+.rcard .ri img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.2s var(--ease);-webkit-user-drag:none}
+.rcard .rm{position:absolute;left:0;right:0;bottom:0;padding:40px 70px 18px 20px;background:linear-gradient(180deg,transparent,rgba(10,8,6,.9))}
+.rcard .rm b{display:block;font-family:var(--serif);font-size:clamp(22px,2.6vw,30px);font-weight:600;line-height:1.1}
+.rcard .rm span{display:block;font-size:13px;color:var(--muted);margin-top:3px}
+.rcard .tag{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.rcard .tag span{font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;background:rgba(17,15,12,.65);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.rcard .open{position:absolute;right:16px;bottom:18px;width:44px;height:44px;border-radius:50%;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;transition:transform .4s var(--ease)}
+@media (hover:hover){.rcard:hover .ri img{transform:scale(1.06)}.rcard:hover .open{transform:rotate(45deg) scale(1.08)}}
+.rcard:focus-visible{outline-offset:4px;border-radius:20px}
+.plitki .rcard{border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.4)}
+.plitki .rcard .ri{aspect-ratio:1}
+.plitki .rcard .rm{padding:28px 12px 10px}
+.plitki .rcard .rm b{font-size:18px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.plitki .rcard .rm span,.plitki .rcard .open{display:none}
+.plitki .rcard .tag{top:8px;left:8px;right:8px}
+.plitki .rcard .tag span{font-size:10px;padding:3px 8px}
+/* появление: лента - карточки поднимаются по мере прокрутки, плитки - волной */
+.rlist.lenta .rcard{opacity:0;transform:translateY(46px) scale(.97);transition:opacity .8s var(--ease),transform .9s var(--ease)}
+.rlist.lenta .rcard.in{opacity:1;transform:none}
+.rlist.plitki.go .rcard{animation:tileIn .7s var(--ease) both;animation-delay:calc(min(var(--i),24) * 35ms)}
+@keyframes tileIn{from{opacity:0;transform:translateY(22px) scale(.86)}to{opacity:1;transform:none}}
+.rlist.lenta.go .rcard.in{transition-delay:calc(min(var(--i),3) * 90ms)}
+.rlist .rcard.ph{display:none}
+/* журнал: разворот (широкий экран) или одна страница (телефон), страница переворачивается */
+.book{position:absolute;left:50%;top:50%;width:600px;height:400px;transform:translate(-50%,-50%);perspective:2600px;-webkit-user-select:none;user-select:none;touch-action:pan-y;cursor:grab}
+.book.go{animation:bookIn .9s var(--ease) both}
+@keyframes bookIn{from{opacity:0;transform:translate(-50%,-44%) rotateX(14deg) scale(.92)}to{opacity:1;transform:translate(-50%,-50%)}}
+.book.drag{cursor:grabbing}
+.pg,.face{position:absolute;top:0;bottom:0;overflow:hidden;background:#F3ECE0;color:#211A12}
+.pg-l{left:0;width:50%;border-radius:14px 0 0 14px;box-shadow:-18px 26px 60px rgba(0,0,0,.5)}
+.pg-r{right:0;width:50%;border-radius:0 14px 14px 0;box-shadow:18px 26px 60px rgba(0,0,0,.5)}
+.book.single .pg-l{display:none}
+.book.single .pg-r{width:100%;border-radius:6px 14px 14px 6px;box-shadow:0 26px 60px rgba(0,0,0,.5)}
+.spine{position:absolute;top:0;bottom:0;left:50%;width:60px;margin-left:-30px;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(0,0,0,.16) 42%,rgba(0,0,0,.28) 50%,rgba(0,0,0,.16) 58%,transparent);z-index:3}
+.book.single .spine{left:0;width:26px;margin-left:0;background:linear-gradient(90deg,rgba(0,0,0,.28),transparent)}
+.pg-r::after{content:"";position:absolute;right:0;bottom:0;width:0;height:0;background:linear-gradient(135deg,transparent 50%,#d9cfbe 50%,#fff8ec 100%);box-shadow:-3px -3px 8px rgba(0,0,0,.12);transition:width .35s var(--ease),height .35s var(--ease);z-index:4;border-top-left-radius:4px}
+@media (hover:hover){.book:hover .pg-r::after{width:34px;height:34px}}
+.leaf{position:absolute;top:0;bottom:0;z-index:5;transform-style:preserve-3d;will-change:transform}
+.leaf.r{left:50%;width:50%;transform-origin:0 50%}
+.leaf.l{left:0;width:50%;transform-origin:100% 50%}
+.leaf.s{left:0;width:100%;transform-origin:0 50%}
+.face{left:0;right:0;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.face.back{transform:rotateY(180deg)}
+.leaf.r .front,.leaf.l .back{border-radius:0 14px 14px 0}
+.leaf.r .back,.leaf.l .front{border-radius:14px 0 0 14px}
+.leaf.s .face{border-radius:6px 14px 14px 6px}
+.leaf.s .back{border-radius:14px 6px 6px 14px}
+.lsh{position:absolute;inset:0;pointer-events:none;opacity:0;z-index:5}
+.front .lsh{background:linear-gradient(90deg,rgba(0,0,0,.05),rgba(0,0,0,.42))}
+.back .lsh{background:linear-gradient(270deg,rgba(0,0,0,.05),rgba(0,0,0,.42))}
+.pg .lsh{background:linear-gradient(90deg,rgba(0,0,0,.35),transparent 60%)}
+.pg-l .lsh{background:linear-gradient(270deg,rgba(0,0,0,.35),transparent 60%)}
+.paper{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(120,90,50,.035) 0 2px,transparent 2px 5px),#EFE6D6}
+/* страницы журнала */
+.jp{position:absolute;inset:0;display:flex;flex-direction:column;padding:clamp(16px,2.6vw,30px)}
+.jp .fol{display:flex;justify-content:space-between;gap:10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#8A7558;font-weight:700}
+.jp .fol span:last-child{font-variant-numeric:tabular-nums}
+.jph .pim{position:relative;flex:1;margin-top:12px;border-radius:6px;overflow:hidden;background:#d9cfbe;cursor:zoom-in}
+.jph .pim img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none}
+.jph .pcap{margin-top:10px;font-family:var(--serif);font-style:italic;font-size:15px;color:#5C4B36;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jtx .ttl{font-family:var(--serif);font-weight:700;font-size:clamp(26px,3vw,40px);line-height:1.02;margin:18px 0 10px;color:#1C140B}
+.jtx .mt{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.jtx .mt span{font-size:12px;padding:3px 10px;border-radius:99px;border:1px solid #CDBDA3;color:#5C4B36}
+.jtx .txt{font-size:14.5px;line-height:1.6;color:#3A2E20;flex:1;min-height:0;overflow:hidden;-webkit-mask-image:linear-gradient(180deg,#000 75%,transparent);mask-image:linear-gradient(180deg,#000 75%,transparent)}
+.jtx .txt::first-letter{font-family:var(--serif);font-size:3.1em;font-weight:700;float:left;line-height:.82;margin:4px 8px 0 0;color:#8B5E34}
+.jtx q{display:block;font-family:var(--serif);font-style:italic;font-size:17px;line-height:1.3;color:#5C4B36;border-left:3px solid #E0B47E;padding-left:12px;margin-top:10px;quotes:none}
+.jgo{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;margin-top:14px;min-height:44px;padding:0 18px;border-radius:999px;background:#1C140B;color:#F4EEE4;font-weight:700;font-size:14px;transition:transform .25s var(--ease),background .2s}
+.jgo svg{width:18px;height:18px}
+@media (hover:hover){.jgo:hover{transform:translateX(3px);background:#3A2A18}}
+.jp>*{flex-shrink:0}
+.jp>.pim{flex:1 1 auto;min-height:90px}
+.jp>.txt{flex:1 1 0;min-height:0}
+.jone>.pim{flex:1 1 46%}
+.jone .mt{flex-wrap:nowrap;overflow:hidden}
+.jone .mt span{white-space:nowrap}
+.jone .mt span+span{display:none}
+.jone .ttl{font-size:clamp(24px,7vw,32px);margin:12px 0 6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.jone .txt{font-size:14px}
+.jone .txt::first-letter{font:inherit;float:none;margin:0;color:inherit}
+.jone .mt{margin-bottom:6px}
 #room.enter .room-head>*{animation:rise .8s var(--ease) both}
-#room.enter .room-head h2{animation-delay:.08s}#room.enter .room-head p{animation-delay:.16s}
+#room.enter .room-head h2{animation-delay:.08s}#room.enter .room-head p{animation-delay:.16s}#room.enter .room-head .views{animation-delay:.24s}
 @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 #room.enter .topbar>*{animation:drop .7s var(--ease) both}
 #room.enter .topbar>:nth-child(2){animation-delay:.06s}#room.enter .topbar>:nth-child(4){animation-delay:.12s}
 #room.enter .deck-ui>*{animation:rise .7s var(--ease) both}
 #room.enter .deck-ui>:nth-child(1){animation-delay:.25s}#room.enter .deck-ui>:nth-child(2){animation-delay:.3s}#room.enter .deck-ui>:nth-child(3){animation-delay:.35s}
 @keyframes drop{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
-.deck{position:absolute;left:0;right:0;top:50%;height:min(56vh,480px);transform:translateY(-36%);perspective:1400px;touch-action:pan-y;-webkit-user-select:none;user-select:none;cursor:grab;outline:none}
+.deck{position:absolute;left:0;right:0;top:4%;bottom:4%;perspective:1400px;touch-action:pan-y;-webkit-user-select:none;user-select:none;cursor:grab;outline:none}
 .deck.drag{cursor:grabbing}
 .wcard{position:absolute;left:50%;top:0;height:100%;aspect-ratio:4/3.3;max-width:86vw;border-radius:22px;overflow:hidden;background:#1B1712;box-shadow:0 40px 80px rgba(0,0,0,.6);will-change:transform,opacity;text-align:left;padding:0}
 .wcard>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;-webkit-user-drag:none}
@@ -164,10 +267,11 @@ svg{flex:none}
 .wcard.ph{background:repeating-linear-gradient(135deg,#1F1A14 0 12px,#241E17 12px 24px);border:1.5px dashed #5A4E40;display:grid;place-items:center;text-align:center;color:var(--muted);padding:24px;box-shadow:none;cursor:default}
 .wcard.ph b{display:block;font-family:var(--serif);font-size:26px;line-height:1.1;color:var(--ink);margin-bottom:6px;font-weight:600}
 .wm{position:absolute;inset:0;pointer-events:none;background-repeat:repeat;background-size:420px 260px}
-.deck-ui{position:absolute;left:0;right:0;bottom:calc(clamp(18px,4vh,40px) + var(--sb));display:flex;justify-content:center;align-items:center;gap:14px;z-index:3}
+.deck-ui{flex:none;position:relative;padding:8px 0 calc(clamp(16px,3.4vh,34px) + var(--sb));display:flex;justify-content:center;align-items:center;gap:14px;z-index:3}
 .dots{display:flex;gap:7px}
 .dots i{width:8px;height:8px;border-radius:99px;background:rgba(244,238,228,.3);transition:width .4s var(--ease),background .3s}
 .dots i.on{width:26px;background:var(--acc)}
+.dots .dn{min-width:70px;text-align:center;font-size:14px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 
 /* ---------- 3. работа ----------
    Фото по умолчанию целиком (в свободной части экрана, не под панелями), дальше - колесо, щипок, +/-, двойное нажатие.
@@ -273,18 +377,26 @@ svg{flex:none}
 .zb:active,.zl:active{background:rgba(244,238,228,.16)}
 .drag-hint{font-size:13px;color:#E8DFD2;background:rgba(17,15,12,.55);padding:8px 14px;border-radius:99px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;transition:opacity .6s var(--ease),transform .6s var(--ease)}
 .drag-hint.gone{opacity:0;transform:translateX(-12px);pointer-events:none}
-.exit-pano{display:none}
-#work.pano .exit-pano{display:inline-flex;animation:pop .5s var(--ease) both}
-#work.pano .zoom,#work.pano #uiTg,#work.pano .drag-hint{display:none}
+/* просмотр на весь экран ("обзор"): фото целиком на тёмном, сверху крестик, внизу масштаб */
+.pano-x{display:none;align-items:center;gap:8px;min-height:46px;padding:0 18px 0 14px;border-radius:999px;background:rgba(17,15,12,.72);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1.5px solid rgba(244,238,228,.4);font-size:15px;font-weight:700;transition:background .2s,border-color .2s,transform .25s var(--ease)}
+.pano-x svg{width:20px;height:20px}
+@media (hover:hover){.pano-x:hover{background:rgba(17,15,12,.92);border-color:var(--ink);transform:scale(1.04)}}
+.pano-x:active{transform:scale(.96)}
+#work.pano .pano-x{display:inline-flex;animation:pop .5s var(--ease) both}
+#work.pano .mini,#work.pano .crumbs button,#work.pano #workBack,#work.pano #uiTg,#work.pano .drag-hint{display:none}
+#work.pano .crumbs span{max-width:min(56vw,640px)}
+#work{transition:background-color .6s var(--ease)}
+#work.pano{background:#050403}
+#work.pano .stage{box-shadow:none}
+#work.pano .vignette{opacity:.6}
+#work.pano .zoom .zb{width:50px}
 @keyframes pop{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:none}}
 .zoom-pill{position:absolute;z-index:8;left:50%;top:50%;padding:10px 18px;border-radius:99px;background:rgba(17,15,12,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font-weight:800;font-size:15px;font-variant-numeric:tabular-nums;transform:translate(-50%,-50%) scale(.85);opacity:0;pointer-events:none;transition:opacity .35s var(--ease),transform .35s var(--ease)}
 .zoom-pill.on{opacity:1;transform:translate(-50%,-50%)}
-.dive{position:absolute;inset:0;z-index:20;pointer-events:none;background:#000;clip-path:circle(0% at 50% 50%);opacity:0}
-.dive.go{animation:dive 1s var(--swift) forwards}
-@keyframes dive{0%{clip-path:circle(0% at 50% 50%);opacity:1}45%{clip-path:circle(80% at 50% 50%);opacity:1}100%{clip-path:circle(80% at 50% 50%);opacity:0}}
-.badge360{position:absolute;top:calc(84px + var(--st));left:16px;right:16px;margin:0 auto;width:fit-content;max-width:92vw;z-index:7;font-size:13px;padding:8px 14px;border-radius:14px;background:rgba(17,15,12,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(224,180,126,.4);opacity:0;transform:translateY(-10px);transition:opacity .4s,transform .5s var(--ease);pointer-events:none;text-align:center}
-#work.pano .badge360{opacity:1;transform:none}
-#work.pano .work-ui{right:var(--m)}
+.badge360{position:absolute;bottom:calc(var(--m) + 62px + var(--sb));left:16px;right:16px;margin:0 auto;width:fit-content;max-width:min(560px,92vw);z-index:7;font-size:14px;line-height:1.45;padding:10px 16px;border-radius:14px;background:rgba(17,15,12,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(224,180,126,.4);opacity:0;transform:translateY(10px);transition:opacity .5s var(--ease),transform .6s var(--ease);pointer-events:none;text-align:center}
+.badge360 b{color:var(--acc);font-weight:700}
+#work.pano .badge360.on{opacity:1;transform:none}
+#work.pano .work-ui{right:var(--m);justify-content:center}
 
 /* хочу так же */
 .modal{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:16px;background:rgba(5,4,3,.6);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:opacity .35s,visibility 0s linear .35s;overflow-y:auto}
@@ -323,6 +435,9 @@ body[data-vp=work] .toast.on{transform:translate(-50%,0)}
   .work-ui{right:10px;bottom:calc(var(--sh) + 20px + var(--sb));transition:opacity .45s var(--ease),transform .6s var(--ease),bottom .6s var(--ease)}
   .work-ui .zoom{margin-left:auto}
   #work.sh-hidden .work-ui,#work.pano .work-ui{bottom:calc(14px + var(--sb))}
+  #work.pano .work-ui .zoom{margin-left:0}
+  .badge360{bottom:calc(76px + var(--sb));font-size:13px}
+  .pano-x{padding:0 14px 0 12px}
   #work.sh-open .work-ui{transform:translateY(30px);opacity:0;pointer-events:none}
   .sheet-tab{top:auto;bottom:0;right:auto;left:50%;flex-direction:row;padding:8px 16px calc(8px + var(--sb));border-radius:14px 14px 0 0;border:1px solid rgba(244,238,228,.16);border-bottom:0;transform:translate(-50%,110%)}
   #work.sh-hidden .work-ui{bottom:calc(58px + var(--sb))}
@@ -331,8 +446,7 @@ body[data-vp=work] .toast.on{transform:translate(-50%,0)}
   .hide-x svg{transform:rotate(90deg)}
   .sheet-tab svg{transform:rotate(90deg)}
   .ui-show{bottom:calc(14px + var(--sb))}
-  .deck{height:52vh;transform:translateY(-32%)}
-  .room-head{top:calc(84px + var(--st))}
+  .room-main{padding-top:calc(80px + var(--st))}
   .room-head .eyebrow{display:none}
   .wcard{aspect-ratio:3/4}
 }
@@ -343,12 +457,24 @@ body[data-vp=work] .toast.on{transform:translate(-50%,0)}
   .topbar{gap:8px}
   .drag-hint{display:none}
   .zl{min-width:64px;font-size:12px}
-  .room-head h2{font-size:44px}
+  .room-head h2{font-size:40px}
+  .room-head p{font-size:14px;margin-top:2px}
+  .views{margin-top:10px}
+  .views button{padding:0 12px;min-height:40px}
+  .views button span{display:none}
+  .views button[aria-checked=true] span{display:inline}
+  .rlist.plitki{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding-left:10px;padding-right:10px}
+  .plitki .rcard{border-radius:10px}
+  .plitki .rcard .rm{padding:20px 7px 6px}
+  .plitki .rcard .rm b{font-size:13px;font-family:var(--sans);font-weight:700;line-height:1.2}
+  .plitki .rcard .tag span:not(:first-child){display:none}
+  .rcard .rm{padding:36px 64px 14px 16px}
   .sheet h3{font-size:30px}
   .sheet-sc{padding:18px 18px 8px}
   .sheet-foot{padding:10px 14px calc(12px + var(--sb))}
 }
-@media (max-height:560px) and (min-width:601px){.room-head{top:64px}.room-head h2{font-size:38px}.deck{height:52vh}}
+@media (max-height:700px) and (min-width:601px){.room-head .eyebrow{display:none}.room-head h2{font-size:44px}.views{margin-top:8px}.room-main{padding-top:calc(70px + var(--st))}}
+@media (max-height:520px){.room-head h2{font-size:30px}.room-head p{display:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition-duration:.01ms!important;transition-delay:0s!important}}
 </style>
 </head>
@@ -405,12 +531,30 @@ body[data-vp=work] .toast.on{transform:translate(-50%,0)}
     <div class="crumbs" id="crumbsR"></div><div class="sp"></div>
     <div class="mini" id="miniR" role="group" aria-label="Мини-карта дома"></div>
   </div>
-  <div class="room-head"><div class="eyebrow">Вы в комнате</div><h2 id="roomTitle"></h2><p id="roomSub"></p></div>
-  <div class="deck" id="deck" role="group" aria-roledescription="лента работ" aria-label="Работы в комнате"></div>
+  <div class="room-main" id="roomMain">
+  <div class="room-head"><div class="eyebrow">Вы в комнате</div><h2 id="roomTitle"></h2><p id="roomSub"></p>
+    <div class="views" id="views" role="radiogroup" aria-label="Как показать работы">
+      <i class="vpill" id="vpill" aria-hidden="true"></i>
+      <button type="button" role="radio" data-v="karusel" title="Карусель"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="5" width="10" height="14" rx="2"/><path d="M3 8v8M21 8v8"/></svg><span>Карусель</span></button>
+      <button type="button" role="radio" data-v="lenta" title="Лента"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="8" rx="2"/><rect x="5" y="14" width="14" height="7" rx="2"/></svg><span>Лента</span></button>
+      <button type="button" role="radio" data-v="plitki" title="Плитки - всё сразу"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg><span>Плитки</span></button>
+      <button type="button" role="radio" data-v="zhurnal" title="Журнал - листать страницы"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6c-2-1.5-5-2-8-1.5V19c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V4.5C17 4 14 4.5 12 6z"/><path d="M12 6v14.5"/></svg><span>Журнал</span></button>
+    </div>
+  </div>
+  <div class="room-stage" id="roomStage">
+    <div class="deck" id="deck" role="group" aria-roledescription="карусель работ" aria-label="Работы в комнате"></div>
+    <div class="rlist" id="rlist" hidden></div>
+    <div class="book" id="book" role="group" aria-roledescription="журнал" aria-label="Работы в комнате - журнал" hidden>
+      <div class="pg pg-l" id="pgL"></div><div class="pg pg-r" id="pgR"></div>
+      <div class="leaf" id="leaf" hidden><div class="face front" id="lfF"></div><div class="face back" id="lfB"></div></div>
+      <i class="spine" aria-hidden="true"></i>
+    </div>
+  </div>
   <div class="deck-ui">
     <button type="button" class="ic" id="dPrev" aria-label="Предыдущая работа"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="dots" id="dots" aria-hidden="true"></div>
     <button type="button" class="ic" id="dNext" aria-label="Следующая работа"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
   </div>
   <p class="sr" id="deckLive" aria-live="polite"></p>
 </section>
@@ -426,8 +570,9 @@ body[data-vp=work] .toast.on{transform:translate(-50%,0)}
     <button type="button" class="ic" id="workBack" aria-label="Назад в комнату"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
     <div class="crumbs" id="crumbsW"></div><div class="sp"></div>
     <div class="mini" id="miniW" role="group" aria-label="Мини-карта дома"></div>
+    <button type="button" class="pano-x" id="exitPano" aria-label="Закрыть просмотр (Esc)" title="Закрыть (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Закрыть</span></button>
   </div>
-  <div class="badge360" id="badge360">Режим обзора: тяните в стороны. Это демо на обычном фото - с 360-камерой можно будет смотреть вокруг полностью</div>
+  <div class="badge360" id="badge360" role="status"></div>
   <div class="note" id="note" role="status"><b id="noteT"></b><span id="noteD"></span><button type="button" id="noteX" aria-label="Закрыть деталь"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <div class="work-ui fade-ui chrome" id="workUi">
     <div class="grp nav-g">
@@ -440,7 +585,6 @@ body[data-vp=work] .toast.on{transform:translate(-50%,0)}
       <button type="button" class="zb" id="zIn" aria-label="Приблизить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
     </div>
     <button type="button" class="ic" id="uiTg" aria-label="Убрать подписи и панели" title="Убрать всё лишнее"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-    <button type="button" class="btn ghost exit-pano" id="exitPano">Выйти из обзора</button>
     <span class="drag-hint" id="dragHint">Колесо или щипок - приблизить, двойное нажатие - крупно</span>
   </div>
   <button type="button" class="ic ui-show" id="uiShow" aria-label="Вернуть подписи и панели" title="Вернуть панели"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg></button>
@@ -466,12 +610,11 @@ body[data-vp=work] .toast.on{transform:translate(-50%,0)}
       </div>
     </div>
     <div class="sheet-foot">
-      <button type="button" class="btn ghost" id="panoBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="9" ry="3.5"/></svg>Обзор</button>
+      <button type="button" class="btn ghost" id="panoBtn" title="Фото на весь экран: приблизить, отдалить, рассмотреть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>На весь экран</button>
       <button type="button" class="btn main" id="wantBtn">Хочу так же</button>
     </div>
   </aside>
   <div class="zoom-pill" id="zPill" aria-hidden="true"></div>
-  <div class="dive" id="dive"></div>
 </section>
 
 <!-- хочу так же -->

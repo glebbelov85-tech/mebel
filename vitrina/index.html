@@ -37,6 +37,14 @@ svg.i{width:20px;height:20px;flex:none}
 .hero .cov{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.32;filter:saturate(.9)}
 .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,17,15,.35),rgba(20,17,15,.92) 78%)}
 .hero .in{position:relative;z-index:1;padding-top:34px;padding-bottom:26px}
+/* назад в "Путешествие по дому": видно, если пришли оттуда (и всегда в закрытой витрине) */
+.todom{display:inline-flex;align-items:center;gap:6px;margin:0 0 18px;min-height:44px;padding:0 18px 0 12px;border-radius:999px;background:#f0c58d;color:#14110f;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 6px 20px rgba(0,0,0,.3);transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s;animation:todomIn .6s cubic-bezier(.22,1,.36,1) both}
+.todom[hidden]{display:none}
+.todom svg{flex:none}
+@media (hover:hover){.todom:hover{transform:translateX(-3px);box-shadow:0 10px 26px rgba(0,0,0,.4)}}
+.todom:active{transform:scale(.97)}
+@keyframes todomIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.todom{animation:none;transition:none}}
 .who{display:flex;align-items:center;gap:16px}
 .ava{flex:none;width:76px;height:76px;border-radius:50%;background:linear-gradient(140deg,#d9a566,#94602a);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#fff;border:3px solid rgba(255,255,255,.25);overflow:hidden}
 .ava img{width:100%;height:100%;object-fit:cover}
@@ -263,6 +271,7 @@ footer .copy{font-size:11px;opacity:.75}
 <header class="hero">
   <div class="cov" id="cover"></div>
   <div class="in">
+    <a class="todom" id="toDom" href="#" hidden><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 3l9 7h-2v10h-5v-6h-4v6H5V10H3z"/></svg>Путешествие по дому</a>
     <div class="who">
       <div class="ava" id="ava"></div>
       <div><h1 id="mName"></h1><p class="rol" id="mRol"></p></div>
