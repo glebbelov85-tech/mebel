@@ -110,9 +110,9 @@ html[data-svet=light] .ic{background:rgba(255,255,255,.75);border-color:rgba(40,
 html[data-svet=light] .modal{background:rgba(40,30,20,.3)}
 html[data-svet=light] .mbox .x{color:var(--muted)}
 /* комната */
-html[data-svet=light] #room{background:var(--bg)}
-html[data-svet=light] .room-bg{filter:blur(30px) brightness(1.15) saturate(.9);opacity:0}
-html[data-svet=light] .room-bg.on{opacity:.4}
+/* размытое фото за комнатой витрина готовит тёмным (без filter, на холсте) - на светлом виде вместо него мягкий светлый фон */
+html[data-svet=light] #room{background:radial-gradient(90% 60% at 50% 0%,#FFFFFF,var(--bg) 70%)}
+html[data-svet=light] .room-bg{display:none}
 html[data-svet=light] .crumbs button,html[data-svet=light] .crumbs span{background:rgba(255,255,255,.75);border-color:rgba(40,30,20,.12)}
 html[data-svet=light] .crumbs span{border-color:var(--acc)}
 html[data-svet=light] .mini{background:rgba(255,255,255,.75);border-color:rgba(40,30,20,.12)}
