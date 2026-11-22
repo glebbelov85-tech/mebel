@@ -19,6 +19,39 @@
   var reduce = !!(mq && mq.matches);
   if (mq && mq.addEventListener) mq.addEventListener("change", function () { reduce = mq.matches; });
   function T(ms) { return reduce ? 0 : ms; }
+
+  // ---------- качество под устройство ----------
+  // "max" - всё: размытие под панелями, тени, тени на сгибе листа, лист приподнимается.
+  // "lite" - для слабых телефонов: без размытия под панелями, лёгкие тени, лист проще; анимации те же, но дешевле.
+  // Сначала угадываем по железу (память, ядра, экономия трафика), потом смотрим на живую плавность:
+  // если во время листания кадры заметно запаздывают - переходим на "lite" и запоминаем на неделю.
+  // Для проверки: ?kach=lite или ?kach=max.
+  var QKEY = "vp-kach", LITE = false;
+  (function () {
+    var f = Q.get("kach"), nav_ = navigator, mem = nav_.deviceMemory || 0, cores = nav_.hardwareConcurrency || 0;
+    var save = !!(nav_.connection && nav_.connection.saveData);
+    if (f === "lite" || f === "max") { LITE = f === "lite"; return; }
+    LITE = save || (mem && mem <= 2) || (mem && mem <= 4 && cores && cores <= 4);
+    try { var s = JSON.parse(localStorage.getItem(QKEY) || "null"); if (s && s.lite && Date.now() - s.at < 7 * 864e5) LITE = true; } catch (e) {}
+  })();
+  document.documentElement.classList.toggle("vp-lite", LITE);
+  // замер плавности: rAF во время анимации; медленные кадры (> 28 мс) больше трети - устройство не тянет
+  var pwBad = 0;
+  function perfWatch(ms) {
+    if (LITE || reduce || Q.get("kach")) return;
+    var t0 = performance.now(), last = t0, n = 0, slow = 0;
+    requestAnimationFrame(function fr(now) {
+      var d = now - last; last = now;
+      if (d > 0 && document.visibilityState === "visible") { n++; if (d > 28) slow++; }
+      if (now - t0 < ms) { requestAnimationFrame(fr); return; }
+      if (n >= 8 && slow / n > .34) {
+        if (++pwBad >= 2) {
+          LITE = true; document.documentElement.classList.add("vp-lite");
+          try { localStorage.setItem(QKEY, JSON.stringify({ lite: true, at: Date.now() })); } catch (e) {}
+        }
+      } else if (n >= 8) pwBad = Math.max(0, pwBad - 1);
+    });
+  }
   var SWIFT = "cubic-bezier(.7,0,.2,1)", EASE = "cubic-bezier(.22,1,.36,1)";
   function eSwift(t) { return bez(.7, 0, .2, 1, t); }
   function eEase(t) { return bez(.22, 1, .36, 1, t); }
@@ -548,7 +581,7 @@
     // старый вид тает, новый собирается своей анимацией
     stg.getAnimations().forEach(function (a) { a.cancel(); });
     stg.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(.97)" }], { duration: 200, easing: "ease-in", fill: "forwards" }).onfinish = function () {
-      RV = v; flip = null; buildView(true);
+      RV = v; flipKill(); buildView(true);
       stg.getAnimations().forEach(function (a) { a.cancel(); });
     };
   }
@@ -609,11 +642,75 @@
     setDots(deckN);
     deckRender(); kick();
   }
+  // Фон комнаты - размытое и затемнённое фото работы. Раньше размывал браузер (filter: blur) на весь экран
+  // при каждой смене работы - это главный тормоз на телефонах. Теперь фото один раз сжимается до 40 точек,
+  // размывается и затемняется на холсте; браузер только растягивает маленькую картинку и плавно меняет прозрачность.
+  var BG = {}, BGW = {}, bgWant = "";
+  function bgSize(im) { return { W: 40, H: Math.max(8, Math.round(40 * (im.naturalHeight || im.height || 3) / (im.naturalWidth || im.width || 4))) }; }
+  function blurMake(im) {
+    try {
+      var sz = bgSize(im);
+      var W = sz.W, H = sz.H, c = document.createElement("canvas");
+      c.width = W; c.height = H;
+      var x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(im, 0, 0, W, H); var d = x.getImageData(0, 0, W, H);
+      var p = d.data, n = W * H, a = new Float32Array(n * 3), t = new Float32Array(n * 3), r = 2, D = 2 * r + 1, i, j, k, s, q, o;
+      for (i = 0; i < n; i++) { a[i * 3] = p[i * 4]; a[i * 3 + 1] = p[i * 4 + 1]; a[i * 3 + 2] = p[i * 4 + 2]; }
+      // размытие "коробкой" по строкам, потом по столбцам (скользящая сумма); три прохода дают почти гауссово
+      for (var pass = 0; pass < 3; pass++) {
+        for (j = 0; j < H; j++) for (k = 0; k < 3; k++) {
+          o = j * W; s = 0;
+          for (q = -r; q <= r; q++) s += a[(o + Math.max(0, Math.min(W - 1, q))) * 3 + k];
+          for (i = 0; i < W; i++) { t[(o + i) * 3 + k] = s / D; s += a[(o + Math.min(W - 1, i + r + 1)) * 3 + k] - a[(o + Math.max(0, i - r)) * 3 + k]; }
+        }
+        for (i = 0; i < W; i++) for (k = 0; k < 3; k++) {
+          s = 0;
+          for (q = -r; q <= r; q++) s += t[(Math.max(0, Math.min(H - 1, q)) * W + i) * 3 + k];
+          for (j = 0; j < H; j++) { a[(j * W + i) * 3 + k] = s / D; s += t[(Math.min(H - 1, j + r + 1) * W + i) * 3 + k] - t[(Math.max(0, j - r) * W + i) * 3 + k]; }
+        }
+      }
+      // затемнение (как brightness .32) и чуть больше цвета
+      for (i = 0; i < n; i++) {
+        var m = (a[i * 3] + a[i * 3 + 1] + a[i * 3 + 2]) / 3;
+        for (k = 0; k < 3; k++) p[i * 4 + k] = Math.max(0, Math.min(255, (m + (a[i * 3 + k] - m) * 1.15) * .32));
+        p[i * 4 + 3] = 255;
+      }
+      x.putImageData(d, 0, 0);
+      return c.toDataURL("image/png");
+    } catch (e) { return ""; } // фото с чужого адреса без разрешения - тогда просто тёмный фон
+  }
+  // later = заранее, для соседних страниц: считаем, когда телефон свободен
+  function blurSrc(src, cb, later) {
+    if (BG[src] !== undefined) { if (cb) cb(BG[src]); return; }
+    var w = BGW[src];
+    if (w) { if (cb) { w.q.push(cb); w.make(); } return; } // фон нужен сейчас - не ждём свободной минуты
+    w = BGW[src] = { q: cb ? [cb] : [], go: false };
+    var fin = function (url) { if (BG[src] !== undefined) return; BG[src] = url; delete BGW[src]; w.q.forEach(function (f) { f(url); }); };
+    // запасной путь (старые браузеры): обычная картинка
+    var viaImg = function () {
+      var im = new Image(), done = function () { fin(blurMake(im)); };
+      im.onload = done; im.onerror = function () { fin(""); }; im.src = src;
+    };
+    // Фото разжимается и уменьшается до 40 точек вне основного потока (fetch + createImageBitmap),
+    // фото уже в кэше браузера, так что сеть не тратится. Основному потоку остаётся крошечная картинка.
+    w.make = function () {
+      if (w.go) return; w.go = true;
+      if (!window.fetch || !window.createImageBitmap) { viaImg(); return; }
+      fetch(src).then(function (r) { if (!r.ok) throw 0; return r.blob(); })
+        .then(function (bl) { return createImageBitmap(bl, { resizeWidth: 40, resizeQuality: "medium" }); })
+        .then(function (bm) { fin(blurMake(bm)); if (bm.close) bm.close(); })
+        .catch(viaImg);
+    };
+    if (later && !w.q.length && window.requestIdleCallback) requestIdleCallback(w.make, { timeout: 1500 }); else w.make();
+  }
   function setRoomBg(src) {
-    var a = $("roomBgA"), b = $("roomBgB"), on = a.classList.contains("on") ? a : b.classList.contains("on") ? b : null, off = on === a ? b : a;
-    if (on && on._src === src) return;
-    off._src = src; off.style.backgroundImage = 'url("' + src.replace(/"/g, "%22") + '")';
-    off.classList.add("on"); if (on) on.classList.remove("on");
+    bgWant = src;
+    blurSrc(src, function (url) {
+      if (bgWant !== src) return; // пока считали, пользователь уже листнул дальше
+      var a = $("roomBgA"), b = $("roomBgB"), on = a.classList.contains("on") ? a : b.classList.contains("on") ? b : null, off = on === a ? b : a;
+      if (on && on._src === src) return;
+      off._src = src; off.style.backgroundImage = url ? 'url("' + url + '")' : "none";
+      off.classList.add("on"); if (on) on.classList.remove("on");
+    });
   }
   function deckRender() {
     if (RV !== "karusel") return;
@@ -739,6 +836,7 @@
   // Широкий экран - разворот: слева фото, справа рассказ; лист переворачивается через корешок.
   // Телефон - одна страница (фото сверху, текст снизу), лист уходит влево. Можно тянуть пальцем/мышью.
   var JP = 0, flip = null, bookSingle = false;
+  var bd = null, pend = { dir: 0, n: 0 }; // сколько ещё страниц перелистнуть после текущей (быстрые нажатия подряд)
   var BLANK = '<div class="paper"></div><i class="lsh"></i>';
   var ARR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
   function bookSize() {
@@ -760,72 +858,150 @@
   function pgPhoto(i) { var w = S.room.works[i]; return w ? '<div class="jp jph">' + folio(i) + pim(w, i) + '<div class="pcap">' + esc(w.gde || w.nazvanie) + "</div></div><i class=\"lsh\"></i>" : BLANK; }
   function pgText(i) { var w = S.room.works[i]; return w ? '<div class="jp jtx">' + folio(i) + jText(w) + jGo(i) + '</div><i class="lsh"></i>' : BLANK; }
   function pgOne(i) { var w = S.room.works[i]; return w ? '<div class="jp jph jtx jone">' + folio(i) + pim(w, i) + jText(w) + jGo(i) + '</div><i class="lsh"></i>' : BLANK; }
+  // Страница рисуется заново, только если на ней должно быть другое (иначе браузер заново декодирует и
+  // перерисовывает фото - это давало рывок в конце каждого переворота).
+  function pgKey(t, i) { return S.room.id + ":" + t + ":" + i; }
+  function pgSet(e, t, i) {
+    var k = pgKey(t, i); if (e._k === k) return;
+    e._k = k; e.innerHTML = t === "P" ? pgPhoto(i) : t === "T" ? pgText(i) : t === "O" ? pgOne(i) : BLANK;
+  }
+  // перенести готовое содержимое (уже декодированное фото) с листа на страницу под ним
+  function pgMove(from, to) {
+    if (!from._k) return;
+    to.innerHTML = ""; while (from.firstChild) to.appendChild(from.firstChild);
+    to._k = from._k; from._k = "";
+  }
+  // фото соседних страниц грузим и декодируем заранее, чтобы переворот не ждал картинку
+  var PRE = {};
+  function preload(i) {
+    var ws = S.room && S.room.works;
+    for (var d = -1; d <= 2; d++) {
+      var w = ws && ws[i + d]; if (!w) continue;
+      var src = cover(w); if (PRE[src]) continue;
+      var im = new Image(); im.decoding = "async"; im.src = src; PRE[src] = im;
+      if (im.decode) im.decode().catch(function () {});
+      blurSrc(src, null, true);
+    }
+  }
   function bookStatic() {
-    if (bookSingle) $("pgR").innerHTML = pgOne(JP);
-    else { $("pgL").innerHTML = pgPhoto(JP); $("pgR").innerHTML = pgText(JP); }
-    $("leaf").hidden = true;
+    if (bookSingle) pgSet($("pgR"), "O", JP);
+    else { pgSet($("pgL"), "P", JP); pgSet($("pgR"), "T", JP); }
+    $("leaf").hidden = true; $("book").classList.remove("fl");
     var n = S.room.works.length, w = S.room.works[JP];
-    S.ri = JP; updDots(JP, n);
+    S.ri = JP; updDots(JP, n); preload(JP);
     if (w) { setRoomBg(cover(w)); $("deckLive").textContent = "Страница " + (JP + 1) + " из " + n + ": " + w.nazvanie; }
     [].forEach.call($("book").querySelectorAll(".jgo"), function (b) { b.tabIndex = cur === "room" || !cur ? 0 : -1; });
   }
+  // остановить переворот без последствий (сменили вид или комнату посреди анимации)
+  function flipKill() {
+    if (flip) { flip.done = flip.killed = true; (flip.anims || []).forEach(function (a) { a.cancel(); }); flip.anims = null; }
+    pend.n = 0;
+    flip = null; bd = null; $("book").classList.remove("drag");
+  }
   function buildBook(idx, anim) {
-    flip = null; JP = Math.max(0, Math.min(S.room.works.length - 1, idx || 0));
+    flipKill(); JP = Math.max(0, Math.min(S.room.works.length - 1, idx || 0));
+    var b = $("book"); b.classList.remove("go", "wait");
     bookSize(); setDots(S.room.works.length); bookStatic();
-    var b = $("book"); b.classList.remove("go");
-    if (anim && !reduce) { void b.offsetWidth; b.classList.add("go"); }
+    if (!anim || reduce) return;
+    // появление начинаем, когда фото страницы уже декодировано (не дольше 0,4 с), - иначе анимация дёргается
+    b.classList.add("wait");
+    var ims = [].slice.call(b.querySelectorAll(".pg img")), go = false;
+    var start = function () { if (go) return; go = true; b.classList.remove("wait"); void b.offsetWidth; b.classList.add("go"); perfWatch(900); };
+    Promise.all(ims.map(function (im) { return im.decode ? im.decode().catch(function () {}) : null; })).then(start);
+    setTimeout(start, 400);
   }
   function flipSetup(dir) {
     var to = JP + dir; if (to < 0 || to >= S.room.works.length) return null;
     var lf = $("leaf"), F = $("lfF"), B = $("lfB"), pr = $("pgR"), pl = $("pgL"), i = JP, f = { dir: dir, to: to, p: 0, under: pr };
-    $("book").classList.remove("go");
+    $("book").classList.remove("go", "wait");
     if (!bookSingle) {
-      if (dir > 0) { lf.className = "leaf r"; F.innerHTML = pgText(i); B.innerHTML = pgPhoto(to); pr.innerHTML = pgText(to); }
-      else { lf.className = "leaf l"; F.innerHTML = pgPhoto(i); B.innerHTML = pgText(to); pl.innerHTML = pgPhoto(to); f.under = pl; }
+      if (dir > 0) { lf.className = "leaf r"; pgMove(pr, F); pgSet(F, "T", i); pgSet(B, "P", to); pgSet(pr, "T", to); }
+      else { lf.className = "leaf l"; pgMove(pl, F); pgSet(F, "P", i); pgSet(B, "T", to); pgSet(pl, "P", to); f.under = pl; }
     } else {
-      lf.className = "leaf s"; B.innerHTML = BLANK;
-      if (dir > 0) { F.innerHTML = pgOne(i); pr.innerHTML = pgOne(to); } else F.innerHTML = pgOne(to);
+      lf.className = "leaf s"; pgSet(B, "-", 0);
+      if (dir > 0) { pgMove(pr, F); pgSet(F, "O", i); pgSet(pr, "O", to); } else pgSet(F, "O", to);
     }
+    f.fs = F.querySelector(".lsh"); f.bs = B.querySelector(".lsh"); f.us = LITE ? null : f.under.querySelector(".lsh");
+    $("book").classList.add("fl");
     lf.hidden = false; flipApply(f, 0);
     return f;
   }
-  function flipApply(f, p) {
-    f.p = p;
-    var a, op = 1, lf = $("leaf");
+  // положение листа при прогрессе p (0..1): поворот, подъём, прозрачность, тени на сгибе
+  function flipState(f, p) {
+    var a, op = 1;
     if (!bookSingle) a = f.dir > 0 ? -180 * p : 180 * p;
     else { var q = f.dir > 0 ? p : 1 - p; a = -180 * q; op = q < .5 ? 1 : Math.max(0, 1 - (q - .5) / .38); }
     var t = Math.abs(a) / 180;
-    // лист чуть приподнимается посередине переворота
-    lf.style.transform = "translateZ(" + (Math.sin(t * Math.PI) * 30).toFixed(1) + "px) rotateY(" + a.toFixed(2) + "deg)";
-    lf.style.opacity = op;
-    var fs = $("lfF").querySelector(".lsh"), bs = $("lfB").querySelector(".lsh"), us = f.under.querySelector(".lsh");
-    if (fs) fs.style.opacity = t < .5 ? Math.min(1, t * 2) : 0;
-    if (bs) bs.style.opacity = t > .5 ? Math.min(1, (1 - t) * 2) : 0;
-    if (us) us.style.opacity = (Math.sin(t * Math.PI) * .85 * (bookSingle && f.dir > 0 ? 1 - t * .5 : 1)).toFixed(3);
+    return {
+      tr: (LITE ? "" : "translateZ(" + (Math.sin(t * Math.PI) * 30).toFixed(1) + "px) ") + "rotateY(" + a.toFixed(2) + "deg)",
+      op: op,
+      fs: t < .5 ? Math.min(1, t * 2) : 0,
+      bs: t > .5 ? Math.min(1, (1 - t) * 2) : 0,
+      us: +(Math.sin(t * Math.PI) * .85 * (bookSingle && f.dir > 0 ? 1 - t * .5 : 1)).toFixed(3)
+    };
   }
+  function flipApply(f, p) {
+    f.p = p;
+    var s = flipState(f, p), lf = $("leaf");
+    lf.style.transform = s.tr; lf.style.opacity = s.op;
+    if (f.fs) f.fs.style.opacity = s.fs;
+    if (f.bs) f.bs.style.opacity = s.bs;
+    if (f.us) f.us.style.opacity = s.us;
+  }
+  // Переворот до конца (или назад) - анимацией браузера (Web Animations): она идёт в отдельном потоке
+  // и остаётся плавной, даже если телефон в этот момент занят. Ключевые кадры считаем по той же формуле.
   function flipAnim(f, to, dur, cb) {
-    var p0 = f.p, t0 = performance.now(), ease = to === 1 && p0 === 0 ? eSwift : eEase;
-    (function fr(now) {
-      var k = Math.min(1, (now - t0) / dur);
-      flipApply(f, p0 + (to - p0) * ease(k));
-      if (k < 1) requestAnimationFrame(fr); else cb();
-    })(t0);
+    var p0 = f.p, ease = to === 1 && p0 === 0 ? eSwift : eEase, lf = $("leaf");
+    var fin = function () { if (f.done) return; f.done = true; (f.anims || []).forEach(function (a) { a.cancel(); }); f.anims = null; flipApply(f, to); cb(); };
+    if (!lf.animate || dur < 30) { fin(); return; }
+    var N = Math.max(8, Math.round(dur / 40)), kl = [], kf = [], kb = [], ku = [];
+    for (var j = 0; j <= N; j++) {
+      var s = flipState(f, p0 + (to - p0) * ease(j / N));
+      kl.push({ transform: s.tr, opacity: s.op }); kf.push({ opacity: s.fs }); kb.push({ opacity: s.bs }); ku.push({ opacity: s.us });
+    }
+    var o = { duration: dur, easing: "linear", fill: "forwards" };
+    f.anims = [lf.animate(kl, o)];
+    if (f.fs) f.anims.push(f.fs.animate(kf, o));
+    if (f.bs) f.anims.push(f.bs.animate(kb, o));
+    if (f.us) f.anims.push(f.us.animate(ku, o));
+    f.done = false;
+    f.anims[0].onfinish = fin;
+    setTimeout(fin, dur / (f.rate || 1) + 600); // на случай, если вкладку свернули посреди переворота
+    perfWatch(Math.min(dur, 700));
   }
-  function flipEnd(f, done) { if (done) JP = f.to; flip = null; bookStatic(); }
+  function flipEnd(f, done) {
+    if (done) {
+      JP = f.to;
+      // то, что лежит на перевёрнутом листе, становится страницей - без перерисовки
+      if (!bookSingle) pgMove($("lfB"), f.dir > 0 ? $("pgL") : $("pgR"));
+      else if (f.dir < 0) pgMove($("lfF"), $("pgR"));
+    } else if (!bookSingle || f.dir > 0) pgMove($("lfF"), f.dir < 0 && !bookSingle ? $("pgL") : $("pgR")); // передумали - лист возвращается на место
+    flip = null; bookSize(); bookStatic(); // размер - вдруг повернули телефон посреди переворота
+    if (pend.n > 0 && !f.killed) { pend.n--; turn(pend.dir, true); } else pend.n = 0;
+  }
   function bump(dir) {
     var b = $("book"); if (reduce || !b.animate) return;
     b.animate([{ transform: "translate(-50%,-50%)" }, { transform: "translate(-50%,-50%) translateX(" + (-dir * 12) + "px) rotateY(" + (dir * 5) + "deg)" }, { transform: "translate(-50%,-50%)" }], { duration: 420, easing: EASE });
     toast(dir > 0 ? "Это последняя страница" : "Это первая страница");
   }
-  function turn(dir) {
-    if (flip || RV !== "zhurnal") return;
+  function turn(dir, quick) {
+    if (RV !== "zhurnal") return;
+    if (flip) {
+      // нажали ещё раз во время переворота: этот лист докручиваем быстрее, следующий - сразу за ним
+      if (flip.anims && !bd && flip.dir === dir) {
+        var left = dir > 0 ? S.room.works.length - 1 - flip.to : flip.to;
+        if (pend.dir !== dir) pend.n = 0;
+        pend.dir = dir; pend.n = Math.min(left, pend.n + 1);
+        flip.rate = 2; flip.anims.forEach(function (a) { a.playbackRate = 2; });
+      }
+      return;
+    }
     var f = flipSetup(dir); if (!f) { bump(dir); return; }
     flip = f;
-    if (reduce) { $("book").animate && $("book").animate([{ opacity: .4 }, { opacity: 1 }], { duration: 250 }); flipEnd(f, true); return; }
-    flipAnim(f, 1, 1000, function () { flipEnd(f, true); });
+    if (reduce) { $("book").animate && $("book").animate([{ opacity: .4 }, { opacity: 1 }], { duration: 250 }); flipApply(f, 1); flipEnd(f, true); return; }
+    flipAnim(f, 1, quick ? 560 : LITE ? 720 : 860, function () { flipEnd(f, true); });
   }
   function openPage() { var w = S.room && S.room.works[JP]; if (w && !flip) { S.ri = JP; nav({ s: "work", w: w }); } }
-  var bd = null;
   $("book").addEventListener("pointerdown", function (e) {
     if (e.button > 0 || flip) return;
     bd = { x: e.clientX, y: e.clientY, id: e.pointerId, m: false, t: performance.now(), lx: e.clientX, v: 0, tgt: e.target };
