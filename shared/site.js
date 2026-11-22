@@ -50,7 +50,7 @@
       who: "Та же витрина, но клиент не листает, а ходит по дому мастера: комната за комнатой",
       points: ["Дом в разрезе: каждая комната - раздел работ", "Работы 3D-лентой, фото на весь экран", "Точки на фото: наезд на деталь и рассказ", "\"Хочу так же\" - готовое сообщение в WhatsApp"] },
     { id: "v5", n: 5, name: "Витрина для Краснодара", sub: "Для Краснодара", short: "Краснодар", path: "krasnodar/", isNew: true, locked: true, group: "vg",
-      pages: ["krasnodar", "kr-vitrina", "kr-dom"],
+      pages: ["krasnodar", "kr-vitrina", "kr-dom", "kr-dizajn"],
       who: "Закрытая витрина с настоящими работами мастера: вход только по пин-коду",
       points: ["Главная - путешествие по дому с работами мастера, под домом видео", "Фото и тексты зашифрованы, без пин-кода их не открыть", "Мастер проверяет подписи работ и отвечает на вопросы", "Отзыв и ответы уходят Александру в WhatsApp"] }
   ];
@@ -83,7 +83,7 @@
   function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Конструктор" : id === "start" ? "Главная" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id === "vitrina" ? "Витрина мастера" : id === "vitrina-red" ? "Мастерская витрины" : id === "vitrina-put" ? "Витрина: путешествие" : id === "vitriny" ? "Витрины" : /^(krasnodar|kr-)/.test(id) ? "Витрина для Краснодара" : id; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   // "start" - стартовая страница (корень сайта), "home" - главная Конструктора (konstruktor/, в ней <base href="../">)
-  function root() { return me === "home" || me === "start" ? "./" : me === "vitrina-red" || me === "vitrina-put" || me === "kr-vitrina" || me === "krasnodar" ? "../../" : "../"; } // krasnodar = вопросы мастеру (krasnodar/master/), kr-dom = главная krasnodar/
+  function root() { return me === "home" || me === "start" ? "./" : me === "vitrina-red" || me === "vitrina-put" || me === "kr-vitrina" || me === "krasnodar" ? "../../" : me === "kr-dizajn" ? "../../../" : "../"; } // krasnodar = вопросы мастеру (krasnodar/master/), kr-dom = главная krasnodar/
   function urlOf(id) { return id === "start" ? root() : root() + (id === "home" ? "konstruktor" : id) + "/"; }
   function money(n, cur) {
     if (window.MebelOrder) return MebelOrder.money(n, cur || MebelOrder.region().currency);
@@ -115,7 +115,7 @@
 
   // --- пометка "Обновление" и подсказка "Доступно обновление" ---
   // VER вшивает build.py при сборке; version.json на сервере - номер самой свежей сборки.
-  var VER = {"v": "20261122112600", "at": "2026-11-22T11:26:00Z", "note": "Витрина для Краснодара: после пин-кода сразу дом, сверху четыре раздела (Работы, Видео, Отзывы, О мастере), под домом место для видео; надпись на крыше всегда в одну строку и по центру; двери открываются на петлях, в комнатах по очереди зажигается свет."};
+  var VER = {"v": "20261122173033", "at": "2026-11-22T17:30:33Z", "note": "Витрина для Краснодара: четыре пробных дизайна путешествия по дому (вечер, утро, графит и латунь, живой дом) - кнопка «Дизайн» вверху; анимация фона сама подстраивается под телефон. Текущая витрина не менялась."};
   var MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
   function verDate(v, withTime) {
     var d = v && new Date(v.at);
@@ -472,7 +472,7 @@
     // Витрина - страница для клиентов: ничего не добавляем и мастером не помечаем. Мастерская витрины - для мастера.
     if (me === "vitrina" || me === "vitrina-put") return;
     // Закрытая витрина для Краснодара: страница для одного мастера, вход по пин-коду - тоже ничего не добавляем
-    if (me === "krasnodar" || me === "kr-vitrina" || me === "kr-dom") return;
+    if (me === "krasnodar" || me === "kr-vitrina" || me === "kr-dom" || me === "kr-dizajn") return;
     if (me === "vitrina-red") { setStaff(); return; }
     var fromHub = /[?&]from=/.test(location.search);
     // конфигуратор - страница для клиента: полоску видит только мастер (кто уже заходил на сайт)
@@ -491,7 +491,7 @@
     }
   };
   // страница без адаптера (главная) запускается сама
-  if (me === "home" || me === "start" || me === "vitriny" || me === "vitrina" || me === "vitrina-red" || me === "vitrina-put" || me === "krasnodar" || me === "kr-vitrina" || me === "kr-dom") {
+  if (me === "home" || me === "start" || me === "vitriny" || me === "vitrina" || me === "vitrina-red" || me === "vitrina-put" || me === "krasnodar" || me === "kr-vitrina" || me === "kr-dom" || me === "kr-dizajn") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
   }
 })();

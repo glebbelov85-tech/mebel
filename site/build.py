@@ -65,7 +65,7 @@ def krasnodar():
     assert os.path.exists(os.path.join(out, "enc", "d.bin")), "нет krasnodar/enc - запустите site/tools/zashifrovat-krasnodar.js"
     noindex = '<meta name="robots" content="noindex, nofollow, noarchive, noimageindex">\n<meta name="referrer" content="no-referrer">\n'
 
-    def locked(html, tool, scripts, repl, back="tr", head=""):
+    def locked(html, tool, scripts, repl, back="tr", head="", depth=1):
         html = html.replace("<head>\n", "<head>\n" + noindex + head, 1)
         html = re.sub(r"<title>.*?</title>", "<title>Закрытая витрина</title>", html, count=1)
         html = re.sub(r'<meta (name="description"|property="og:[a-z]+")[^>]*>\n', "", html)
@@ -73,9 +73,10 @@ def krasnodar():
             assert a in html, (tool, a)
             html = html.replace(a, b)
         i, j = html.index('<script>window.MEBEL_TOOL'), html.rindex("</script>") + len("</script>")
-        tail = ('<script>window.MEBEL_TOOL = "%s";</script>\n<script src="../../shared/site.js"></script>\n'
-                '<script src="%szamok.js"></script>\n<script>KrZamok.page({ scripts: %s, back: "%s" });</script>' % (tool, "" if back == "none" else "../", json.dumps(scripts), back))
-        if back == "none": tail = tail.replace('src="../../shared/site.js"', 'src="../shared/site.js"')
+        up = "../" * depth  # depth - на сколько папок страница глубже krasnodar/
+        if back == "none" and depth == 1: up = ""
+        tail = ('<script>window.MEBEL_TOOL = "%s";</script>\n<script src="%s../shared/site.js"></script>\n'
+                '<script src="%szamok.js"></script>\n<script>KrZamok.page({ scripts: %s, back: "%s" });</script>' % (tool, up, up, json.dumps(scripts), back))
         return html[:i] + tail + html[j:]
 
     v3 = rd(os.path.join(HERE, "vitrina", "index.html"))
@@ -90,6 +91,20 @@ def krasnodar():
         ('href="../../shared/site.css"', 'href="../shared/site.css"'),
         ('href="../redaktor/"', 'href="../vitrina/redaktor/"'),
         ('href="../#raschet"', 'href="vitrina/#raschet"')], back="none", head=old))
+    # Пробные оформления главной (дом): krasnodar/dizajn/v1..v4 - та же страница, что главная, плюс оформление
+    # из site/vitrina/dizajn/ (фон, дом, вход). Выбор и описание - krasnodar/dizajn/ (страница из site/krasnodar/dizajn/).
+    # Главную не меняют, пока Александр не выберет вариант.
+    dz = ('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap">\n' +
+          "".join('<link rel="stylesheet" href="../../../vitrina/dizajn/%s.css">\n' % f for f in ("dizajn", "tema-vecher", "tema-utro", "tema-premium", "tema-zhivoj")))
+    for n, t in ((1, "vecher"), (2, "utro"), (3, "premium"), (4, "zhivoj")):
+        h = locked(v4, "kr-dizajn", ["../../../vitrina/risunki.js", "../../../vitrina/dizajn/dizajn.js", "../../../vitrina/puteshestvie/puteshestvie.js"], [
+            ('href="../../shared/site.css"', 'href="../../../shared/site.css"'),
+            ('href="../redaktor/"', 'href="../../../vitrina/redaktor/"'),
+            ('href="../#raschet"', 'href="../../vitrina/#raschet"'),
+            ("</head>", dz + "</head>")],
+            back="none", depth=2,
+            head='<script>window.VP_TEMA = "%s"; window.VP_TRY = true; window.VP_PREVIEW = true; document.documentElement.setAttribute("data-tema", "%s");</script>\n' % (t, t))
+        wr(os.path.join(out, "dizajn", "v%d" % n, "index.html"), h)
     # старый адрес дома ведёт на главную (с тем же #rabota=/#komnata=)
     wr(os.path.join(out, "dom", "index.html"), '<!DOCTYPE html>\n<html lang="ru"><head><meta charset="UTF-8">\n' + noindex +
        '<title>Закрытая витрина</title>\n<script>location.replace("../" + location.search + location.hash);</script>\n'
