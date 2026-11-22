@@ -14,15 +14,17 @@
     ".krbar .t b{color:#E0B47E;font-weight:700}",
     ".krbar a,.krbar button{flex:none;display:inline-flex;align-items:center;min-height:34px;padding:0 13px;border-radius:999px;font:700 13px/1 Manrope,system-ui,sans-serif;text-decoration:none;white-space:nowrap}",
     ".krbar a{background:#E0B47E;color:#1C140B}",
+    ".krbar a.dz{background:none;color:#E0B47E;border:1px solid rgba(224,180,126,.5)}",
     ".krbar button{border:1px solid rgba(244,238,228,.25);color:#BDB2A2;background:none;cursor:pointer}",
     "#home.enter .krbar{animation:rise .8s cubic-bezier(.22,1,.36,1) .2s both}",
-    "@media (max-width:600px){.krbar .t span{display:none}.krbar{gap:8px}}"
+    "@media (max-width:600px){.krbar .t span{display:none}.krbar{gap:6px}.krbar a,.krbar button{padding:0 10px}}",
+    "@media (max-width:380px){.krbar .t{display:none}}"
   ].join("\n");
   document.head.appendChild(css);
   var bar = document.createElement("div");
   bar.className = "krbar";
   bar.innerHTML = '<div class="t"><b>Черновик витрины.</b> <span>Видите только вы - вход по пин-коду.</span></div>' +
-    '<a href="master/">Вопросы и правки</a><button type="button" id="krOut">Выйти</button>';
+    '<a href="dizajn/" class="dz">Дизайн</a><a href="master/">Вопросы и правки</a><button type="button" id="krOut">Выйти</button>';
   home.insertBefore(bar, top);
   document.getElementById("krOut").onclick = function () { if (window.KrZamok) KrZamok.logout(); };
 })();
