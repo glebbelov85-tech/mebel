@@ -95,7 +95,6 @@
     // путешествие по дому: кнопка видна только на экране дома, в комнате и работе есть свои "назад" - ничего не налезает
     "#krBack{transition:opacity .4s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1),visibility 0s}",
     "body[data-vp]:not([data-vp=home]) #krBack{opacity:0;transform:translateY(-16px) scale(.9);pointer-events:none;visibility:hidden;transition:opacity .3s,transform .4s,visibility 0s linear .4s}",
-    "body[data-vp] .home-in .who{padding-right:92px}",
     "@media (prefers-reduced-motion:reduce){#krBack{transition:none!important}}"
   ].join("\n");
   function style() { if (document.getElementById("krCss")) return; var s = document.createElement("style"); s.id = "krCss"; s.textContent = CSS; document.head.appendChild(s); }
@@ -236,13 +235,15 @@
     return unlock().then(function (r) {
       window.VITRINA = r.data.vitrina;
       var list = (opts && opts.scripts) || [];
+      window.KR_DATA = r.data; // для kr-dom.js: приветствие и т.п.
       return list.reduce(function (p, src) {
         return p.then(function () {
           return new Promise(function (ok, no) { var s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = no; document.body.appendChild(s); });
         });
       }, Promise.resolve()).then(function () {
         hide.remove();
-        var a = document.createElement("a"); a.id = "krBack"; a.href = BASE; a.textContent = "← Назад"; a.title = "Назад в закрытую витрину"; if (opts && opts.back === "bl") a.className = "bl";
+        if (opts && opts.back === "none") return; // главная (дом): возвращаться некуда
+        var a = document.createElement("a"); a.id = "krBack"; a.href = BASE; a.textContent = "← Назад"; a.title = "Назад к дому"; if (opts && opts.back === "bl") a.className = "bl";
         document.body.appendChild(a);
       });
     });

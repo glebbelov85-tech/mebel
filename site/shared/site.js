@@ -52,7 +52,7 @@
     { id: "v5", n: 5, name: "Витрина для Краснодара", sub: "Для Краснодара", short: "Краснодар", path: "krasnodar/", isNew: true, locked: true, group: "vg",
       pages: ["krasnodar", "kr-vitrina", "kr-dom"],
       who: "Закрытая витрина с настоящими работами мастера: вход только по пин-коду",
-      points: ["Работы мастера в двух видах: лентой и путешествием по дому", "Фото и тексты зашифрованы, без пин-кода их не открыть", "Мастер проверяет подписи работ и отвечает на вопросы", "Отзыв и ответы уходят Александру в WhatsApp"] }
+      points: ["Главная - путешествие по дому с работами мастера, под домом видео", "Фото и тексты зашифрованы, без пин-кода их не открыть", "Мастер проверяет подписи работ и отвечает на вопросы", "Отзыв и ответы уходят Александру в WhatsApp"] }
   ];
   // В верхней полосе витрины собраны в одну вкладку "Витрины": нажал - экран выбора (vitriny/),
   // а на странице любой витрины под полосой - вторая строка: мастера / путешествие / Краснодар.
@@ -83,7 +83,7 @@
   function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Конструктор" : id === "start" ? "Главная" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id === "vitrina" ? "Витрина мастера" : id === "vitrina-red" ? "Мастерская витрины" : id === "vitrina-put" ? "Витрина: путешествие" : id === "vitriny" ? "Витрины" : /^(krasnodar|kr-)/.test(id) ? "Витрина для Краснодара" : id; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   // "start" - стартовая страница (корень сайта), "home" - главная Конструктора (konstruktor/, в ней <base href="../">)
-  function root() { return me === "home" || me === "start" ? "./" : me === "vitrina-red" || me === "vitrina-put" || me === "kr-vitrina" || me === "kr-dom" ? "../../" : "../"; }
+  function root() { return me === "home" || me === "start" ? "./" : me === "vitrina-red" || me === "vitrina-put" || me === "kr-vitrina" || me === "krasnodar" ? "../../" : "../"; } // krasnodar = вопросы мастеру (krasnodar/master/), kr-dom = главная krasnodar/
   function urlOf(id) { return id === "start" ? root() : root() + (id === "home" ? "konstruktor" : id) + "/"; }
   function money(n, cur) {
     if (window.MebelOrder) return MebelOrder.money(n, cur || MebelOrder.region().currency);

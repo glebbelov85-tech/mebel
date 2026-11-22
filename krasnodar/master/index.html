@@ -6,9 +6,9 @@
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#1f1b18">
-<title>Закрытая витрина</title>
+<title>Для мастера - закрытая витрина</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%231f1b18'/%3E%3Cpath fill='none' stroke='%23d9a566' stroke-width='2' d='M7 11V8a5 5 0 0 1 10 0v3M5 11h14v9H5z'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="../shared/site.css">
+<link rel="stylesheet" href="../../shared/site.css">
 <style>
 :root{--bg:#f6f2ec;--card:#fffdf9;--ink:#26211d;--muted:#73685e;--line:#e6dccf;--dark:#1f1b18;--acc:#b9783b;--acc-l:#f6e8d8;--ok:#2f6f5e;--ok-l:#e3f0ec;--wa:#1faa54}
 *{box-sizing:border-box}
@@ -24,7 +24,9 @@ header .lk{width:34px;height:34px;border-radius:10px;background:#2c2622;display:
 header .t{flex:1;min-width:0}
 header h1{margin:0;font-size:20px;line-height:1.2}
 header .sub{color:#c9bdb0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-header .out{background:transparent;color:#c9bdb0;border:1px solid #4a4038;border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer}
+header .out{background:transparent;color:#c9bdb0;border:1px solid #4a4038;border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;text-decoration:none;white-space:nowrap}
+header .out.home{background:#d9a566;border-color:#d9a566;color:#1f1b18;font-weight:700}
+@media(max-width:420px){header .row{flex-wrap:wrap}header .t{flex:1 1 60%}}
 header .staff{margin-top:12px}
 header .staff[hidden]{display:none}
 .tabs{position:sticky;top:0;z-index:5;background:var(--dark);border-top:1px solid #2c2622}
@@ -45,6 +47,7 @@ h2:first-child{margin-top:4px}
 .lead{color:var(--muted);margin:-4px 0 12px;font-size:15px}
 .views{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
 @media(max-width:560px){.views{grid-template-columns:minmax(0,1fr)}}
+.views.one{grid-template-columns:minmax(0,1fr)}
 .view{display:block;border-radius:18px;overflow:hidden;background:var(--dark);color:#fff;text-decoration:none;position:relative;min-height:170px}
 .view .bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.6}
 .view .tx{position:relative;padding:16px;display:flex;flex-direction:column;justify-content:flex-end;min-height:170px;background:linear-gradient(transparent 30%,rgba(0,0,0,.65))}
@@ -123,25 +126,25 @@ footer{padding:10px 0 30px;text-align:center;color:var(--muted);font-size:12.5px
   <div class="row">
     <div class="lk"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d9a566" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
     <div class="t"><h1 id="ttl">Закрытая витрина</h1><div class="sub" id="sub"></div></div>
+    <a class="out home" href="../">← К витрине</a>
     <button type="button" class="out" id="out">Выйти</button>
   </div>
   <div class="staff" id="staff" hidden><nav data-variants></nav></div>
 </div></header>
 <nav class="tabs"><div class="in" id="tabs">
-  <a href="#" data-tab="glav">Главная</a>
-  <a href="#raboty" data-tab="raboty">Работы <i id="cR"></i></a>
+  <a href="#" data-tab="glav">Начало</a>
+  <a href="#raboty" data-tab="raboty">Подписи <i id="cR"></i></a>
   <a href="#voprosy" data-tab="voprosy">Вопросы <i id="cQ"></i></a>
-  <a href="#otzyv" data-tab="otzyv">Отзыв</a>
+  <a href="#otzyv" data-tab="otzyv">Ваш отзыв</a>
 </div></nav>
 
 <main><div class="in">
   <section id="s-glav">
     <div class="card hello"><p id="privet"></p></div>
-    <h2>Посмотрите витрину</h2>
-    <p class="lead">Два вида одного сайта с вашими работами. Так их увидят клиенты.</p>
-    <div class="views">
-      <a class="view" href="vitrina/"><div class="bg" id="bg1"></div><div class="tx"><b>Лента работ</b><span>Работы как сторис, рассказ к каждой, контакты</span></div></a>
-      <a class="view" href="dom/"><div class="bg" id="bg2"></div><div class="tx"><b>Путешествие по дому</b><span>Комната за комнатой, точки на фото</span></div></a>
+    <h2>Ваша витрина</h2>
+    <p class="lead">Так её увидят клиенты: дом с комнатами, в каждой - ваши работы.</p>
+    <div class="views one">
+      <a class="view" href="../"><div class="bg" id="bg1"></div><div class="tx"><b>Открыть витрину</b><span>Путешествие по дому, все работы, видео, контакты</span></div></a>
     </div>
     <h2>Что нужно от вас</h2>
     <div class="steps">
@@ -185,8 +188,8 @@ footer{padding:10px 0 30px;text-align:center;color:var(--muted);font-size:12.5px
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>window.MEBEL_TOOL = "krasnodar";</script>
-<script src="../shared/site.js"></script>
-<script src="zamok.js"></script>
-<script src="krasnodar.js"></script>
+<script src="../../shared/site.js"></script>
+<script src="../zamok.js"></script>
+<script src="../krasnodar.js"></script>
 </body>
 </html>
