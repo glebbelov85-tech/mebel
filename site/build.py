@@ -65,8 +65,8 @@ def krasnodar():
     assert os.path.exists(os.path.join(out, "enc", "d.bin")), "нет krasnodar/enc - запустите site/tools/zashifrovat-krasnodar.js"
     noindex = '<meta name="robots" content="noindex, nofollow, noarchive, noimageindex">\n<meta name="referrer" content="no-referrer">\n'
 
-    def locked(html, tool, scripts, repl):
-        html = html.replace("<head>\n", "<head>\n" + noindex, 1)
+    def locked(html, tool, scripts, repl, back="tr", head=""):
+        html = html.replace("<head>\n", "<head>\n" + noindex + head, 1)
         html = re.sub(r"<title>.*?</title>", "<title>Закрытая витрина</title>", html, count=1)
         html = re.sub(r'<meta (name="description"|property="og:[a-z]+")[^>]*>\n', "", html)
         for a, b in repl:
@@ -74,7 +74,8 @@ def krasnodar():
             html = html.replace(a, b)
         i, j = html.index('<script>window.MEBEL_TOOL'), html.rindex("</script>") + len("</script>")
         tail = ('<script>window.MEBEL_TOOL = "%s";</script>\n<script src="../../shared/site.js"></script>\n'
-                '<script src="../zamok.js"></script>\n<script>KrZamok.page({ scripts: %s, back: "%s" });</script>' % (tool, json.dumps(scripts), "tr"))
+                '<script src="%szamok.js"></script>\n<script>KrZamok.page({ scripts: %s, back: "%s" });</script>' % (tool, "" if back == "none" else "../", json.dumps(scripts), back))
+        if back == "none": tail = tail.replace('src="../../shared/site.js"', 'src="../shared/site.js"')
         return html[:i] + tail + html[j:]
 
     v3 = rd(os.path.join(HERE, "vitrina", "index.html"))
@@ -82,10 +83,17 @@ def krasnodar():
         ('href="../shared/site.css"', 'href="../../shared/site.css"'),
         ('href="redaktor/"', 'href="../../vitrina/redaktor/"'),
         ('href="../konfigurator/"', 'href="../../konfigurator/"')]))
+    # главная закрытой витрины = путешествие по дому (вариант 4). Вопросы и правки для мастера - в master/.
     v4 = rd(os.path.join(HERE, "vitrina", "puteshestvie", "index.html"))
-    wr(os.path.join(out, "dom", "index.html"), locked(v4, "kr-dom", ["../../vitrina/risunki.js", "../../vitrina/puteshestvie/puteshestvie.js"], [
-        ('href="../redaktor/"', 'href="../../vitrina/redaktor/"'),
-        ('href="../#raschet"', 'href="../vitrina/#raschet"')]))
+    old = '<script>if(/^#(raboty|voprosy|otzyv)$/.test(location.hash))location.replace("master/"+location.hash);</script>\n'  # старые ссылки на вкладки
+    wr(os.path.join(out, "index.html"), locked(v4, "kr-dom", ["kr-dom.js", "../vitrina/risunki.js", "../vitrina/puteshestvie/puteshestvie.js"], [
+        ('href="../../shared/site.css"', 'href="../shared/site.css"'),
+        ('href="../redaktor/"', 'href="../vitrina/redaktor/"'),
+        ('href="../#raschet"', 'href="vitrina/#raschet"')], back="none", head=old))
+    # старый адрес дома ведёт на главную (с тем же #rabota=/#komnata=)
+    wr(os.path.join(out, "dom", "index.html"), '<!DOCTYPE html>\n<html lang="ru"><head><meta charset="UTF-8">\n' + noindex +
+       '<title>Закрытая витрина</title>\n<script>location.replace("../" + location.search + location.hash);</script>\n'
+       '<meta http-equiv="refresh" content="0; url=../"></head><body></body></html>\n')
 
 
 def run_build(folder):

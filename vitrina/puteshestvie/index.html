@@ -45,57 +45,177 @@ svg{flex:none}
 .btn svg,.ic svg{width:20px;height:20px}
 .ic{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:rgba(17,15,12,.55);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid rgba(244,238,228,.22);transition:transform .25s var(--ease),background .2s,opacity .3s}
 .ic:active{transform:scale(.92)}
+.ic.lbl{width:auto;border-radius:999px;padding:0 16px 0 10px;gap:4px;display:inline-flex;align-items:center;font-weight:700;font-size:14px}
 @media (hover:hover){.btn:hover{transform:translateY(-2px)}.btn.ghost:hover{border-color:rgba(244,238,228,.6)}.ic:hover{transform:scale(1.07);background:rgba(17,15,12,.8)}}
 .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--acc);font-weight:700}
 .serif{font-family:var(--serif)}
 
 /* ---------- 0. двери ---------- */
-#doors{z-index:50;background:#0B0907}
-#doors.open{background:transparent}
-.door{position:absolute;top:0;bottom:0;width:50.5%;background:repeating-linear-gradient(90deg,#4B3424 0,#553B29 3px,#4A3323 7px,#513827 11px);box-shadow:inset 0 0 120px rgba(0,0,0,.45);transition:transform 1.45s var(--swift);will-change:transform}
-.door.l{left:0;border-right:2px solid #24180F}
-.door.r{right:0;border-left:2px solid #24180F}
+#doors{z-index:50;background:#0B0907;perspective:1700px;perspective-origin:50% 45%;overflow:hidden}
+#doors.open{background:transparent;transition:background .9s var(--ease) .5s}
+/* свет из-за створок */
+#doors::before{content:"";position:absolute;left:50%;top:-10%;bottom:-10%;width:60%;transform:translateX(-50%) scaleX(.02);background:radial-gradient(50% 50% at 50% 50%,rgba(255,214,150,.55),rgba(255,214,150,0) 70%);opacity:0;pointer-events:none}
+#doors.open::before{animation:gap 1.7s var(--ease) both}
+@keyframes gap{0%{opacity:0;transform:translateX(-50%) scaleX(.02)}25%{opacity:1}100%{opacity:0;transform:translateX(-50%) scaleX(2.4)}}
+.door{position:absolute;top:0;bottom:0;width:50.5%;background:repeating-linear-gradient(90deg,#4B3424 0,#553B29 3px,#4A3323 7px,#513827 11px);box-shadow:inset 0 0 120px rgba(0,0,0,.45);transition:transform 1.7s cubic-bezier(.55,.02,.18,1),filter 1.7s ease;will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden}
+.door.l{left:0;border-right:2px solid #24180F;transform-origin:0 50%}
+.door.r{right:0;border-left:2px solid #24180F;transform-origin:100% 50%}
 .door::before{content:"";position:absolute;inset:7% 9%;border:2px solid #6E5039;border-radius:4px;box-shadow:inset 0 0 40px rgba(0,0,0,.35)}
 .door::after{content:"";position:absolute;inset:14% 16% 52%;border:1.5px solid rgba(110,80,57,.7);border-radius:3px}
-.door i{position:absolute;top:66%;width:10px;height:150px;margin-top:-75px;border-radius:6px;background:linear-gradient(180deg,#E7C67A,#A9822F);box-shadow:0 4px 14px rgba(0,0,0,.5)}
+.door i{position:absolute;top:66%;width:10px;height:150px;margin-top:-75px;border-radius:6px;background:linear-gradient(180deg,#E7C67A,#A9822F);box-shadow:0 4px 14px rgba(0,0,0,.5);transition:transform .35s var(--ease)}
 .door.l i{right:28px}.door.r i{left:28px}
-#doors.open .door.l{transform:translateX(-101%)}
-#doors.open .door.r{transform:translateX(101%)}
-.door-ui{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;padding:24px;transition:opacity .4s}
-#doors.open .door-ui{opacity:0;pointer-events:none}
+/* сначала ручки поворачиваются, потом створки уходят внутрь на петлях */
+#doors.open .door i{transform:rotate(-24deg)}
+#doors.open .door.l{transform:rotateY(98deg);filter:brightness(.45)}
+#doors.open .door.r{transform:rotateY(-98deg);filter:brightness(.45)}
+.door-ui{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;padding:24px;transition:opacity .45s,transform .6s var(--ease)}
+#doors.open .door-ui{opacity:0;transform:translateY(-18px) scale(.96);pointer-events:none}
 .plate{background:rgba(20,14,9,.8);padding:16px 28px;border-radius:8px;border:1px solid #6E5039;box-shadow:0 20px 50px rgba(0,0,0,.45)}
 .plate b{display:block;font-family:var(--serif);font-size:clamp(32px,5vw,48px);font-weight:600;line-height:1.05}
 .plate span{display:block;margin-top:4px;font-size:13px;color:var(--muted);letter-spacing:.06em}
 .door-ui .skip{font-size:13px;color:rgba(244,238,228,.6);min-height:44px;padding:0 12px}
 
 /* ---------- 1. дом ---------- */
-#home{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:radial-gradient(90% 70% at 70% 0%,#2A2118 0%,var(--bg) 60%)}
-.home-in{max-width:1240px;margin:0 auto;padding:calc(clamp(20px,4vw,48px) + var(--st)) clamp(16px,4vw,40px) 28px;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(24px,4vw,56px);align-items:center;min-height:calc(100% - 64px)}
-#home.enter .home-in{animation:stepin 1.5s var(--swift) both}
-@keyframes stepin{from{transform:scale(1.06);opacity:.4}to{transform:none;opacity:1}}
-.who{display:flex;align-items:center;gap:12px;margin-bottom:26px}
-.av{flex:none;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#E0B47E,#8B5E34) center/cover;display:grid;place-items:center;font-weight:800;color:#1C140B}
-.who b{display:block;font-size:17px;line-height:1.25}.who span{font-size:13px;color:var(--muted)}
-.home h1{font-family:var(--serif);font-weight:600;font-size:clamp(40px,5.6vw,72px);line-height:1;letter-spacing:-.01em;margin:10px 0 16px}
-.home .lead{color:var(--muted);font-size:17px;max-width:460px}
-.legend{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 24px}
-.legend span{font-size:13px;padding:6px 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);display:flex;gap:8px;align-items:center}
-.legend i{width:8px;height:8px;border-radius:50%;background:var(--acc)}
-.legend i.rv{background:#C3A8E6}.legend i.pn{background:#8FC2A6}
-.acts{display:flex;gap:10px;flex-wrap:wrap}
-.trust{display:flex;gap:22px;flex-wrap:wrap;margin-top:26px;font-size:13px;color:var(--muted)}
-.trust b{display:block;font-size:24px;line-height:1.2;color:var(--ink);font-family:var(--serif)}
-.house{position:relative;filter:drop-shadow(0 30px 60px rgba(0,0,0,.55))}
-.roof{height:clamp(70px,9vw,110px);margin:0 4%;background:linear-gradient(180deg,#3B3026,#2A231C);clip-path:polygon(50% 0,100% 100%,0 100%);display:flex;align-items:flex-end;justify-content:center;padding-bottom:12px}
-.roof span{font-family:var(--serif);color:var(--acc);font-size:clamp(15px,1.6vw,19px);max-width:60%;text-align:center;line-height:1.1}
-.floors.r4{grid-auto-rows:clamp(104px,10.5vw,138px)}
-.floors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:clamp(118px,13vw,170px);gap:6px;padding:6px;background:#3B3026;border-radius:0 0 10px 10px}
+#home{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:radial-gradient(90% 60% at 50% 0%,#2A2118 0%,var(--bg) 62%)}
+/* верх: мастер, разделы, "Написать" */
+.htop{position:sticky;top:0;z-index:12;padding-top:var(--st);background:rgba(17,15,12,.72);-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);border-bottom:1px solid rgba(244,238,228,.08);transition:background .3s}
+.htop-in{max-width:1240px;margin:0 auto;padding:10px clamp(14px,3vw,32px);display:flex;align-items:center;gap:clamp(10px,2vw,24px)}
+.who{display:flex;align-items:center;gap:10px;min-width:0;text-align:left;border-radius:14px}
+.av{flex:none;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#E0B47E,#8B5E34) center/cover;display:grid;place-items:center;font-weight:800;font-size:14px;color:#1C140B}
+.who-t{min-width:0}
+.who b{display:block;font-size:15.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who-t>span{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
+.tnav{display:flex;gap:2px;margin-left:auto;align-items:center}
+.tnav button,.tnav a{position:relative;padding:9px 13px;border-radius:999px;font-size:14.5px;font-weight:600;color:rgba(244,238,228,.82);white-space:nowrap;text-decoration:none;transition:color .2s,background .2s}
+.tnav button::after{content:"";position:absolute;left:13px;right:13px;bottom:4px;height:1.5px;border-radius:2px;background:var(--acc);transform:scaleX(0);transform-origin:50% 50%;transition:transform .35s var(--ease)}
+@media (hover:hover){.tnav button:hover,.tnav a:hover{color:var(--ink)}.tnav button:hover::after{transform:scaleX(1)}}
+.tnav button.on{color:var(--acc)}.tnav button.on::after{transform:scaleX(1)}
+.btn.sm{min-height:40px;padding:0 16px;font-size:14px;gap:8px}
+.btn.sm svg{width:18px;height:18px}
+.btn .cnt{font-size:12px;font-weight:700;padding:1px 8px;border-radius:99px;background:rgba(224,180,126,.18);color:var(--acc)}
+/* дом посередине */
+.hero{max-width:980px;margin:0 auto;padding:clamp(18px,3.5vw,40px) clamp(14px,4vw,40px) 10px;text-align:center}
+.hero-t{margin-bottom:clamp(14px,2.4vw,26px)}
+.home h1{font-family:var(--serif);font-weight:600;font-size:clamp(32px,4.4vw,56px);line-height:1.02;letter-spacing:-.01em;margin:8px 0 8px}
+.home .lead{color:var(--muted);font-size:clamp(14.5px,1.4vw,16.5px);max-width:520px;margin:0 auto}
+.hero-acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:clamp(16px,2.4vw,26px)}
+.house{position:relative;filter:drop-shadow(0 30px 60px rgba(0,0,0,.55));text-align:left}
+#home.enter .hero-t,#home.enter .htop{animation:stepin 1.4s var(--swift) both}
+#home.enter .roof{animation:roofIn 1s var(--ease) .25s both}
+#home.enter .room{animation:roomIn .9s var(--ease) both;animation-delay:calc(.35s + var(--i,0)*.08s)}
+#home.enter .room .lamp{animation:lampOn 1.5s ease both;animation-delay:calc(.75s + var(--i,0)*.12s)}
+#home.enter .hero-acts{animation:rise .8s var(--ease) .9s both}
+@keyframes stepin{from{transform:scale(1.05);opacity:0}to{transform:none;opacity:1}}
+@keyframes roofIn{from{transform:translateY(-26px);opacity:0}to{transform:none;opacity:1}}
+@keyframes roomIn{from{opacity:0;transform:translateY(16px) scale(.95)}to{opacity:1;transform:none}}
+@keyframes lampOn{0%{opacity:0}12%{opacity:.9}20%{opacity:.3}32%{opacity:1}100%{opacity:0}}
+/* крыша: надпись всегда в одну строку и по центру, размер подбирает fitRoof() в puteshestvie.js */
+.roof{position:relative;height:clamp(76px,7.5vw,100px);margin:0 4%;background:linear-gradient(180deg,#3B3026,#2A231C);clip-path:polygon(50% 0,100% 100%,0 100%)}
+.roof span{position:absolute;left:50%;bottom:var(--rb,12px);transform:translateX(-50%);font-family:var(--serif);font-weight:600;color:var(--acc);font-size:var(--rf,17px);line-height:1.15;white-space:nowrap;letter-spacing:.01em;opacity:0;transition:opacity .5s}
+.roof span.fit{opacity:1}
+/* на широком экране дом целиком помещается по высоте */
+.floors.r4{grid-auto-rows:clamp(96px,min(10.5vw,(100vh - 440px)/4),138px)}
+.floors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:clamp(112px,min(13vw,(100vh - 440px)/3),170px);gap:6px;padding:6px;background:#3B3026;border-radius:0 0 10px 10px}
+/* видео-лента под домом */
+.reels{max-width:1240px;margin:0 auto;padding:clamp(34px,5vw,64px) 0 8px}
+.reels-h{display:flex;align-items:flex-end;justify-content:space-between;gap:8px 20px;flex-wrap:wrap;padding:0 clamp(14px,4vw,40px);margin-bottom:16px}
+.reels h2{font-family:var(--serif);font-weight:600;font-size:clamp(28px,3.4vw,40px);line-height:1.05;margin-top:4px}
+.reels-h p{color:var(--muted);font-size:14px;max-width:420px}
+.reel-row{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 clamp(14px,4vw,40px);padding:4px clamp(14px,4vw,40px) 18px;scrollbar-width:none}
+.reel-row::-webkit-scrollbar{display:none}
+.reel{position:relative;flex:none;width:clamp(150px,19vw,210px);aspect-ratio:9/16;border-radius:18px;overflow:hidden;scroll-snap-align:start;background:#1B1712 center/cover no-repeat;border:1px solid rgba(244,238,228,.1);text-align:left;isolation:isolate;transition:transform .45s var(--ease),border-color .3s}
+.reel::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,8,6,.15) 40%,rgba(10,8,6,.88));z-index:-1}
+.reel .pl{position:absolute;left:50%;top:44%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;display:grid;place-items:center;background:rgba(244,238,228,.16);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(244,238,228,.35);transition:transform .4s var(--ease),background .3s}
+.reel .pl svg{width:22px;height:22px;margin-left:3px}
+.reel .rt{position:absolute;left:12px;right:12px;bottom:12px}
+.reel .rt b{display:block;font-size:14.5px;line-height:1.25;font-weight:700}
+.reel .rt span{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+@media (hover:hover){.reel:hover{transform:translateY(-6px);border-color:rgba(224,180,126,.5)}.reel:hover .pl{transform:scale(1.12);background:var(--acc);color:var(--acc-ink)}}
+.reel:active{transform:scale(.97)}
+.reel.ph-empty{background:repeating-linear-gradient(135deg,#1C1813 0 12px,#201B15 12px 24px);border:1.5px dashed rgba(224,180,126,.35);cursor:default}
+.reel.ph-empty::after{display:none}
+.reel.ph-empty .pl{background:rgba(224,180,126,.1);border-color:rgba(224,180,126,.35);color:var(--acc)}
+.reel.ph-empty .rt b{color:var(--ink)}
+.reel.ph-empty:hover{transform:none;border-color:rgba(224,180,126,.35)}
+.reel.ph-empty:hover .pl{transform:none;background:rgba(224,180,126,.1);color:var(--acc)}
+.reels.in .reel{animation:reelIn .8s var(--ease) both;animation-delay:calc(var(--i,0)*.08s)}
+@keyframes reelIn{from{opacity:0;transform:translateY(30px) rotate(1.5deg) scale(.94)}to{opacity:1;transform:none}}
+/* разделы поверх дома: на компьютере выезжают справа, на телефоне снизу; дом отступает вглубь */
+.panel{position:fixed;inset:0;z-index:45;visibility:hidden;pointer-events:none}
+.panel.on{visibility:visible;pointer-events:auto}
+.pn-back{position:absolute;inset:0;background:rgba(5,4,3,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:0;transition:opacity .5s var(--ease)}
+.panel.on .pn-back{opacity:1}
+.pn-box{position:absolute;top:0;right:0;bottom:0;width:min(600px,100%);background:var(--bg2);border-left:1px solid var(--line);display:flex;flex-direction:column;transform:translateX(104%);transition:transform .7s var(--ease);box-shadow:-30px 0 80px rgba(0,0,0,.45)}
+.panel.on .pn-box{transform:none}
+.pn-head{position:relative;display:flex;align-items:center;gap:12px;padding:calc(16px + var(--st)) 16px 12px 24px;border-bottom:1px solid rgba(244,238,228,.07);touch-action:none}
+.pn-head h2{flex:1;font-family:var(--serif);font-weight:600;font-size:32px;line-height:1.05}
+.pn-head .grab{display:none}
+.pn-sc{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:18px 24px calc(28px + var(--sb))}
+#home{transition:transform .7s var(--ease),opacity .6s var(--ease),visibility 0s linear .6s}
+#home.on{transition:transform .7s var(--ease),opacity .6s var(--ease)}
+#home.inst,#home.inst.on{transition:none}
+body.pn-open #home{transform:scale(.965) translateX(-1.5%);transform-origin:50% 30%}
+.pn-sc>*{animation:rise .6s var(--ease) both}
+.pn-sc>:nth-child(2){animation-delay:.05s}.pn-sc>:nth-child(3){animation-delay:.1s}.pn-sc>:nth-child(4){animation-delay:.15s}.pn-sc>:nth-child(n+5){animation-delay:.2s}
+.pchips{display:flex;flex-wrap:wrap;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -24px 16px;padding:0 24px 2px}
+.pchips::-webkit-scrollbar{display:none}
+.pchips button{flex:none;min-height:38px;padding:0 14px;border-radius:999px;border:1px solid var(--line);font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap;transition:background .25s,color .25s,border-color .25s}
+.pchips button i{font-style:normal;font-size:12px;margin-left:6px;opacity:.75}
+.pchips button.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.pgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pw{position:relative;display:block;width:100%;text-align:left;border-radius:14px;overflow:hidden;background:#1B1712;aspect-ratio:4/5;isolation:isolate;animation:tileIn .6s var(--ease) both;animation-delay:calc(var(--i,0)*.035s)}
+.pw img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;transition:transform .9s var(--ease)}
+.pw::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(10,8,6,.9));z-index:-1}
+.pw .wm{z-index:-1}
+.pw .pt{position:absolute;left:12px;right:12px;bottom:10px}
+.pw .pt small{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);font-weight:700}
+.pw .pt b{display:block;font-size:15px;line-height:1.25;font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media (hover:hover){.pw:hover img{transform:scale(1.06)}}
+.pw:active{transform:scale(.98)}
+.pempty{padding:28px 18px;border-radius:16px;border:1.5px dashed rgba(224,180,126,.3);text-align:center;color:var(--muted);font-size:15px}
+.pempty b{display:block;color:var(--ink);font-family:var(--serif);font-size:26px;font-weight:600;margin-bottom:6px}
+.prev{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:12px}
+.prev .st{color:#E8B64C;letter-spacing:2px;font-size:15px}
+.prev p{margin:8px 0 10px;font-size:15.5px}
+.prev .by{display:flex;gap:6px 12px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted)}
+.prev .by b{color:var(--ink)}
+.prev .ok{color:#8FC2A6;font-weight:600}
+.prev .go{margin-left:auto;color:var(--acc);font-weight:700;font-size:13.5px;padding:6px 0}
+.pnote{font-size:13px;color:var(--muted);margin-top:14px}
+.pme{display:flex;gap:14px;align-items:center;margin-bottom:16px}
+.pme .av{width:64px;height:64px;font-size:20px;display:grid;margin:0;color:#1C140B}
+.pme b{display:block;font-family:var(--serif);font-size:28px;font-weight:600;line-height:1.05}
+.pme span{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+.ptext{font-size:16px;margin-bottom:18px}
+.pstats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+.pstats div{flex:1 1 120px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:13px;color:var(--muted)}
+.pstats b{display:block;font-family:var(--serif);font-size:28px;line-height:1.1;color:var(--ink)}
+.ph4{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--acc);font-weight:700;margin:4px 0 10px}
+.plist{display:grid;gap:10px;margin-bottom:22px}
+.plist div{padding-left:16px;border-left:2px solid rgba(224,180,126,.4)}
+.plist b{display:block;font-size:15px}
+.plist span{display:block;color:var(--muted);font-size:14px}
+.pcont{display:grid;gap:8px}
+.pcont .btn{width:100%}
+.pcont .ln{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:14px;padding:4px 2px}
+.pcont .ln a{color:var(--ink)}
+/* видеоплеер: вертикальное окно 9:16 */
+.vplayer{position:fixed;inset:0;z-index:65;background:rgba(5,4,3,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:calc(56px + var(--st)) 12px calc(16px + var(--sb));opacity:0;visibility:hidden;transition:opacity .4s var(--ease),visibility 0s linear .4s}
+.vplayer.on{opacity:1;visibility:visible;transition:opacity .4s var(--ease)}
+.vp-frame{position:relative;height:min(78vh,calc((100vw - 24px)*16/9));height:min(78svh,calc((100vw - 24px)*16/9));aspect-ratio:9/16;max-width:100%;border-radius:18px;overflow:hidden;background:#000;transform:scale(.9) translateY(20px);transition:transform .55s var(--ease)}
+.vplayer.on .vp-frame{transform:none}
+.vp-frame iframe,.vp-frame video{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
+.vp-bar{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;max-width:420px}
+.vp-bar b{font-size:15px}
+.vp-bar a{font-size:13px;color:var(--acc)}
+.vp-x{position:absolute;top:calc(10px + var(--st));right:12px}
 .room{position:relative;overflow:hidden;border-radius:4px;text-align:left;background:#1B1712;isolation:isolate;min-height:44px}
 .room .ph{position:absolute;inset:0;background:#1B1712 center/cover no-repeat;transform:scale(1.04);transition:transform 1.2s var(--ease);z-index:-3}
 .room .dark{position:absolute;inset:0;background:#0B0907;opacity:.62;transition:opacity .7s var(--ease);z-index:-2}
 .room::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 35%,rgba(10,8,6,.85));z-index:-1}
 .room .t{position:absolute;left:14px;right:14px;bottom:12px}
 .room .t b{display:block;font-family:var(--serif);font-size:clamp(21px,2.2vw,28px);font-weight:600;line-height:1.05}
+.room.long .t b{font-size:clamp(19px,1.9vw,25px)}
 .room .t span{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .room .tags{position:absolute;top:10px;left:12px;right:12px;display:flex;gap:5px;flex-wrap:wrap}
 .room .tags span{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:rgba(224,180,126,.18);color:var(--acc);border:1px solid rgba(224,180,126,.35)}
@@ -110,7 +230,6 @@ svg{flex:none}
 .room.empty{cursor:default}
 .room.empty .ph{background:repeating-linear-gradient(135deg,#1F1A14 0 10px,#231D17 10px 20px)}
 .room.empty .dark{opacity:0}
-.hint-tap{margin-top:14px;font-size:13px;color:var(--muted);text-align:center}
 .foot{max-width:1240px;margin:0 auto;padding:10px clamp(16px,4vw,40px) calc(22px + var(--sb));font-size:12px;color:rgba(189,178,162,.7);display:flex;flex-wrap:wrap;gap:4px 18px;justify-content:space-between}
 .foot .ms-tlink{color:inherit}
 #staff{max-width:1240px;margin:0 auto;padding:calc(10px + var(--st)) clamp(16px,4vw,40px) 0;display:flex;gap:10px 14px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted)}
@@ -118,7 +237,6 @@ svg{flex:none}
 #staff .note{flex:1 1 240px}
 #staff .note b{color:var(--acc);font-weight:700}
 #staff a.ed{color:var(--acc-ink);background:var(--acc);border-radius:999px;padding:7px 14px;text-decoration:none;font-weight:700;white-space:nowrap}
-#staff + .home-in{padding-top:clamp(16px,3vw,32px)}
 
 /* влёт: плитка растёт на весь экран */
 .fly{position:fixed;inset:0;z-index:40;overflow:hidden;pointer-events:none;will-change:clip-path}
@@ -422,8 +540,19 @@ body[data-vp=work] .toast.on{transform:translate(-50%,0)}
 #staff .ms-prod{font-family:var(--sans)}
 
 @media (max-width:860px){
-  .home-in{grid-template-columns:1fr;gap:28px;align-items:start;min-height:0}
-  .home h1{font-size:44px}
+  .htop-in{flex-wrap:wrap;row-gap:4px;padding-top:8px;padding-bottom:4px}
+  .who{flex:1}
+  .tnav{order:3;flex:0 0 100%;margin:0 -8px;justify-content:flex-start;gap:6px;overflow-x:auto;scrollbar-width:none}
+  .tnav::-webkit-scrollbar{display:none}
+  .tnav button,.tnav a{padding:9px 8px;font-size:14px}
+  .tnav button::after{left:8px;right:8px}
+  .pn-box{top:auto;left:0;width:100%;max-height:calc(100% - 40px - var(--st));height:88%;border-left:0;border-top:1px solid var(--line);border-radius:22px 22px 0 0;transform:translateY(104%);box-shadow:0 -30px 80px rgba(0,0,0,.45)}
+  .pn-head{padding:20px 12px 10px 20px}
+  .pn-head .grab{display:block;position:absolute;top:8px;left:50%;width:40px;height:4px;margin-left:-20px;border-radius:4px;background:rgba(244,238,228,.28)}
+  .pn-head h2{font-size:28px}
+  .pn-sc{padding:14px 18px calc(24px + var(--sb))}
+  .pchips{margin:0 -18px 14px;padding:0 18px 2px;flex-wrap:nowrap}
+  body.pn-open #home{transform:scale(.94) translateY(10px);transform-origin:50% 0}
   #work{--m:10px}
   .sheet{left:10px;right:10px;width:auto;bottom:calc(10px + var(--sb));max-height:74vh;max-height:74svh}
   .sheet.hide,#work.pano .sheet,#work.bare .sheet{transform:translateY(calc(100% + 30px))}
@@ -452,6 +581,21 @@ body[data-vp=work] .toast.on{transform:translate(-50%,0)}
   .wcard{aspect-ratio:3/4}
 }
 @media (max-width:600px){
+  .who-t>span{display:none}
+  .tnav{justify-content:space-between;gap:0}
+  .av{width:36px;height:36px;font-size:13px}
+  .btn.sm{padding:0 14px}
+  .roof{margin:0 3%}
+  .hero{padding-top:16px}
+  .home h1{font-size:clamp(28px,8.4vw,36px)}
+  .hero-acts .btn{flex:1 1 0;min-width:0;padding:0 12px;font-size:14px;gap:8px}
+  #tourBtn svg{display:none}
+  .room .t{left:10px;right:8px;bottom:9px}
+  .room .t b{font-size:19px}
+  .room.long .t b{font-size:16.5px;line-height:1.1}
+  .room.long .t span{display:none}
+  .room .tags{left:8px;top:8px}
+  .pgrid{gap:8px}
   .crumbs{flex-wrap:nowrap}
   .crumbs button{display:none}
   .crumbs span{max-width:46vw}
@@ -474,6 +618,7 @@ body[data-vp=work] .toast.on{transform:translate(-50%,0)}
   .sheet-sc{padding:18px 18px 8px}
   .sheet-foot{padding:10px 14px calc(12px + var(--sb))}
 }
+@media (max-width:360px){#writeBtn span{display:none}#writeBtn{padding:0 12px}}
 @media (max-height:700px) and (min-width:601px){.room-head .eyebrow{display:none}.room-head h2{font-size:44px}.views{margin-top:8px}.room-main{padding-top:calc(70px + var(--st))}}
 @media (max-height:520px){.room-head h2{font-size:30px}.room-head p{display:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition-duration:.01ms!important;transition-delay:0s!important}}
@@ -490,45 +635,71 @@ body[data-vp=work] .toast.on{transform:translate(-50%,0)}
   </div>
 </section>
 
-<!-- 1. ДОМ -->
-<section class="screen home" id="home" aria-label="Карта работ">
+<!-- 1. ДОМ: главный экран. Сверху несколько разделов, посередине дом, под ним видео -->
+<section class="screen home" id="home" aria-label="Дом с работами">
   <div id="staff" hidden>
     <nav data-variants></nav>
     <span class="note" id="staffNote"></span>
     <a class="ed" href="../redaktor/">Мастерская витрины</a>
   </div>
-  <div class="home-in">
-    <div>
-      <div class="who"><div class="av" id="hAv"></div><div><b id="hName"></b><span id="hRole"></span></div></div>
-      <div class="eyebrow">Карта работ</div>
-      <h1>Дом, где живут мои работы</h1>
-      <p class="lead" id="hLead"></p>
-      <div class="legend" id="legend"></div>
-      <div class="acts">
-        <button type="button" class="btn main" id="tourBtn">Начать экскурсию</button>
-        <button type="button" class="btn ghost" id="writeBtn">Написать мастеру</button>
-      </div>
-      <div class="trust" id="trust"></div>
+  <header class="htop" id="htop">
+    <div class="htop-in">
+      <button type="button" class="who" id="whoBtn" aria-label="О мастере"><span class="av" id="hAv"></span><span class="who-t"><b id="hName"></b><span id="hRole"></span></span></button>
+      <nav class="tnav" id="tnav" aria-label="Разделы">
+        <button type="button" data-p="raboty">Работы</button>
+        <button type="button" data-p="video" id="tnVideo">Видео</button>
+        <button type="button" data-p="otzyvy">Отзывы</button>
+        <button type="button" data-p="master">О мастере</button>
+      </nav>
+      <button type="button" class="btn main sm" id="writeBtn" aria-label="Написать мастеру"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg><span>Написать</span></button>
     </div>
-    <div>
-      <div class="house">
-        <div class="roof"><span id="roofT"></span></div>
-        <div class="floors" id="floors"></div>
-      </div>
-      <p class="hint-tap" id="hintTap">Нажмите на комнату, чтобы войти</p>
+  </header>
+  <div class="hero" id="hero">
+    <div class="hero-t">
+      <h1>Дом, где живут мои работы</h1>
+      <p class="lead" id="hLead">Нажмите на комнату - войдёте и посмотрите работы вблизи.</p>
+    </div>
+    <div class="house" id="house">
+      <div class="roof" id="roof"><span id="roofT"></span></div>
+      <div class="floors" id="floors"></div>
+    </div>
+    <div class="hero-acts">
+      <button type="button" class="btn ghost" id="tourBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5l11 7-11 7z"/></svg>Начать экскурсию</button>
+      <button type="button" class="btn ghost" id="allBtn">Все работы <span class="cnt" id="allCnt"></span></button>
     </div>
   </div>
+  <section class="reels" id="reels" aria-labelledby="reelsT">
+    <div class="reels-h"><div><div class="eyebrow">Видео</div><h2 id="reelsT">Как это делается</h2></div><p id="reelsSub"></p></div>
+    <div class="reel-row" id="reelRow"></div>
+  </section>
   <div class="foot">
     <span id="fUpd"></span>
     <span data-sign>Разработка в тестовом режиме. Все права защищены. <button type="button" class="ms-tlink" data-terms>Условия использования</button></span>
   </div>
 </section>
 
+<!-- разделы поверх дома: все работы, отзывы, о мастере -->
+<div class="panel" id="panel" role="dialog" aria-modal="true" aria-labelledby="pnT" aria-hidden="true">
+  <div class="pn-back" id="pnBack"></div>
+  <div class="pn-box" id="pnBox">
+    <div class="pn-head"><i class="grab" aria-hidden="true"></i><h2 id="pnT"></h2>
+      <button type="button" class="ic pn-x" id="pnX" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="pn-sc" id="pnSc"></div>
+  </div>
+</div>
+
+<!-- видеоплеер -->
+<div class="vplayer" id="vplayer" role="dialog" aria-modal="true" aria-label="Видео" aria-hidden="true">
+  <div class="vp-frame" id="vpFrame"></div>
+  <div class="vp-bar"><b id="vpT"></b><a id="vpOpen" href="#" target="_blank" rel="noopener">Открыть на сайте видео</a></div>
+  <button type="button" class="ic vp-x" id="vpX" aria-label="Закрыть видео"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+</div>
+
 <!-- 2. КОМНАТА -->
 <section class="screen" id="room" aria-label="Комната">
   <div class="room-bg" id="roomBgA"></div><div class="room-bg" id="roomBgB"></div>
   <div class="topbar">
-    <button type="button" class="ic" id="roomBack" aria-label="Назад к дому"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button type="button" class="ic lbl" id="roomBack" aria-label="Назад к дому"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg><span>Дом</span></button>
     <div class="crumbs" id="crumbsR"></div><div class="sp"></div>
     <div class="mini" id="miniR" role="group" aria-label="Мини-карта дома"></div>
   </div>

@@ -80,7 +80,7 @@
     var R = V.raboty || [];
     var f1 = R[0] && R[0].foto && R[0].foto[0], f2 = R[1] && R[1].foto && R[1].foto[0];
     if (f1 && f1.src) $("bg1").style.backgroundImage = 'url("' + f1.src + '")';
-    if (f2 && f2.src) $("bg2").style.backgroundImage = 'url("' + f2.src + '")';
+    if (f2 && f2.src && $("bg2")) $("bg2").style.backgroundImage = 'url("' + f2.src + '")';
     try { if (window.MebelSite && MebelSite.isStaff()) $("staff").hidden = false; } catch (e) {}
   }
   function renderWorks() {
