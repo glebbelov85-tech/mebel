@@ -553,8 +553,8 @@ html[data-d2dom=linii][data-d2q="0"] #home.enter .d2-rl polygon,html[data-d2dom=
 /* ================= журнал-"сцена" (html[data-d2zh]) =================
    Кадр стоит, содержимое сменяется: фото входит сбоку косой шторкой (--p 0..1 ведёт d2.js), плитка и подписи - внутри рамок. */
 html[data-d2zh] #book{display:none!important}
-.d2-sc{display:none;position:absolute;inset:0;align-items:center;justify-content:center}
-html[data-d2zh] #room[data-view=zhurnal] .d2-sc{display:flex}
+.d2-zs{display:none;position:absolute;inset:0;align-items:center;justify-content:center}
+html[data-d2zh] #room[data-view=zhurnal] .d2-zs{display:flex}
 .d2-sf{position:relative;overflow:hidden;background:#141413;color:#F4F1EB;touch-action:pan-y;-webkit-user-select:none;user-select:none;cursor:pointer;box-shadow:0 30px 70px rgba(0,0,0,.45)}
 .d2-sf.drag{cursor:grabbing}
 .d2-sl{position:absolute;inset:0;visibility:hidden;z-index:1}
@@ -603,17 +603,17 @@ html[data-d2zh] #room[data-view=zhurnal] .d2-sc{display:flex}
 @keyframes d2xin{from{opacity:0;transform:translateX(var(--from))}to{opacity:1;transform:none}}
 @keyframes d2xout{to{opacity:0;transform:translateX(var(--to))}}
 /* появление сцены при входе в комнату */
-.d2-sc.go .d2-sf{animation:d2sgo 1.15s var(--swift,var(--ease)) both}
-.d2-sc.go .d2-sl.on img{animation:d2simg 1.6s var(--ease) both}
-.d2-sc.go .d2-sn,.d2-sc.go .d2-st,.d2-sc.go .d2-sxi>*{animation:d2xin .9s var(--ease) .5s both;--from:30px}
+.d2-zs.go .d2-sf{animation:d2sgo 1.15s var(--swift,var(--ease)) both}
+.d2-zs.go .d2-sl.on img{animation:d2simg 1.6s var(--ease) both}
+.d2-zs.go .d2-sn,.d2-zs.go .d2-st,.d2-zs.go .d2-sxi>*{animation:d2xin .9s var(--ease) .5s both;--from:30px}
 @keyframes d2sgo{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
 @keyframes d2simg{from{transform:scale(1.12)}to{transform:none}}
-.d2-sc.nar .d2-sn{left:6%;top:calc(6% + 14px);margin-top:0;font-size:11px}
-.d2-sc.nar .d2-st{right:6%;top:6%;width:min(30%,34vh);transform:none}
-.d2-sc.nar .d2-sx{left:6%;right:6%;height:62%}
-.d2-sc.nar .d2-sxw{bottom:14px}
-.d2-sc.nar .d2-sxi .m{display:none}
-.d2-sc.nar .d2-sxi h3{font-size:clamp(23px,7vw,30px)}
-.d2-sc.nar .d2-sxi .x{font-size:13px;-webkit-line-clamp:2;margin-top:8px}
-.d2-sc.nar .d2-sv{background:linear-gradient(180deg,rgba(10,10,9,.34) 0%,transparent 24%,transparent 36%,rgba(10,10,9,.9) 78%)}
-@media (prefers-reduced-motion:reduce){.d2-sc *,.d2-sc.go *{animation:none!important}}
+.d2-zs.nar .d2-sn{left:6%;top:calc(6% + 14px);margin-top:0;font-size:11px}
+.d2-zs.nar .d2-st{right:6%;top:6%;width:min(30%,34vh);transform:none}
+.d2-zs.nar .d2-sx{left:6%;right:6%;height:62%}
+.d2-zs.nar .d2-sxw{bottom:14px}
+.d2-zs.nar .d2-sxi .m{display:none}
+.d2-zs.nar .d2-sxi h3{font-size:clamp(23px,7vw,30px)}
+.d2-zs.nar .d2-sxi .x{font-size:13px;-webkit-line-clamp:2;margin-top:8px}
+.d2-zs.nar .d2-sv{background:linear-gradient(180deg,rgba(10,10,9,.34) 0%,transparent 24%,transparent 36%,rgba(10,10,9,.9) 78%)}
+@media (prefers-reduced-motion:reduce){.d2-zs *,.d2-zs.go *{animation:none!important}}
