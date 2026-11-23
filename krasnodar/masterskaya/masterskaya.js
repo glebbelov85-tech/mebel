@@ -366,7 +366,7 @@
   }
   function vZnak() {
     var Z = S.znak, POS = [["vl", "вверху слева"], ["vc", "вверху"], ["vp", "вверху справа"], ["cl", "слева"], ["cc", "в центре"], ["cp", "справа"], ["nl", "внизу слева"], ["nc", "внизу"], ["np", "внизу справа"]];
-    $("main").innerHTML = '<section role="tabpanel"><h1>Водяной знак</h1><p class="lead">Ставится на все новые фото и видео сам. Защищает от того, чтобы ваши работы выдавали за свои.</p>' +
+    $("main").innerHTML = '<section role="tabpanel"><h1>Водяной знак</h1><p class="lead">Впечатывается в новые фото и видео, которые вы добавляете во вкладке «Работы». Защищает от того, чтобы ваши работы выдавали за свои.</p><p class="note">Название на витрине здесь не меняется - оно во вкладке «О мастере», поле «Название». Уже выложенные фото тоже остаются как были.</p>' +
       '<div class="wm-grid"><div class="wm-pv"><div class="pv"><canvas id="pvC" width="1200" height="900"></canvas></div><p class="note">Так знак ляжет на фото. На видео - так же, в каждом кадре.</p></div><div>' +
       '<div class="eyebrow" style="margin-top:0">Что ставить</div><div class="seg" id="zChto">' + [["oba", "Знак и надпись"], ["logo", "Только знак"], ["tekst", "Только надпись"]].map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (Z.chto === o[0]) + '">' + o[1] + "</button>"; }).join("") + "</div>" +
       '<div class="f" style="margin-top:12px"><label>Надпись</label><input id="zTekst" value="' + esc(Z.tekst) + '"></div>' +
