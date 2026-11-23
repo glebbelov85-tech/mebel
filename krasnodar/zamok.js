@@ -117,7 +117,7 @@
       "<h1>Закрытая витрина</h1><p>Вход только по пин-коду. Его выдаёт тот, кто прислал вам эту ссылку.</p>" +
       '<input id="krPin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="16" placeholder="••••••••" aria-label="Пин-код">' +
       '<button type="submit" id="krGo">Войти</button><div class="msg" id="krMsg" role="status" aria-live="polite"></div>' +
-      '<div class="foot">Разработка в тестовом режиме. Все права защищены.</div></form>';
+      (window.MEBEL_TOOL === "kr-klient" ? "" : '<div class="foot">Разработка в тестовом режиме. Все права защищены.</div>') + "</form>"; // клиенту пометка о тесте не нужна
     (document.body || document.documentElement).appendChild(el);
     return el;
   }

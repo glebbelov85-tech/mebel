@@ -196,6 +196,7 @@
     floors.classList.toggle("r4", Math.ceil(n / cols) > 3);
     rs.forEach(function (r, i) {
       r.style.gridRow = String(Math.floor(i / cols) + 1);
+      r.style.setProperty("--rb", Math.ceil(n / cols) - Math.floor(i / cols) - 1); r.style.setProperty("--cx", i % cols);
       var span = 1;
       if (rem && i >= full) span = cols % rem === 0 ? cols / rem : (i === n - 1 ? cols - rem + 1 : 1); // неполный последний ряд - без дыр
       r.style.gridColumn = "auto / span " + span;
@@ -215,6 +216,8 @@
       var j = rem ? i - rem : i; // номер среди "полных" рядов
       r.style.gridRow = String(i < rem ? 1 : Math.floor(j / 3) + 1 + (rem ? 1 : 0));
       r.style.gridColumn = "auto / span " + (i < rem ? top : 2);
+      var R3 = Math.ceil(n / 3), row3 = i < rem ? 1 : Math.floor(j / 3) + 1 + (rem ? 1 : 0);
+      r.style.setProperty("--rb", R3 - row3); r.style.setProperty("--cx", i < rem ? i : j % 3);
       r.style.setProperty("--i", i);
       var tb = r.querySelector(".t b"); if (tb) r.classList.toggle("long", tb.textContent.length > (i < rem ? 26 : 15));
     });
@@ -275,7 +278,7 @@
   function target(now) {
     var ry = RY0, rx = RX0, tz = 0;
     if (ptr && FINE) { ry += (ptr.x - .5) * -24 * AMP; rx += (ptr.y - .5) * 7 * AMP; }
-    else if (!FINE) {
+    else if (!FINE && !PROSTO) { // в "Просто" дом при прокрутке не наклоняется - стоит спокойно под пальцем
       var s = Math.min(1.2, home.scrollTop / Math.max(1, innerHeight));
       ry += s * 14 * AMP; rx -= s * 7 * AMP;
       if (Q >= 2) ry += Math.sin(now / 2300) * 5 * AMP;
@@ -353,7 +356,24 @@
   // "Просто": дом сразу в своей проекции, без разворота (Александр: "резко, как лаг")
   function startIntro() { if (Q === 0 || PROSTO) { kick(); return; } intro = { t0: performance.now(), dur: 2300 }; frames = 0; slow = 0; cur = { ry: -58, rx: -14, tz: -240 }; apply(); kick(); }
   // puteshestvie.js добавляет #home.enter при входе на главную (после дверей или по прямой ссылке)
-  new MutationObserver(function () { if (home.classList.contains("enter") && !home.d2in) { home.d2in = 1; enterGate(); } if (!home.classList.contains("enter")) home.d2in = 0; })
+  // "Просто": надписи первого экрана появляются по буквам (подзаголовок - как печать) и по словам (заголовок)
+  function splitHero() {
+    if (!PROSTO || home.d2split) return; home.d2split = 1;
+    var ht = home.querySelector(".hero-t"); if (!ht) return;
+    var eye = ht.querySelector(".d2-eye"), h1 = ht.querySelector("h1"), c = 0;
+    if (eye && eye.textContent.trim()) {
+      eye.setAttribute("aria-label", eye.textContent);
+      eye.innerHTML = eye.textContent.split(/(\s+)/).map(function (w) {
+        if (/^\s+$/.test(w) || !w) return w;
+        return '<span class="d2-w" aria-hidden="true">' + w.split("").map(function (ch) { return '<span class="d2-ch" style="--c:' + (c++) + '">' + esc(ch) + "</span>"; }).join("") + "</span>";
+      }).join("");
+    }
+    if (h1 && h1.textContent.trim()) {
+      var k = 0; h1.setAttribute("aria-label", h1.textContent);
+      h1.innerHTML = h1.textContent.trim().split(/\s+/).map(function (w) { return '<span class="d2-wd" aria-hidden="true"><span style="--c:' + (k++) + '">' + esc(w) + "</span></span>"; }).join(" ");
+    }
+  }
+  new MutationObserver(function () { if (home.classList.contains("enter") && !home.d2in) { home.d2in = 1; splitHero(); enterGate(); } if (!home.classList.contains("enter")) home.d2in = 0; })
     .observe(home, { attributes: true, attributeFilter: ["class"] });
   // цикл работает только когда дом виден
   function loopCheck() {
@@ -423,7 +443,10 @@
         var want = innerHeight * (NARROW.matches ? .75 : .72), d = Math.max(0, Math.round(want - top));
         hw.style.marginTop = d + "px"; hw.style.setProperty("--hd", d + "px");
       };
-      drop(); addEventListener("resize", drop); if (document.fonts && document.fonts.ready) document.fonts.ready.then(drop);
+      // пересчёт только при смене ширины: на телефоне при прокрутке прячется адресная строка, меняется высота окна,
+      // и пересчёт по высоте двигал дом прямо под пальцем ("дом подпрыгивает")
+      var dropW = innerWidth; drop();
+      addEventListener("resize", function () { if (Math.abs(innerWidth - dropW) > 1) { dropW = innerWidth; drop(); } }); if (document.fonts && document.fonts.ready) document.fonts.ready.then(drop);
       new MutationObserver(drop).observe(hero0.querySelector(".hero-t") || hero0, { childList: true, subtree: true, characterData: true });
       // чем ближе к дому, тем спокойнее фон: поверх видео темнеет слой (только прозрачность - дёшево и на слабых)
       var calm = el("i", "d2-calm"); layer.appendChild(calm);

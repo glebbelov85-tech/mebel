@@ -240,7 +240,8 @@
 
   // ---------- 0. двери ----------
   var SEEN = "vp-byl";
-  function seen() { try { return localStorage.getItem(SEEN) === "1"; } catch (e) { return false; } }
+  // window.VP_ZASTAVKA (krasnodar/klient/): заставка при каждом открытии страницы, а не только в первый раз
+  function seen() { if (window.VP_ZASTAVKA) return false; try { return localStorage.getItem(SEEN) === "1"; } catch (e) { return false; } }
   function markSeen() { try { localStorage.setItem(SEEN, "1"); } catch (e) {} }
   function openDoors() {
     var d = $("doors");
