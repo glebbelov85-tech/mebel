@@ -100,7 +100,7 @@
     }, function () { throw new Error("Нет связи с GitHub - проверьте интернет"); });
   }
   function enc(p) { return p.split("/").map(encodeURIComponent).join("/"); }
-  // свежий m.bin прямо из репозитория (сайт после публикации обновляется 1-2 минуты, а правки нельзя потерять)
+  // свежий m.bin прямо из репозитория (сайт после публикации обновляется не сразу, а правки нельзя потерять)
   function readSloj(B, key) {
     return gh(B, "GET", "/contents/" + enc(B.paths[0] + "m.bin") + "?ref=" + encodeURIComponent(B.branch), null, true).then(function (buf) {
       if (!buf) return null;
@@ -173,8 +173,18 @@
     });
   }
 
+  // Куда публиковать по умолчанию. Публикация всегда идёт в репо с исходниками (main glebbelov85-tech/mebel);
+  // копия витрины на новом адресе (vitrina-mastera.github.io, см. site/tools/vitriny-vynos.py) сама подтягивает
+  // main раз в 10 минут - писать туда не нужно. Поля в настройке можно поменять при окончательном переезде.
+  var ISTOCHNIK = { repo: "glebbelov85-tech/mebel", branch: "main", paths: "krasnodar/enc/\nsite/krasnodar/enc/" };
+  // сколько ждать, пока правки появятся на этом адресе: сайт самого репо - 1-2 минуты, копия на другом адресе - 10-20
+  function zhdat(B) {
+    var own = B && B.repo ? B.repo.split("/")[0].toLowerCase() + ".github.io" : ISTOCHNIK.repo.split("/")[0].toLowerCase() + ".github.io";
+    return location.hostname.toLowerCase() === own ? "1-2 минуты" : "10-20 минут";
+  }
   // где витрина живёт в репо: https://<владелец>.github.io/<репо>/krasnodar/ -> владелец/репо и "krasnodar/enc/"
   function guess() {
+    if (location.hostname.toLowerCase() !== ISTOCHNIK.repo.split("/")[0].toLowerCase() + ".github.io") return Object.assign({}, ISTOCHNIK);
     var h = location.hostname, m = /^([\w-]+)\.github\.io$/i.exec(h), segs = location.pathname.split("/").filter(Boolean);
     var base = new URL(BASE).pathname.split("/").filter(Boolean);
     var repo = "", rel = base.join("/");
@@ -186,6 +196,6 @@
     return { repo: repo, branch: "main", paths: rel + "enc/\n" + "site/" + (rel || "krasnodar/") + "enc/" };
   }
 
-  window.KrPub = { cfg: cfg, unlock: unlock, saved: saved, forget: forget, siteKey: siteKey, readSloj: readSloj, commit: commit, setup: setup, guess: guess,
+  window.KrPub = { zhdat: zhdat, cfg: cfg, unlock: unlock, saved: saved, forget: forget, siteKey: siteKey, readSloj: readSloj, commit: commit, setup: setup, guess: guess,
     seal: seal, rnd: rnd, fmtCode: fmtCode, digits: digits };
 })();
