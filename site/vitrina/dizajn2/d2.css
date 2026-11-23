@@ -934,7 +934,61 @@ html[data-d2p][data-d2q="0"] .d2-orn svg path,html[data-d2p][data-d2q="0"] .d2-o
 @keyframes d2drift{from{transform:translate3d(0,0,0)}to{transform:translate3d(-700px,-350px,0)}}
 @keyframes d2twk{from{opacity:.35}to{opacity:1}}
 @keyframes d2neb{from{opacity:.6;transform:scale(1)}to{opacity:1;transform:scale(1.08)}}
-html[data-d2p] #doors .door-ui{position:relative;z-index:1}
+html[data-d2p] #doors .door-ui{z-index:1}
 html[data-d2p] .d2-space{animation:d2fadeIn 2.4s ease .2s both}
 html[data-d2p][data-d2q="0"] .d2-space i{animation:none}
 @media (prefers-reduced-motion:reduce){.d2-space i{animation:none}}
+
+/* ===== "Просто": экран работы (телефон в первую очередь) ===== */
+/* значок "на весь экран" в правом верхнем углу вместо большой кнопки в панели */
+.d2-fs{display:none}
+html[data-d2p] .d2-fs{display:grid;place-items:center;position:absolute;z-index:12;top:16px;right:16px;width:44px;height:44px;border-radius:50%;border:1px solid rgba(241,238,232,.3);background:rgba(12,12,11,.45);color:rgba(241,238,232,.92);cursor:pointer;transition:opacity .4s,border-color .3s}
+html[data-d2p] .d2-fs svg{width:19px;height:19px}
+@media (hover:hover){html[data-d2p] .d2-fs:hover{border-color:rgba(241,238,232,.8)}}
+html[data-d2p] #work.pano .d2-fs,html[data-d2p] #work.bare .d2-fs{opacity:0;pointer-events:none}
+html[data-d2p] #panoBtn,html[data-d2p] #uiTg{display:none}
+html[data-d2p] .sheet-foot{grid-template-columns:1fr}
+/* "Обсудить такую же": тонкая рамка, без заливки */
+html[data-d2p] #wantBtn{background:transparent;color:var(--ink);border:1px solid rgba(241,238,232,.5);box-shadow:none;min-height:46px;font-weight:500;font-size:11px;letter-spacing:.24em;transition:background-color .3s,border-color .3s}
+@media (hover:hover){html[data-d2p] #wantBtn:hover{background:rgba(241,238,232,.08);border-color:rgba(241,238,232,.85)}}
+/* панель описания на телефоне: одна ручка посередине, без "Подробнее/Свернуть" и стрелок */
+@media (max-width:860px){
+  html[data-d2p] .sheet .more,html[data-d2p] .sheet .hide-x{display:none}
+  html[data-d2p] .sheet-head{padding-top:12px}
+  html[data-d2p] .sheet .grab{width:44px;height:4px;margin:0 auto 10px;background:rgba(241,238,232,.42)}
+  html[data-d2p] .sheet .sh-row{min-height:0}
+}
+/* во весь экран: описание по нажатию на фото (или на "Описание") */
+.d2-cap,.d2-cib{display:none}
+html[data-d2p] .d2-cap{display:block;position:absolute;z-index:7;left:0;right:0;bottom:0;padding:44px clamp(18px,4vw,40px) calc(22px + env(safe-area-inset-bottom));background:linear-gradient(rgba(8,8,8,0),rgba(8,8,8,.86) 38%);color:var(--ink);opacity:0;transform:translate3d(0,24px,0);pointer-events:none;transition:opacity .45s var(--ease),transform .55s var(--ease)}
+html[data-d2p] .d2-cap.on{opacity:1;transform:none;pointer-events:auto}
+html[data-d2p] .d2-cap b{display:block;font-family:var(--serif);font-weight:400;font-size:clamp(20px,2.2vw,28px);line-height:1.15;max-width:760px}
+html[data-d2p] .d2-cap .m{margin-top:8px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:rgba(241,238,232,.7);max-width:760px}
+html[data-d2p] .d2-cap .x{margin-top:10px;font-size:14.5px;line-height:1.55;color:rgba(241,238,232,.82);max-width:640px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden}
+html[data-d2p] #work.pano .d2-cib.on{display:flex;align-items:center;gap:8px;position:absolute;z-index:8;left:16px;top:16px;height:40px;padding:0 14px 0 11px;border-radius:20px;border:1px solid rgba(241,238,232,.3);background:rgba(12,12,11,.45);color:rgba(241,238,232,.92);font-size:11px;letter-spacing:.16em;text-transform:uppercase;cursor:pointer}
+html[data-d2p] .d2-cib svg{width:18px;height:18px}
+/* подсказка "щипок - приблизить": тихая тёмная плашка вместо светлой */
+html[data-d2p] .toast{background:rgba(12,12,11,.72);color:rgba(241,238,232,.9);border:1px solid rgba(241,238,232,.18);font-size:11.5px;font-weight:400;letter-spacing:.06em;padding:9px 15px}
+/* во весь экран: верхняя полоса с названием прячется, крестик - тонкий; описание открыто - стрелки работ уходят */
+html[data-d2p] #work.pano #workTop{opacity:0;pointer-events:none}
+html[data-d2p] #exitPano{background:rgba(12,12,11,.45);border:1px solid rgba(241,238,232,.3);color:rgba(241,238,232,.92);font-weight:500;font-size:11px;letter-spacing:.16em;text-transform:uppercase}
+html[data-d2p] #work.d2-capon #workUi{opacity:0;pointer-events:none}
+
+/* заставка, правка 2 (Александр): блеск мягче и реже; у "Войти в дом" без рамки - две завитушки в противоположных углах;
+   сиреневая туманность */
+html[data-d2p] .plate b::after{background:linear-gradient(105deg,transparent 38%,rgba(255,250,240,.38) 50%,transparent 62%);animation:d2glow 11s ease-in-out 3.4s infinite}
+html[data-d2p] .d2-brand b::after{background:linear-gradient(105deg,transparent 38%,rgba(255,250,240,.4) 50%,transparent 62%);animation-duration:11s}
+html[data-d2p] .d2-brand i::after,html[data-d2p] .d2-dmark::after{background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.5) 50%,transparent 62%);animation-duration:11s}
+html[data-d2p] #enterBtn{padding:0 40px;min-height:76px;font-weight:400;letter-spacing:.34em}
+.d2-orn i,.d2-orn .c2,.d2-orn .c3{display:none}
+html[data-d2p] #enterBtn .d2-orn svg{width:78px;height:46px;flex:none;margin:0}
+.d2-orn .c1{left:-14px;top:-6px}.d2-orn .c4{right:-14px;bottom:-6px;transform:scale(-1,-1)}
+.d2-orn svg path{stroke-width:1}
+.d2-orn svg path+path{stroke-width:.9;opacity:.8}
+html[data-d2p] .d2-orn svg path{animation:d2orn 1.9s cubic-bezier(.4,0,.2,1) 3s both}
+html[data-d2p] .d2-orn svg path+path{animation-delay:3.5s}
+html[data-d2p] .d2-orn .c4 path{animation-delay:3.3s}html[data-d2p] .d2-orn .c4 path+path{animation-delay:3.8s}
+.d2-space .neb{background:radial-gradient(46% 32% at 26% 28%,rgba(160,112,220,.30),transparent 70%),radial-gradient(40% 36% at 78% 72%,rgba(126,92,200,.24),transparent 70%),radial-gradient(34% 24% at 64% 20%,rgba(214,150,220,.14),transparent 70%),radial-gradient(60% 40% at 50% 100%,rgba(90,70,160,.18),transparent 70%)}
+.d2-space .neb2{background:radial-gradient(30% 22% at 70% 40%,rgba(190,140,240,.16),transparent 70%),radial-gradient(26% 20% at 30% 70%,rgba(150,120,230,.14),transparent 70%);animation:d2neb2 26s ease-in-out infinite alternate}
+@keyframes d2neb2{from{opacity:.5;transform:translate3d(-3%,2%,0) scale(1)}to{opacity:1;transform:translate3d(3%,-2%,0) scale(1.1)}}
+html[data-d2p][data-d2q="0"] .d2-space .neb2{animation:none}

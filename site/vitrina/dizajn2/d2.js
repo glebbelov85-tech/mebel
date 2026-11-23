@@ -82,7 +82,7 @@
   if (dui) { dmark = el("div", "d2-dmark"); dmark.hidden = true; dui.insertBefore(dmark, dui.firstChild); }
   // "Просто": на заставке лёгкий "космос" сзади и завитки по углам кнопки "Войти в дом" (стили в d2.css)
   if (window.D2_P && dui) {
-    var sp = el("div", "d2-space", '<i class="neb"></i><i class="s1"></i><i class="s2"></i>'); sp.setAttribute("aria-hidden", "true");
+    var sp = el("div", "d2-space", '<i class="neb"></i><i class="neb2"></i><i class="s1"></i><i class="s2"></i>'); sp.setAttribute("aria-hidden", "true");
     dui.parentNode.insertBefore(sp, dui);
     // звёзды случайно рассыпаны по большой плитке (SVG), чтобы не было заметного повтора
     var stars = function (n, sz, rmax, amax) {
@@ -90,12 +90,12 @@
       for (var si = 0; si < n; si++) c += '<circle cx="' + (Math.random() * sz).toFixed(0) + '" cy="' + (Math.random() * sz).toFixed(0) + '" r="' + (.4 + Math.random() * rmax).toFixed(2) + '" fill-opacity="' + (.25 + Math.random() * amax).toFixed(2) + '"/>';
       return 'url("data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="' + sz + '" height="' + sz + '" fill="#fff">' + c + "</svg>") + '")';
     };
-    sp.children[1].style.backgroundImage = stars(70, 700, .6, .5); sp.children[1].style.backgroundSize = "700px 700px";
-    sp.children[2].style.backgroundImage = stars(16, 900, 1.1, .7); sp.children[2].style.backgroundSize = "900px 900px";
+    sp.children[2].style.backgroundImage = stars(70, 700, .6, .5); sp.children[2].style.backgroundSize = "700px 700px";
+    sp.children[3].style.backgroundImage = stars(16, 900, 1.1, .7); sp.children[3].style.backgroundSize = "900px 900px";
     var eb = $("enterBtn");
     if (eb) {
-      var C = '<path pathLength="1" d="M3 33 V15 C3 8 8 3 15 3 H33"/><path pathLength="1" d="M9 27 C9 17 14 11 21 11 C26 11 28 15 25.5 18 C23.5 20.5 19.5 19.5 19.8 16.6 M11 9 C14 7 17 6.6 19.5 7.2"/>';
-      var orn = el("span", "d2-orn", ["c1", "c2", "c3", "c4"].map(function (c) { return '<svg class="' + c + '" viewBox="0 0 36 36">' + C + "</svg>"; }).join("") + '<i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i>');
+      var C = '<path pathLength="1" d="M3 44 C2 28 8 15 22 9 C34 4 52 6 76 3"/><path pathLength="1" d="M8 31 C9 22 15 17 22 17.5 C28 18 30 23.5 26.5 26.5 C23.5 29 19 27.5 19.6 24 C20 22 22 21 23.6 22 M30 12 C38 10 46 10.5 54 9.5"/>';
+      var orn = el("span", "d2-orn", ["c1", "c2", "c3", "c4"].map(function (c) { return '<svg class="' + c + '" viewBox="0 0 78 46">' + C + "</svg>"; }).join("") + '<i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i>');
       orn.setAttribute("aria-hidden", "true"); eb.appendChild(orn);
     }
   }
@@ -712,7 +712,7 @@
     function tileSrc(w) { var f = (w.foto || [])[1]; return f && f.src ? { u: api.src(f), zoom: false } : { u: api.cover(w), zoom: true }; }
     function pad(n) { return (n < 10 ? "0" : "") + n; }
     function textHTML(w, i) {
-      var t = w.rasskaz || (w.resheniya || []).join(". "), meta = [w.gde, w.material, w.srok ? "Срок: " + w.srok : ""].filter(Boolean);
+      var t = (api.chist ? api.chist(w.rasskaz) : w.rasskaz) || (w.resheniya || []).join(". "), meta = [w.gde, w.material, w.cvet, w.srok ? "Срок: " + w.srok : ""].filter(Boolean);
       return '<div class="d2-sxi"><h3>' + e2(w.nazvanie) + "</h3>" + (meta.length ? '<p class="m">' + meta.map(e2).join(" · ") + "</p>" : "") +
         (t ? '<p class="x">' + e2(t) + "</p>" : "") + '<button type="button" class="d2-ln d2-sgo" data-open="' + i + '">Смотреть работу' + ARR + "</button></div>";
     }
@@ -842,6 +842,52 @@
       wA += d;
       if (Math.abs(wA) > 50 && now - wT > 320 && !busy) { api.turn(wA > 0 ? 1 : -1); wA = 0; wT = now; }
     }, { passive: false });
+  })();
+
+  // ---------- "Просто": экран работы (Александр, 2026-11-23, телефон) ----------
+  // Панель описания: одна ручка посередине (без "Подробнее/Свернуть" и стрелок), тонкая кнопка "Обсудить такую же",
+  // "На весь экран" - значок в углу. Во весь экран нажатие на фото показывает описание: материал, цвет, размеры, год,
+  // рассказ (только то, что мастер заполнил; служебные пометки черновика убирает puteshestvie.js).
+  if (PROSTO) (function () {
+    window.VP_RUCHKA = true; window.VP_HOCHU = "Обсудить такую же";
+    var wk = $("work"), pb = $("panoBtn"); if (!wk || !pb) return;
+    var FS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+    var fs = el("button", "d2-fs", FS); fs.type = "button"; fs.setAttribute("aria-label", "Фото на весь экран"); fs.title = "На весь экран";
+    fs.onclick = function () { pb.click(); };
+    wk.appendChild(fs);
+    var cap = el("div", "d2-cap"); cap.setAttribute("aria-live", "polite"); wk.appendChild(cap);
+    var ib = el("button", "d2-cib", '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg><span>Описание</span>');
+    ib.type = "button"; wk.appendChild(ib);
+    function capHTML() {
+      var t = $("sTitle") ? $("sTitle").textContent : "", ch = [].map.call(document.querySelectorAll("#sChips span"), function (x) { return x.textContent; });
+      var st = $("sStoryWrap") && !$("sStoryWrap").hidden ? $("sStory").textContent : "";
+      if (!ch.length && !st) return "";
+      return "<b>" + esc(t) + "</b>" + (ch.length ? '<p class="m">' + ch.map(esc).join(" · ") + "</p>" : "") + (st ? '<p class="x">' + esc(st) + "</p>" : "");
+    }
+    function sync() { // в полноэкранном режиме - есть ли что показать; при смене работы описание прячется
+      var on = wk.classList.contains("pano"), h = on ? capHTML() : "";
+      ib.classList.toggle("on", !!h);
+      if (!on || !h) cap.classList.remove("on");
+      else if (cap._h !== h) { cap.innerHTML = h; cap._h = h; cap.classList.remove("on"); }
+      if (!cap.classList.contains("on") && wk.classList.contains("d2-capon")) wk.classList.remove("d2-capon"); // без лишней записи в class - иначе наблюдатель зациклится
+    }
+    function toggle() { sync(); if (!ib.classList.contains("on")) return; cap.classList.toggle("on"); wk.classList.toggle("d2-capon", cap.classList.contains("on")); }
+    ib.onclick = function (e) { e.stopPropagation(); toggle(); };
+    cap.onclick = function () { cap.classList.remove("on"); wk.classList.remove("d2-capon"); };
+    new MutationObserver(sync).observe(wk, { attributes: true, attributeFilter: ["class"] });
+    var st = $("sTitle"); if (st) new MutationObserver(sync).observe(st, { childList: true, characterData: true, subtree: true });
+    // одиночное нажатие на фото (не перетаскивание и не двойное - оно приближает)
+    var tp = null, tT = 0;
+    wk.addEventListener("pointerdown", function (e) {
+      if (!wk.classList.contains("pano") || e.target.closest("button,a,.d2-cap")) { tp = null; return; }
+      if (tT) { clearTimeout(tT); tT = 0; tp = null; return; } // второе нажатие - двойное
+      tp = { x: e.clientX, y: e.clientY, t: performance.now() };
+    });
+    wk.addEventListener("pointerup", function (e) {
+      if (!tp) return; var d = tp; tp = null;
+      if (Math.abs(e.clientX - d.x) > 8 || Math.abs(e.clientY - d.y) > 8 || performance.now() - d.t > 350) return;
+      tT = setTimeout(function () { tT = 0; toggle(); }, 300);
+    });
   })();
 
   // ---------- пробные страницы ----------
