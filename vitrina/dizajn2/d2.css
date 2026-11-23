@@ -633,3 +633,41 @@ html[data-d2t=kino].d2-wait body::after{color:#F1EEE8}
 html[data-d2t=kino] .d2-kbg{opacity:0;transition:opacity 1.3s var(--ease)}
 html[data-d2t=kino] .d2-kbg.rdy{opacity:1}
 @media (prefers-reduced-motion:reduce){html[data-d2t=kino] .d2-kbg{transition:none}html.d2-wait body::after{animation:none;opacity:.6}}
+
+/* ================= 13. "Просто" (html[data-d2p]) =================
+   Для человека, который зашёл первый раз: дом - комната - работа, без выбора видов и лишних кнопок. */
+/* главная: в шапке только "Написать" и меню; под домом нет второстепенных кнопок */
+html[data-d2p] .tnav,html[data-d2p] .hero-acts{display:none}
+html[data-d2p] .home .lead{font-size:clamp(14px,1.25vw,17px);letter-spacing:.02em}
+/* подписи комнат: крупно, обычными буквами, рядом - сколько работ */
+html[data-d2p][data-d2dom=linii] .room .ph,html[data-d2p][data-d2dom=linii] .room .dark{bottom:52px}
+html[data-d2p][data-d2dom=linii] .room .t{height:52px;flex-direction:column;align-items:center;gap:2px;padding:7px 8px 0}
+html[data-d2p][data-d2dom=linii] .room .t b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+html[data-d2p][data-d2dom=linii] .room.long .t b{font-size:clamp(13.5px,1.1vw,15.5px)}
+html[data-d2p] #writeBtn{margin-left:auto}
+html[data-d2p][data-d2dom=linii] .room .t::before{display:none}
+html[data-d2p][data-d2dom=linii] .room .t b{font-family:var(--serif);font-weight:400;font-size:clamp(16px,1.45vw,20px);letter-spacing:0;text-transform:none;line-height:1.15}
+html[data-d2p] .d2n{display:block;flex:none;font-style:normal;font-size:11px;letter-spacing:.06em;opacity:.7;white-space:nowrap}
+html[data-d2p] .floors{grid-auto-rows:clamp(132px,min(13.5vw,(100vh - 400px)/2),196px)}
+@media (hover:hover){html[data-d2p] .room:not(.empty):hover .t b{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:5px}}
+/* комната: все работы сразу, крупно, название под фото */
+html[data-d2p] #views,html[data-d2p] .mini,html[data-d2p] #crumbsR{display:none}
+html[data-d2p] .rlist.plitki{max-width:1180px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:26px 18px;padding-bottom:40px}
+html[data-d2p] .plitki .rcard{background:transparent;box-shadow:none;overflow:visible}
+html[data-d2p] .plitki .rcard .ri{aspect-ratio:4/3;overflow:hidden;background:#1B1A19}
+html[data-d2p] .plitki .rcard .rm{position:static;background:none;padding:12px 2px 0}
+html[data-d2p] .plitki .rcard .rm b{font-size:clamp(17px,1.5vw,21px);line-height:1.2;-webkit-line-clamp:3}
+html[data-d2p] .plitki .rcard .tag{top:10px;left:10px;right:10px}
+@media (hover:hover){html[data-d2p] .plitki .rcard:hover .rm b{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:5px}}
+/* работа: остаются "назад", листание, "на весь экран" и "Хочу так же"; приблизить можно щипком, колесом или двойным нажатием */
+html[data-d2p] #work .grp.zoom,html[data-d2p] #uiTg,html[data-d2p] #dragHint{display:none}
+@media (max-width:640px){
+  html[data-d2p][data-d2dom=linii] .room .ph,html[data-d2p][data-d2dom=linii] .room .dark{bottom:52px}
+  html[data-d2p][data-d2dom=linii] .room .t{height:52px;flex-direction:column;align-items:center;gap:2px;padding:7px 6px 0}
+  html[data-d2p][data-d2dom=linii] .room .t b,html[data-d2p][data-d2dom=linii] .room.long .t b{font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block}
+  html[data-d2p][data-d2dom=linii] .room.long .t b{font-size:13.5px}
+  html[data-d2p] .d2n{font-size:10.5px}
+  html[data-d2p] .floors,html[data-d2p] .floors.r4{grid-auto-rows:clamp(128px,34vw,168px)}
+  html[data-d2p] .rlist.plitki{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 10px;padding-left:12px;padding-right:12px}
+  html[data-d2p] .plitki .rcard .rm b{font-size:15.5px;-webkit-line-clamp:3}
+}
