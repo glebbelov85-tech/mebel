@@ -50,3 +50,7 @@
 v5-v8 - строгие варианты (слой `vitrina/dizajn2/`: d2.css + d2.js, темы galereya, kino, grafit, liniya).
 Все собирает `site/build.py` из того же puteshestvie.js; основная страница krasnodar/index.html не меняется.
 Качество анимации: `?kach=max` или `?kach=lite`.
+v9-v11 - тот же фон "Кино", другие формы дома (`window.D2_DOM`: razrez, okna, siluet).
+v12 "Линии" - сборный по выбору Александра: `D2_DOM = "linii"` и журнал-"сцена" (`D2_ZH = true`):
+d2.js задаёт `window.VP_ZHURNAL` ({build, go, bump, el}), и puteshestvie.js в виде "Журнал" вместо книги
+зовёт его (номер страницы, точки и открытие работы остаются в puteshestvie.js). Без `VP_ZHURNAL` журнал - прежняя книга.

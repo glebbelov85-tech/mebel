@@ -814,6 +814,7 @@
   // элемент работы i в текущем виде (с ним связаны анимации открытия и возврата)
   function roomEl(i, reveal) {
     if (RV === "karusel") return deckEls[i] || null;
+    if (RV === "zhurnal" && zx()) return i === JP ? zx().el() : null;
     if (RV === "zhurnal") return i === JP ? (bookSingle ? $("pgR") : $("pgL")).querySelector(".pim") : null;
     var c = $("rlist").children[i]; if (!c) return null;
     if (reveal) {
@@ -898,8 +899,23 @@
     pend.n = 0;
     flip = null; bd = null; $("book").classList.remove("drag");
   }
+  // Свой показ журнала (window.VP_ZHURNAL задаёт слой оформления, например dizajn2/d2.js): вместо книги - "сцена".
+  // Здесь остаются номер страницы, точки, фон комнаты и открытие работы; рисует и анимирует слой.
+  function zx() { return window.VP_ZHURNAL || null; }
+  function zxSync() {
+    var n = S.room.works.length, w = S.room.works[JP];
+    S.ri = JP; updDots(JP, n); preload(JP);
+    if (w) { setRoomBg(cover(w)); $("deckLive").textContent = "Работа " + (JP + 1) + " из " + n + ": " + w.nazvanie; }
+  }
+  var ZAPI = {
+    turn: function (dir) { turn(dir); },
+    open: function (i) { var w = S.room && S.room.works[i]; if (w) { JP = i; S.ri = i; nav({ s: "work", w: w }); } },
+    cover: cover, fotos: fotos, src: srcOf, wm: wmHTML, otzyvy: otzyvy, esc: esc,
+    lite: function () { return LITE || reduce; }
+  };
   function buildBook(idx, anim) {
     flipKill(); JP = Math.max(0, Math.min(S.room.works.length - 1, idx || 0));
+    if (zx()) { setDots(S.room.works.length); zx().build(S.room, JP, !!anim && !reduce, ZAPI); zxSync(); return; }
     var b = $("book"); b.classList.remove("go", "wait");
     bookSize(); setDots(S.room.works.length); bookStatic();
     if (!anim || reduce) return;
@@ -986,6 +1002,12 @@
   }
   function turn(dir, quick) {
     if (RV !== "zhurnal") return;
+    if (zx()) {
+      var zn = S.room.works.length;
+      if (JP + dir < 0 || JP + dir >= zn) { zx().bump(dir); toast(dir > 0 ? "Это последняя работа" : "Это первая работа"); return; }
+      if (zx().go(JP + dir, dir) === false) return; // сцена ещё занята прошлым переходом
+      JP += dir; zxSync(); return;
+    }
     if (flip) {
       // нажали ещё раз во время переворота: этот лист докручиваем быстрее, следующий - сразу за ним
       if (flip.anims && !bd && flip.dir === dir) {
