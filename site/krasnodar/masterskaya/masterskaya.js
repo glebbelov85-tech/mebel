@@ -363,7 +363,7 @@
   function vZnak() {
     var Z = S.znak, POS = [["vl", "вверху слева"], ["vc", "вверху"], ["vp", "вверху справа"], ["cl", "слева"], ["cc", "в центре"], ["cp", "справа"], ["nl", "внизу слева"], ["nc", "внизу"], ["np", "внизу справа"]];
     $("main").innerHTML = '<section role="tabpanel"><h1>Водяной знак</h1><p class="lead">Ставится на все новые фото и видео сам. Защищает от того, чтобы ваши работы выдавали за свои.</p>' +
-      '<div class="wm-grid"><div><div class="pv"><canvas id="pvC" width="1200" height="900"></canvas></div><p class="note">Так знак ляжет на фото. На видео - так же, в каждом кадре.</p></div><div>' +
+      '<div class="wm-grid"><div class="wm-pv"><div class="pv"><canvas id="pvC" width="1200" height="900"></canvas></div><p class="note">Так знак ляжет на фото. На видео - так же, в каждом кадре.</p></div><div>' +
       '<div class="eyebrow" style="margin-top:0">Что ставить</div><div class="seg" id="zChto">' + [["oba", "Знак и надпись"], ["logo", "Только знак"], ["tekst", "Только надпись"]].map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (Z.chto === o[0]) + '">' + o[1] + "</button>"; }).join("") + "</div>" +
       '<div class="f" style="margin-top:12px"><label>Надпись</label><input id="zTekst" value="' + esc(Z.tekst) + '"></div>' +
       '<div class="eyebrow">Где</div><div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap"><div class="pos" id="zPos">' + POS.map(function (p) { return '<button type="button" data-v="' + p[0] + '" aria-label="' + p[1] + '" aria-pressed="' + (Z.pos === p[0]) + '"></button>'; }).join("") + "</div>" +
@@ -505,35 +505,47 @@
     return KrPub.cfg().then(function (pj) { PJ = pj; return pj ? KrPub.saved(pj) : null; }).then(function (b) { PB = b; });
   }
   function vPaket() {
-    $("main").innerHTML = '<section role="tabpanel"><h1>Опубликовать</h1><p class="lead">Проверяю…</p></section>';
-    pubState().then(drawPaket, drawPaket);
+    // без промежуточного экрана "Проверяю": он и давал мигание. Состояние публикации грузится при старте.
+    if (PJ !== undefined) return drawPaket();
+    $("main").innerHTML = "";
+    pubState().then(function () { drawPaket(); }, function () { drawPaket(); });
   }
-  function drawPaket(done) {
+  // настройку публикации видит только Александр: браузер с отметкой "свой" (заходил на главную сайта) или ссылка #nastrojka
+  function owner() { try { if (localStorage.getItem("mebel-site-staff")) return true; } catch (e) {} return location.hash === "#nastrojka" || /[?&]vladelec\b/.test(location.search); }
+  function drawPaket(done, still) {
     if (TAB !== "paket") return;
-    var c = changes(), L = changeLines(c), any = L.length > 0, share = !!(navigator.canShare && navigator.share);
+    var c = changes(), L = changeLines(c), any = L.length > 0, share = !!(navigator.canShare && navigator.share), on = !!(PJ && PB);
     var list = any ? '<div class="list">' + L.map(function (t) { return '<div class="row"><span class="sp">' + esc(t) + "</span></div>"; }).join("") + "</div>" :
-      '<p style="margin:0;color:var(--muted)">Пока нечего публиковать: правок и новых файлов нет.</p>';
-    var h = '<section role="tabpanel"><h1>Опубликовать</h1>';
-    if (done) h += '<div class="card pub-ok"><h2>Опубликовано</h2><p>Клиенты увидят правки на витрине через ' + KrPub.zhdat(PB) + ' - столько сайт обновляется. Черновик очищен, можно добавлять следующее.</p><div class="btns"><a class="btn" href="../klient/">Открыть витрину</a></div></div>';
-    if (PJ && PB) {
-      h += '<p class="lead">Правки уходят прямо на витрину - без файлов и пересылки.</p><div class="card">' + list +
+      '<p style="margin:0;color:var(--muted)">Пока нечего публиковать: вы ничего не меняли.</p>';
+    var wait = KrPub.zhdat(PB);
+    var h = '<section role="tabpanel"' + (still ? ' class="still"' : "") + "><h1>Опубликовать</h1>";
+    if (done) h += '<div class="card pub-ok"><h2>Опубликовано</h2><p>Правки ушли на сайт. Клиенты увидят их через ' + esc(wait) + ' - столько сайт обновляется. Если откроете витрину раньше и не увидите правок - просто обновите страницу чуть позже.</p><div class="btns"><a class="btn" href="../klient/">Открыть витрину</a></div></div>';
+    if (on) {
+      h += '<p class="lead">Всё, что вы поменяли в Мастерской, уходит на витрину одной кнопкой.</p><div class="card"><div class="eyebrow" style="margin-top:0">Что изменится</div>' + list +
         '<div class="btns"><button type="button" class="btn" id="pGo"' + (any ? "" : " disabled") + ">Опубликовать на сайт</button></div></div>";
     } else if (PJ) {
-      h += '<p class="lead">Чтобы публиковать прямо на сайт, введите код мастера - 12 цифр, его дал Александр. На этом устройстве это нужно сделать один раз.</p>' +
-        '<div class="card">' + list + "</div>" +
-        '<div class="card"><div class="f"><label for="pCode">Код мастера</label><input id="pCode" inputmode="numeric" autocomplete="off" placeholder="0000-0000-0000" maxlength="20"></div>' +
+      h += '<p class="lead">Один раз на этом телефоне введите код мастера - 12 цифр, его дал Александр. Потом публикация - одной кнопкой.</p>' +
+        '<div class="card"><div class="f"><label for="pCode">Код мастера</label><input id="pCode" inputmode="numeric" enterkeyhint="go" autocomplete="off" placeholder="0000-0000-0000" maxlength="20"></div>' +
         '<label class="chk"><input type="checkbox" id="pRem" checked> Запомнить на этом устройстве (на чужом телефоне снимите галочку)</label>' +
-        '<div class="btns"><button type="button" class="btn" id="pUn">Включить публикацию</button></div><p class="save" id="pMsg" role="status"></p></div>';
+        '<div class="btns"><button type="button" class="btn" id="pUn">Включить публикацию</button></div><p class="save" id="pMsg" role="status"></p></div>' +
+        '<div class="card"><div class="eyebrow" style="margin-top:0">Что изменится</div>' + list + "</div>";
     } else {
-      h += '<p class="lead">Публикация прямо на сайт пока не включена. Соберите правки в файл и отправьте его Александру - он выложит их на витрину.</p><div class="card">' + list + "</div>";
+      h += '<p class="lead">Публикация прямо на сайт пока не включена - её включает Александр. А пока правки можно отправить ему файлом: «Дополнительно» внизу.</p><div class="card"><div class="eyebrow" style="margin-top:0">Что изменится</div>' + list + "</div>";
     }
-    h += '<div class="eyebrow">' + (PJ && PB ? "Другой способ - файлом" : "Файлом") + '</div><div class="card"><p style="margin-bottom:4px">Файл <b style="font-weight:500">pravki-…zip</b>: внутри правки и фото/видео уже со знаком. Отправьте его Александру в WhatsApp или Telegram.</p>' +
-      '<div class="btns"><button type="button" class="btn' + (PJ && PB ? " l" : "") + '" id="pDl"' + (any ? "" : " disabled") + ">Скачать файл</button>" + (share ? '<button type="button" class="btn l" id="pSh"' + (any ? "" : " disabled") + ">Отправить файлом</button>" : "") + "</div></div>" +
-      '<div class="eyebrow">Черновик</div><div class="card"><p style="margin-bottom:10px">Неопубликованное хранится только в этом браузере на этом устройстве. Если почистить браузер - черновик пропадёт.</p><button type="button" class="btn l sm" id="pClr">Очистить черновик</button></div>' +
-      '<div class="btns" style="justify-content:space-between">' + (PB ? '<button type="button" class="small-link" id="pOff">Отключить публикацию на этом устройстве</button>' : "<span></span>") +
-      '<button type="button" class="small-link" id="pSet">Настройка публикации (для Александра)</button></div></section>';
+    h += '<div class="eyebrow">Как это работает</div><ol class="how">' +
+      (PJ && !PB ? "<li>Введите код мастера выше. Это нужно один раз на этом телефоне.</li>" : "") +
+      "<li>Поменяйте, что нужно, во вкладках «О мастере», «Работы» и «Знак». Всё сохраняется само, даже если закрыть страницу.</li>" +
+      "<li>Вернитесь сюда и нажмите «Опубликовать на сайт». Дождитесь надписи «Опубликовано».</li>" +
+      "<li>Через " + esc(wait) + " откройте витрину и проверьте. Не видно правок - обновите страницу.</li></ol>";
+    h += '<details class="more"' + (!PJ ? " open" : "") + "><summary>Дополнительно</summary>" +
+      '<div class="mi"><b>Отправить правки файлом</b><p>Если публикация не работает: файл с правками, фото и видео уже со знаком. Отправьте его Александру в WhatsApp или Telegram.</p>' +
+      '<div class="btns"><button type="button" class="btn l sm" id="pDl"' + (any ? "" : " disabled") + ">Скачать файл</button>" + (share ? '<button type="button" class="btn l sm" id="pSh"' + (any ? "" : " disabled") + ">Отправить файлом</button>" : "") + "</div></div>" +
+      '<div class="mi"><b>Очистить черновик</b><p>Стереть всё, что вы поменяли, но ещё не опубликовали. Опубликованное на сайте останется.</p><div class="btns"><button type="button" class="btn l sm" id="pClr">Очистить черновик</button></div></div>' +
+      (PB ? '<div class="mi"><b>Чужой телефон?</b><p>Забыть код мастера на этом устройстве.</p><div class="btns"><button type="button" class="btn l sm" id="pOff">Отключить публикацию здесь</button></div></div>' : "") +
+      (owner() ? '<div class="mi"><b>Для Александра</b><p>Ключ GitHub, репозиторий и код мастера.</p><div class="btns"><button type="button" class="btn l sm" id="pSet">Настройка публикации</button></div></div>' : "") +
+      "</details></section>";
     $("main").innerHTML = h;
-    if ($("pGo")) $("pGo").onclick = function () { publish().then(function () { drawPaket(true); }, err); };
+    if ($("pGo")) $("pGo").onclick = function () { publish().then(function () { drawPaket(true, true); scrollTo(0, 0); }, err); };
     if ($("pUn")) {
       var inp = $("pCode");
       inp.oninput = function () { var d = KrPub.digits(inp.value).slice(0, 12); var f = KrPub.fmtCode(d); if (f !== inp.value) inp.value = f; };
@@ -541,7 +553,7 @@
         var code = KrPub.digits(inp.value);
         if (code.length !== 12) { $("pMsg").textContent = "В коде 12 цифр"; return; }
         $("pUn").disabled = true; $("pMsg").textContent = "Проверяю код…";
-        KrPub.unlock(code, PJ, $("pRem").checked).then(function (b) { PB = b; toast("Публикация включена"); drawPaket(); },
+        KrPub.unlock(code, PJ, $("pRem").checked).then(function (b) { PB = b; toast("Публикация включена"); drawPaket(false, true); },
           function (e) { $("pUn").disabled = false; $("pMsg").textContent = e.message || String(e); });
       };
       inp.onkeydown = function (e) { if (e.key === "Enter") $("pUn").click(); };
@@ -558,8 +570,8 @@
       if (!confirm("Стереть все неопубликованные правки и файлы из этого браузера?")) return;
       clearDraft(); toast("Черновик очищен"); go("paket");
     };
-    if ($("pOff")) $("pOff").onclick = function () { KrPub.forget().then(function () { PB = null; toast("На этом устройстве публикация отключена"); drawPaket(); }); };
-    $("pSet").onclick = vSetup;
+    if ($("pOff")) $("pOff").onclick = function () { KrPub.forget().then(function () { PB = null; toast("На этом устройстве публикация отключена"); drawPaket(false, true); }); };
+    if ($("pSet")) $("pSet").onclick = vSetup;
   }
   function clearDraft() {
     S.novye.concat(S.k).forEach(function (w) { (w.media || []).forEach(function (m) { del("m:" + m.id); del("o:" + m.id); del("k:" + m.id); }); });
@@ -750,6 +762,9 @@
   S.novye.concat(S.k).forEach(function (w) { (w.media || []).forEach(function (m) { if (m.st === "work") { m.st = "err"; m.err = "Обработка прервалась - добавьте файл ещё раз"; } }); });
   // мастер пришёл из клиентской версии (вход удержанием знака) - "назад" ведёт туда, а не на черновик
   try { if (sessionStorage.getItem("kr-iz-klienta")) setTimeout(function () { [].forEach.call(document.querySelectorAll("nav.kn a"), function (a) { if (/krasnodar\/?$/.test(a.pathname)) a.href = "../klient/"; }); }, 0); } catch (e) {}
+  function hh() { var t = document.querySelector(".top"); if (t) document.documentElement.style.setProperty("--hh", t.offsetHeight + "px"); }
+  hh(); addEventListener("resize", hh);
+  pubState().catch(function () {}); // заранее: вкладка "Опубликовать" откроется сразу, без мигания
   loadLogo().then(function () { counts(); banner(); go(/^#(opublikovat|paket)$/.test(location.hash) ? "paket" : /^#nastrojka$/.test(location.hash) ? "paket" : "master"); if (location.hash === "#nastrojka") pubState().then(vSetup, vSetup); });
   addEventListener("beforeunload", function (e) { if (REC) { e.preventDefault(); e.returnValue = ""; } });
 })();
