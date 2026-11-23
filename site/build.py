@@ -105,6 +105,21 @@ def krasnodar():
             back="none", depth=2,
             head='<script>window.VP_TEMA = "%s"; window.VP_TRY = true; window.VP_PREVIEW = true; document.documentElement.setAttribute("data-tema", "%s");</script>\n' % (t, t))
         wr(os.path.join(out, "dizajn", "v%d" % n, "index.html"), h)
+    # Новые пробные оформления (2026-11-23): krasnodar/dizajn/v5..v8 - строгий минимализм по мотивам сайтов фабрик,
+    # объёмный дом, меню на весь экран, видео на фоне. Слой site/vitrina/dizajn2/ (d2.css + d2.js), шрифты рядом.
+    d2 = [(5, "galereya", "Галерея"), (6, "kino", "Кино"), (7, "grafit", "Тёмный зал"), (8, "liniya", "Линия")]
+    d2try = json.dumps({"list": [{"n": n, "name": nm} for n, _, nm in d2]}, ensure_ascii=False)
+    for n, t, nm in d2:
+        h = locked(v4, "kr-dizajn", ["../../../vitrina/risunki.js", "../../../vitrina/dizajn2/d2.js", "../../../vitrina/puteshestvie/puteshestvie.js"], [
+            ('href="../../shared/site.css"', 'href="../../../shared/site.css"'),
+            ('href="../redaktor/"', 'href="../../../vitrina/redaktor/"'),
+            ('href="../#raschet"', 'href="../../vitrina/#raschet"'),
+            ('<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">\n', ""),
+            ('<meta name="theme-color" content="#110F0C">', '<meta name="theme-color" content="%s">' % ("#ECEAE5" if t in ("galereya", "liniya") else "#0F0F0E")),
+            ("</head>", '<link rel="stylesheet" href="../../../vitrina/dizajn2/d2.css">\n</head>')],
+            back="none", depth=2,
+            head='<script>window.D2_TEMA = "%s"; window.D2_TRY = %s; window.D2_TRY.n = %d; window.VP_PREVIEW = true;</script>\n' % (t, d2try, n))
+        wr(os.path.join(out, "dizajn", "v%d" % n, "index.html"), h)
     # старый адрес дома ведёт на главную (с тем же #rabota=/#komnata=)
     wr(os.path.join(out, "dom", "index.html"), '<!DOCTYPE html>\n<html lang="ru"><head><meta charset="UTF-8">\n' + noindex +
        '<title>Закрытая витрина</title>\n<script>location.replace("../" + location.search + location.hash);</script>\n'

@@ -43,6 +43,46 @@ const V = box.window.VITRINA;
 if (!V || !Array.isArray(V.raboty)) { console.error("В dannye.js нет window.VITRINA.raboty"); process.exit(1); }
 const Qs = JSON.parse(fs.readFileSync(QF, "utf8"));
 
+// правки из Мастерской (masterskaya/): pravki.json из ZIP-пакета кладут в папку витрины как pravki-mastera.json
+// (или pravki-ГГГГММДД-ЧЧММ.json - несколько пакетов применяются по порядку имён), фото и видео - в foto/.
+// dannye.js при этом не меняется: правки подмешиваются только в зашифрованную копию.
+const pravki = fs.readdirSync(SRC).filter((n) => /^pravki.*\.json$/i.test(n)).sort();
+for (const n of pravki) {
+  let P;
+  try { P = JSON.parse(fs.readFileSync(path.join(SRC, n), "utf8")); } catch (e) { console.error("Не читается " + n + ": " + e.message); process.exit(1); }
+  const keep = (o, src) => { for (const k of Object.keys(src || {})) if (typeof src[k] === "string" && src[k].trim() !== "") o[k] = src[k].trim(); };
+  V.master = V.master || {}; V.kontakty = V.kontakty || {}; V.video = V.video || [];
+  keep(V.master, P.master); keep(V.kontakty, P.kontakty);
+  if (P.logo) V.master.logo = P.logo;
+  const rooms = new Set((V.komnaty || []).map((k) => k.id));
+  const vids = new Set(V.video.map((v) => v.fajl).filter(Boolean));
+  const addVideo = (list, w) => (list || []).forEach((v) => {
+    if (!v || !v.fajl || vids.has(v.fajl)) return; vids.add(v.fajl);
+    V.video.unshift({ nazvanie: w.nazvanie || "Видео", fajl: v.fajl, oblozhka: v.oblozhka || "", rabota: w.id });
+  });
+  let nw = 0, nf = 0, nv = 0;
+  (P.novye_raboty || []).forEach((r) => {
+    if (!r || !r.id) return;
+    const komnata = rooms.has(r.komnata) ? r.komnata : (V.komnaty && V.komnaty[0] ? V.komnaty[0].id : "");
+    const room = (V.komnaty || []).find((k) => k.id === komnata);
+    let foto = (r.foto || []).map((f) => ({ src: f.src, znak: true }));
+    if (!foto.length) foto = (r.video || []).filter((v) => v.oblozhka).slice(0, 1).map((v) => ({ src: v.oblozhka, znak: true }));
+    const w = { id: r.id, komnata, vid: room ? room.nazvanie : "", nazvanie: r.nazvanie || "Новая работа", gde: "", kogda: "", srok: "", material: "", cena: "", rasskaz: r.rasskaz || "", foto };
+    const i = V.raboty.findIndex((x) => x.id === r.id);
+    if (i >= 0) V.raboty[i] = Object.assign(V.raboty[i], w); else { V.raboty.unshift(w); nw++; }
+    nf += foto.length; nv += (r.video || []).length; addVideo(r.video, w);
+  });
+  (P.k_rabotam || []).forEach((r) => {
+    const w = V.raboty.find((x) => x.id === r.rabota);
+    if (!w) { console.warn(n + ": нет работы " + r.rabota + " - пропускаю"); return; }
+    w.foto = w.foto || [];
+    const have = new Set(w.foto.map((f) => f.src));
+    (r.foto || []).forEach((f) => { if (f.src && !have.has(f.src)) { w.foto.push({ src: f.src, znak: true }); nf++; } });
+    nv += (r.video || []).length; addVideo(r.video, w);
+  });
+  console.log(n + ": новых работ " + nw + ", фото " + nf + ", видео " + nv);
+}
+
 fs.mkdirSync(OUT, { recursive: true });
 const metaPath = path.join(OUT, "meta.json");
 let meta = fs.existsSync(metaPath) && !newSalt ? JSON.parse(fs.readFileSync(metaPath, "utf8")) : null;
@@ -70,7 +110,7 @@ function photo(rel) {
   return "@" + id;
 }
 function walk(x) {
-  if (typeof x === "string") return /^foto\/[^\s]+\.(jpe?g|png|webp)$/i.test(x) ? photo(x) : x;
+  if (typeof x === "string") return /^foto\/[^\s]+\.(jpe?g|png|webp|svg|mp4|webm)$/i.test(x) ? photo(x) : x; // фото, знак (svg), фоновое видео
   if (Array.isArray(x)) return x.map(walk);
   if (x && typeof x === "object") { const o = {}; for (const k of Object.keys(x)) o[k] = walk(x[k]); return o; }
   return x;

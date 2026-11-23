@@ -1,6 +1,6 @@
 /* Закрытая витрина: главная = путешествие по дому (krasnodar/index.html).
    Этот файл грузится перед puteshestvie.js и добавляет только то, что нужно в закрытой витрине:
-   полоску "Черновик" с переходом к вопросам и правкам для мастера (master/) и кнопку "Выйти".
+   полоску "Черновик" с переходом к дизайнам (dizajn/), Мастерской (masterskaya/), вопросам и правкам для мастера (master/) и кнопку "Выйти".
    Клиенты эту полоску не увидят: в открытой витрине файла нет. */
 (function () {
   "use strict";
@@ -18,13 +18,15 @@
     ".krbar button{border:1px solid rgba(244,238,228,.25);color:#BDB2A2;background:none;cursor:pointer}",
     "#home.enter .krbar{animation:rise .8s cubic-bezier(.22,1,.36,1) .2s both}",
     "@media (max-width:600px){.krbar .t span{display:none}.krbar{gap:6px}.krbar a,.krbar button{padding:0 10px}}",
+    "@media (max-width:520px){.krbar .t{display:none}.krbar .lg{display:none}.krbar{overflow-x:auto;scrollbar-width:none}}",
+    "@media (max-width:400px){.krbar{gap:5px;padding-left:10px;padding-right:10px}.krbar a,.krbar button{padding:0 8px;font-size:12px}}",
     "@media (max-width:380px){.krbar .t{display:none}}"
   ].join("\n");
   document.head.appendChild(css);
   var bar = document.createElement("div");
   bar.className = "krbar";
   bar.innerHTML = '<div class="t"><b>Черновик витрины.</b> <span>Видите только вы - вход по пин-коду.</span></div>' +
-    '<a href="dizajn/" class="dz">Дизайн</a><a href="master/">Вопросы и правки</a><button type="button" id="krOut">Выйти</button>';
+    '<a href="dizajn/" class="dz">Дизайн</a><a href="masterskaya/" class="dz">Мастерская</a><a href="master/">Вопросы<span class="lg"> и правки</span></a><button type="button" id="krOut">Выйти</button>';
   home.insertBefore(bar, top);
   document.getElementById("krOut").onclick = function () { if (window.KrZamok) KrZamok.logout(); };
 })();

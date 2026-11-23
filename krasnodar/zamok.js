@@ -70,9 +70,12 @@
     return subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(buf, 0, 12) }, key, new Uint8Array(buf, 12));
   }
   function mime(buf) {
-    var u = new Uint8Array(buf, 0, 12);
+    var u = new Uint8Array(buf, 0, Math.min(16, buf.byteLength));
     if (u[0] === 0x89 && u[1] === 0x50) return "image/png";
     if (u[8] === 0x57 && u[9] === 0x45 && u[10] === 0x42 && u[11] === 0x50) return "image/webp";
+    if (u[4] === 0x66 && u[5] === 0x74 && u[6] === 0x79 && u[7] === 0x70) return "video/mp4"; // ....ftyp
+    if (u[0] === 0x1A && u[1] === 0x45 && u[2] === 0xDF && u[3] === 0xA3) return "video/webm";
+    if (u[0] === 0x3C) return "image/svg+xml"; // "<svg" или "<?xml"
     return "image/jpeg";
   }
 

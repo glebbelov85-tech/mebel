@@ -11,8 +11,52 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Manrope:wght@400;600;700;800&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
 <style>
+@font-face{font-family:"Jost";src:url(../../vitrina/dizajn2/fonts/jost-300-normal-cyrillic.woff2) format("woff2");font-weight:300;font-display:swap;unicode-range:U+0400-045F}
+@font-face{font-family:"Jost";src:url(../../vitrina/dizajn2/fonts/jost-300-normal-latin.woff2) format("woff2");font-weight:300;font-display:swap;unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:"Jost";src:url(../../vitrina/dizajn2/fonts/jost-400-normal-cyrillic.woff2) format("woff2");font-weight:400;font-display:swap;unicode-range:U+0400-045F}
+@font-face{font-family:"Jost";src:url(../../vitrina/dizajn2/fonts/jost-400-normal-latin.woff2) format("woff2");font-weight:400;font-display:swap;unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:"Jost";src:url(../../vitrina/dizajn2/fonts/jost-500-normal-cyrillic.woff2) format("woff2");font-weight:500 800;font-display:swap;unicode-range:U+0400-045F}
+@font-face{font-family:"Jost";src:url(../../vitrina/dizajn2/fonts/jost-500-normal-latin.woff2) format("woff2");font-weight:500 800;font-display:swap;unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:"Playfair";src:url(../../vitrina/dizajn2/fonts/playfair-display-400-normal-cyrillic.woff2) format("woff2");font-weight:400 800;font-display:swap;unicode-range:U+0400-045F}
+@font-face{font-family:"Playfair";src:url(../../vitrina/dizajn2/fonts/playfair-display-400-normal-latin.woff2) format("woff2");font-weight:400 800;font-display:swap;unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:"Playfair";src:url(../../vitrina/dizajn2/fonts/playfair-display-400-italic-cyrillic.woff2) format("woff2");font-weight:400 800;font-style:italic;font-display:swap;unicode-range:U+0400-045F}
+@font-face{font-family:"Playfair";src:url(../../vitrina/dizajn2/fonts/playfair-display-400-italic-latin.woff2) format("woff2");font-weight:400 800;font-style:italic;font-display:swap;unicode-range:U+0000-00FF,U+2000-206F}
+/* новые варианты 5-8: строгие карточки, мини-картинка - объёмный домик */
+.sec{display:flex;flex-wrap:wrap;align-items:baseline;gap:16px;margin:44px 0 0;padding-top:18px;border-top:1px solid var(--line)}
+.sec h2{font-family:Playfair,Georgia,serif;font-weight:400;font-size:clamp(24px,3vw,32px)}
+.sec span{color:var(--muted);font-size:14px}
+.g2{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin:22px 0 10px}
+.c2{position:relative;display:flex;flex-direction:column;background:var(--bg);text-decoration:none;font-family:Jost,system-ui,sans-serif;animation:up .9s var(--ease) both;animation-delay:calc(var(--i) * .08s)}
+.c2 .pv2{position:relative;aspect-ratio:4/3;overflow:hidden;perspective:500px;display:flex;align-items:center;justify-content:center}
+.c2 .hh{position:relative;width:44%;aspect-ratio:1/1.05;transform-style:preserve-3d;transform:rotateX(-4deg) rotateY(-18deg);transition:transform 1.1s var(--ease)}
+@media (hover:hover){.c2:hover .hh{transform:rotateX(-6deg) rotateY(14deg)}.c2:hover .gl{transform:translateX(0)}}
+.c2 .hh i{position:absolute;display:block}
+.c2 .r{left:0;right:0;top:0;height:32%;clip-path:polygon(50% 0,100% 100%,0 100%)}
+.c2 .hh .b{left:0;right:0;top:32%;bottom:0;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:3px;padding:3px}
+.c2 .b b{display:block}
+.c2 .sd{top:32%;bottom:0;right:0;width:22%;transform-origin:100% 50%;transform:rotateY(-90deg)}
+.c2 .t{padding:18px 20px 22px;display:flex;flex-direction:column;gap:6px;flex:1;border-top:1px solid var(--line)}
+.c2 small{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.c2 .nm{font-family:Playfair,Georgia,serif;font-size:26px;line-height:1.1;color:var(--ink)}
+.c2 p{color:var(--muted);font-size:14.5px;line-height:1.5}
+.c2 .ln{margin-top:auto;padding-top:14px;display:flex;align-items:center;gap:12px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink)}
+.c2 .ln::before{content:"";width:28px;height:1px;background:currentColor;transition:width .5s var(--ease)}
+@media (hover:hover){.c2:hover .ln::before{width:52px}}
+.c2 .tag{position:absolute;top:14px;left:16px;z-index:2;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;padding:5px 9px;border:1px solid currentColor}
+.c2 .gl{position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.18) 50%,transparent 60%);transform:translateX(-100%);transition:transform 1.2s var(--ease);pointer-events:none}
+.v5 .pv2{background:linear-gradient(180deg,#F4F1EC,#E6E0D6)}.v5 .r{background:#2B2926}.v5 .b{background:#fff}.v5 .b b{background:#D8CFC2}.v5 .b b:nth-child(3n+1){background:#B9A58C}.v5 .sd{background:#CFC7BB}.v5 .tag{color:#2B2926}
+.v6 .pv2{background:radial-gradient(80% 90% at 50% 100%,rgba(0,0,0,.6),transparent),linear-gradient(115deg,#5a4636,#2a2420 45%,#6b5442 70%,#3a3029);background-size:100% 100%,300% 100%;animation:pan 16s ease-in-out infinite alternate}@keyframes pan{to{background-position:0 0,100% 0}}.v6 .r{background:rgba(20,18,16,.85)}.v6 .b{background:rgba(255,255,255,.12);backdrop-filter:blur(2px)}.v6 .b b{background:rgba(255,236,205,.35);border:1px solid rgba(255,255,255,.35)}.v6 .sd{background:rgba(255,255,255,.1)}.v6 .tag{color:#fff}
+.v7 .pv2{background:radial-gradient(50% 60% at 50% 30%,rgba(196,150,96,.22),transparent),#141312}.v7 .r{background:#2C2A26}.v7 .b{background:#1F1E1C}.v7 .b b{background:#2a2622;border:1px solid rgba(196,150,96,.55)}.v7 .sd{background:#252320}.v7 .tag{color:#C49660}
+.v8 .pv2{background:#FAFAF8}.v8 .r{background:#1b1b1b}.v8 .r::after{content:"";position:absolute;inset:1.5px 2.5px 0;background:#FAFAF8;clip-path:polygon(50% 0,100% 100%,0 100%)}.v8 .b{background:#1b1b1b;gap:1.5px;padding:1.5px}.v8 .b b{background:#FAFAF8}.v8 .b b:nth-child(2){background:linear-gradient(#bbb,#888)}.v8 .sd{background:transparent;border:1.5px solid #1b1b1b}.v8 .tag{color:#1b1b1b}
+.ms{display:flex;gap:18px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);padding:20px 22px;margin:18px 0 0;text-decoration:none;font-family:Jost,system-ui,sans-serif}
+.ms b{font-family:Playfair,Georgia,serif;font-weight:400;font-size:22px}
+.ms p{color:var(--muted);font-size:14.5px;flex:1;min-width:240px}
+.ms .ln{display:flex;align-items:center;gap:12px;font-size:12px;letter-spacing:.2em;text-transform:uppercase}
+.ms .ln::before{content:"";width:28px;height:1px;background:currentColor}
+</style>
+<style>
 /* Страница выбора пробного оформления "Путешествия по дому" (закрытая витрина Краснодара).
-   Сами варианты - v1..v4/ (собирает site/build.py). Здесь нет данных мастера, только описание. */
+   Сами варианты - v1..v8/ (v1-v4 первые, v5-v8 строгие) (собирает site/build.py). Здесь нет данных мастера, только описание. */
 :root{--bg:#121212;--card:#1B1B1D;--line:#2C2C30;--ink:#F2EEE8;--muted:#A9A39A;--acc:#E7B877;--ease:cubic-bezier(.22,1,.36,1)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 Manrope,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
@@ -23,7 +67,7 @@ a{color:inherit}
 .pill{display:inline-flex;align-items:center;min-height:38px;padding:0 15px;border-radius:999px;border:1px solid var(--line);font-size:14px;font-weight:700;text-decoration:none;color:var(--muted);transition:color .2s,border-color .2s}
 .pill:hover{color:var(--ink);border-color:#55555c}
 .eb{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--acc);font-weight:800}
-h1{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-size:clamp(34px,5vw,58px);line-height:1.02;margin:6px 0 10px}
+h1{font-family:Playfair,"Cormorant Garamond",Georgia,serif;font-weight:400;font-size:clamp(34px,5vw,58px);line-height:1.02;margin:6px 0 10px}
 .lead{color:var(--muted);max-width:720px;font-size:clamp(15px,1.5vw,17px)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:16px;margin:28px 0 30px}
 .card{position:relative;display:flex;flex-direction:column;border-radius:22px;overflow:hidden;background:var(--card);border:1px solid var(--line);text-decoration:none;transition:transform .5s var(--ease),border-color .3s;animation:up .8s var(--ease) both;animation-delay:calc(var(--i) * .08s)}
@@ -76,14 +120,41 @@ h1{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-size:clam
   <div class="top">
     <a class="pill" href="../">← Текущая витрина</a>
     <span class="sp"></span>
+    <a class="pill" href="../masterskaya/">Мастерская</a>
     <a class="pill" href="../master/">Вопросы и правки</a>
   </div>
   <div class="eb">Пробные варианты</div>
   <h1>Как может выглядеть путешествие по дому</h1>
-  <p class="lead">Четыре оформления главной: свой фон, свой дом, свой вход и свои анимации. Работы, комнаты и всё остальное - те же, что в текущей витрине, её саму не меняли. Внутри любого варианта наверху есть переключатель 1-2-3-4: дизайн меняется на месте, можно сравнивать на одном и том же экране.</p>
+  <p class="lead">Восемь оформлений главной. Работы, комнаты и тексты везде одни и те же, текущую витрину не меняли. Внутри любого варианта слева внизу есть переключатель: стрелками можно листать варианты на одном и том же экране.</p>
 
+  <div class="sec"><h2>Строгие варианты</h2><span>новые, 5-8: по мотивам сайтов фабрик</span></div>
+  <div class="g2">
+    <a class="c2 v5" href="v5/" style="--i:0"><span class="tag">Рекомендую</span>
+      <div class="pv2"><div class="hh"><i class="r"></i><i class="b"><b></b><b></b><b></b><b></b><b></b><b></b></i><i class="sd"></i></div><i class="gl"></i></div>
+      <div class="t"><small>Вариант 5</small><span class="nm">Галерея</span>
+        <p>Светлый и спокойный, как сайты Walter Knoll и Rolf Benz. Объёмный дом поворачивается за мышью, на телефоне - при прокрутке. Много воздуха, фото работ крупно.</p>
+        <span class="ln">Открыть</span></div></a>
+    <a class="c2 v6" href="v6/" style="--i:1">
+      <div class="pv2"><div class="hh"><i class="r"></i><i class="b"><b></b><b></b><b></b><b></b><b></b><b></b></i><i class="sd"></i></div><i class="gl"></i></div>
+      <div class="t"><small>Вариант 6</small><span class="nm">Кино</span>
+        <p>На фоне - фильм из работ мастера, как у Euromobil. Поверх - стеклянный дом с комнатами. На слабых телефонах вместо видео спокойно сменяются фото.</p>
+        <span class="ln">Открыть</span></div></a>
+    <a class="c2 v7" href="v7/" style="--i:2">
+      <div class="pv2"><div class="hh"><i class="r"></i><i class="b"><b></b><b></b><b></b><b></b><b></b><b></b></i><i class="sd"></i></div><i class="gl"></i></div>
+      <div class="t"><small>Вариант 7</small><span class="nm">Тёмный зал</span>
+        <p>Тёмный, как выставочный зал: мягкий свет-прожектор, бронзовые линии, по стёклам комнат проходит блик. Строгий и дорогой.</p>
+        <span class="ln">Открыть</span></div></a>
+    <a class="c2 v8" href="v8/" style="--i:3">
+      <div class="pv2"><div class="hh"><i class="r"></i><i class="b"><b></b><b></b><b></b><b></b><b></b><b></b></i><i class="sd"></i></div><i class="gl"></i></div>
+      <div class="t"><small>Вариант 8</small><span class="nm">Линия</span>
+        <p>Почти архитектурный чертёж: тонкий контур дома, фото в окнах чёрно-белые и оживают в цвете при наведении. Самый минималистичный.</p>
+        <span class="ln">Открыть</span></div></a>
+  </div>
+  <a class="ms" href="../masterskaya/"><b>Мастерская</b><p>Для мастера: поправить "О мастере" и контакты, загрузить свой знак, добавить работы, фото и видео. Водяной знак ставится сам.</p><span class="ln">Открыть</span></a>
+
+  <div class="sec"><h2>Первые варианты</h2><span>1-4, оставлены для сравнения</span></div>
   <div class="grid">
-    <a class="card v1 rec" href="v1/" style="--i:0"><span class="badge">Рекомендую</span>
+    <a class="card v1" href="v1/" style="--i:0">
       <div class="pv"><i class="o"></i><i class="hl"></i><div class="hs"><div class="rf"></div><div class="fl"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
       <div class="cb"><small>Вариант 1</small><b>Тёплый вечер</b>
         <p>Уютные сумерки: дом с тёплыми окнами на фоне неба со звёздами.</p>
@@ -111,7 +182,7 @@ h1{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-size:clam
 
   <div class="box rec2">
     <h2>Что рекомендую</h2>
-    <p><b>Вариант 1, "Тёплый вечер".</b> Он ближе всего к тому, что мастеру уже понравилось, а тёплые окна и тёмное небо лучше всего показывают фото кухонь и шкафов. Анимации заметные, но спокойные и не отвлекают от работ. Из варианта 4 можно взять смену времени суток: днём утро, вечером вечер - если мастеру понравится.</p>
+    <p><b>Вариант 5, "Галерея".</b> Он ближе всего к сайтам, которые понравились: светлый, спокойный, фото работ крупно, ничего лишнего. Если хочется "вау" с первой секунды - вариант 6 "Кино" с фильмом на фоне. Из них можно собрать один: например, фон из "Кино", а разделы и меню из "Галереи".</p>
   </div>
   <div class="box">
     <h2>Чтобы не тормозило</h2>
@@ -119,7 +190,7 @@ h1{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-size:clam
       <li><b>Качество подстраивается само.</b> Сначала по телефону, потом по замеру: если кадры не успевают, анимация фона упрощается. На сильных телефонах и компьютерах - всё на максимуме.</li>
       <li>Фон двигается только на экране дома. В комнате, в журнале, на фото и при открытом разделе он стоит и не тратит силы телефона.</li>
       <li>Если в телефоне включено "уменьшить движение" или экономия трафика - фон без движения.</li>
-      <li>В меню "⋯" наверху варианта можно вручную выбрать: Авто, Максимум или Лёгкая.</li>
+      <li>В вариантах 1-4 в меню "⋯" наверху можно вручную выбрать: Авто, Максимум или Лёгкая. В 5-8 качество выбирается само, вручную - добавкой ?kach=lite или ?kach=max к адресу.</li>
     </ul>
   </div>
   <div class="box">
