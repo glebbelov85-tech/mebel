@@ -220,7 +220,7 @@
   document.addEventListener("input", function (e) {
     var t = e.target, sec = t.getAttribute && t.getAttribute("data-s"); if (!sec) return;
     var k = t.getAttribute("data-k"), base = ((sec === "master" ? M0 : K0)[k] || "");
-    if (t.value === base) delete S[sec][k]; else S[sec][k] = t.value;
+    if (t.value.trim() === String(base).trim()) delete S[sec][k]; else S[sec][k] = t.value; // лишний пробел - не правка
     if (k === "imya") drawTop();
     if (k === "znak" && sec === "master") { S.znak.tekst = t.value; }
     save();
@@ -323,7 +323,7 @@
     var base = isNew ? null : (workById(w.rabota) || {});
     [].forEach.call(card.querySelectorAll("[data-w]"), function (e) { e.addEventListener(e.tagName === "SELECT" ? "change" : "input", function () {
       var k = e.getAttribute("data-w");
-      if (!isNew && e.value === (base[k] || "")) delete w[k]; else w[k] = e.value; // у готовой работы храним только изменённое
+      if (!isNew && e.value.trim() === String(base[k] || "").trim()) delete w[k]; else w[k] = e.value; // у готовой работы храним только изменённое
       save();
     }); });
     var sk = card.querySelector("[data-skryt]");
@@ -620,8 +620,8 @@
     }).then(function (cur) {
       L = cur || {};
       L.v = 1; L.master = L.master || {}; L.kontakty = L.kontakty || {}; L.novye_raboty = L.novye_raboty || []; L.k_rabotam = L.k_rabotam || []; L.skryt = L.skryt || []; L.imena = L.imena || {};
-      Object.keys(S.master).forEach(function (k) { L.master[k] = S.master[k]; });
-      Object.keys(S.kontakty).forEach(function (k) { L.kontakty[k] = S.kontakty[k]; });
+      Object.keys(S.master).forEach(function (k) { L.master[k] = String(S.master[k]).trim(); });
+      Object.keys(S.kontakty).forEach(function (k) { L.kontakty[k] = String(S.kontakty[k]).trim(); });
       L.znak = S.znak;
       var chain = S.logo ? enc("logo").then(function (r) { if (r) L.logo = r; }) : Promise.resolve(), neu = [];
       S.novye.forEach(function (w) {
