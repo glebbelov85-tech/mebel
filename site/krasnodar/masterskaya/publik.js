@@ -157,7 +157,20 @@
     var code = newCode();
     return siteKey(B.pin).catch(function () { throw new Error("Пин-код витрины не подходит"); }).then(function () {
       progress("Проверяю токен и репозиторий");
-      return gh(B, "GET", "/git/ref/heads/" + enc(B.branch));
+      return gh(B, "GET", "").catch(function (e) {
+        if (e.status === 404 || e.status === 403) throw new Error("Ключ не видит репозиторий «" + B.repo + "». Проверьте название (основной - " + ISTOCHNIK.repo + ") и что при выпуске ключа в Repository access выбран именно он.");
+        throw e;
+      });
+    }).then(function () {
+      return gh(B, "GET", "/git/ref/heads/" + enc(B.branch)).catch(function (e) {
+        if (e.status === 404) throw new Error("В репозитории «" + B.repo + "» нет ветки «" + B.branch + "» - обычно это main.");
+        throw e;
+      });
+    }).then(function () {
+      // первая папка должна быть той, что видит сайт: в ней уже лежит meta.json витрины
+      return gh(B, "GET", "/contents/" + enc(B.paths[0] + "meta.json") + "?ref=" + encodeURIComponent(B.branch), null, true).then(function (buf) {
+        if (!buf) throw new Error("В репозитории нет папки «" + B.paths[0] + "» с витриной. Для основного репо папки: krasnodar/enc/ и site/krasnodar/enc/.");
+      });
     }).then(function () {
       progress("Шифрую настройки кодом мастера");
       var salt = crypto.getRandomValues(new Uint8Array(16));
