@@ -554,6 +554,8 @@
   // Вид выбирает клиент переключателем под названием комнаты, выбор запоминается (localStorage vp-vid).
   var VIEWS = ["karusel", "lenta", "plitki", "zhurnal"], VKEY = "vp-vid", RV = "karusel";
   try { var v0 = localStorage.getItem(VKEY); if (VIEWS.indexOf(v0) >= 0) RV = v0; } catch (e) {}
+  // слой оформления может закрепить один вид (window.VP_VID) и спрятать переключатель - тогда выбор клиента не читаем
+  if (VIEWS.indexOf(window.VP_VID) >= 0) RV = window.VP_VID;
   var SUB = { karusel: "листайте и открывайте", lenta: "прокручивайте вниз", plitki: "все сразу - нажмите на любую", zhurnal: "листайте страницы" };
   function renderRoom(k, idx, anim) {
     S.room = k; S.work = null;

@@ -150,12 +150,23 @@
     scT = requestAnimationFrame(function () { scT = 0; home.classList.toggle("d2-sc", home.scrollTop > 8); if (!FINE) kick(); });
   }, { passive: true });
 
+  // ---------- "Просто" (window.D2_P, вариант 13): человек зашёл первый раз - сразу понятно, куда нажать ----------
+  // Крупные подписи комнат с числом работ, в комнате все работы сразу плиткой (вид закреплён через VP_VID),
+  // без переключателя видов, мини-карты и лишних кнопок. Правила - в d2.css (html[data-d2p]).
+  var PROSTO = !!window.D2_P;
+  function plur(n, f) { n = Math.abs(n) % 100; var d = n % 10; return n > 10 && n < 20 ? f[2] : d === 1 ? f[0] : d >= 2 && d <= 4 ? f[1] : f[2]; }
+  if (PROSTO) {
+    H.setAttribute("data-d2p", "");
+    var hl = $("hLead"), HL = "Выберите комнату - внутри все её работы сразу.";
+    if (hl) { hl.textContent = HL; new MutationObserver(function () { if (hl.textContent !== HL) hl.textContent = HL; }).observe(hl, { childList: true, characterData: true, subtree: true }); } // текст ставит и puteshestvie.js
+  }
+
   // ---------- подписи комнат: номер работ рядом с названием ----------
   function decorRooms() {
     [].forEach.call(floors.querySelectorAll(".room"), function (r) {
       var t = r.querySelector(".t"); if (!t || t.querySelector(".d2n")) return;
       var tg = r.querySelector(".tags span"), n = tg ? parseInt(tg.textContent, 10) : 0;
-      if (n) t.querySelector("b").insertAdjacentHTML("afterend", '<i class="d2n">' + (n < 10 ? "0" : "") + n + "</i>");
+      if (n) t.querySelector("b").insertAdjacentHTML("afterend", '<i class="d2n">' + (PROSTO ? n + " " + plur(n, ["работа", "работы", "работ"]) : (n < 10 ? "0" : "") + n) + "</i>");
     });
     layout(); build3D();
   }
@@ -184,6 +195,7 @@
       if (rem && i >= full) span = cols % rem === 0 ? cols / rem : (i === n - 1 ? cols - rem + 1 : 1); // неполный последний ряд - без дыр
       r.style.gridColumn = "auto / span " + span;
       r.style.setProperty("--i", i);
+      var tb = r.querySelector(".t b"); if (tb) r.classList.toggle("long", tb.textContent.length > 15);
     });
   }
   if (NARROW.addEventListener) NARROW.addEventListener("change", function () { layout(); build3D(); });
