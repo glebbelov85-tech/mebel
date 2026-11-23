@@ -271,6 +271,10 @@
   }
 
   // ---------- Лента ----------
+  // поля описания работы: клиент видит их чипами под названием и по нажатию на фото во весь экран (пустые не показываются)
+  var WF = [["material", "Материал", "ЛДСП Egger, МДФ эмаль"], ["cvet", "Цвет и отделка", "Тёмно-синий матовый, дуб"], ["razmery", "Размеры", "3,2 x 2,4 м"], ["god", "Год", "2025"]];
+  function wfHas(w) { return WF.some(function (f) { return w[f[0]] != null && String(w[f[0]]).trim(); }); }
+  function wfInputs(w, base) { return '<div class="g2">' + WF.map(function (f) { var v = w[f[0]] != null ? w[f[0]] : (base && base[f[0]]) || ""; return '<div class="f"><label>' + f[1] + '</label><input data-w="' + f[0] + '" value="' + esc(v) + '" placeholder="' + f[2] + '"></div>'; }).join("") + "</div>"; }
   function ordRooms() { return (D.komnaty || []).slice(); }
   function workById(id) { return (D.raboty || []).filter(function (r) { return r.id === id; })[0] || null; }
   function workCard(w, isNew, i) {
@@ -279,10 +283,10 @@
     if (isNew) {
       h += '<div class="g2"><div class="f"><label>Название работы</label><input data-w="nazvanie" data-voice value="' + esc(w.nazvanie || "") + '" placeholder="Кухня с островом в ЖК ..."></div>' +
         '<div class="f"><label>Комната на витрине</label><select data-w="komnata">' + rs.map(function (k) { return '<option value="' + esc(k.id) + '"' + (w.komnata === k.id ? " selected" : "") + ">" + esc(k.nazvanie) + "</option>"; }).join("") + "</select></div>" +
-        '<div class="f w"><label>Рассказ о работе</label><textarea data-w="rasskaz" rows="3" placeholder="Что хотел заказчик, что придумали, сроки, материалы">' + esc(w.rasskaz || "") + "</textarea></div></div>";
+        '<div class="f w"><label>Рассказ о работе</label><textarea data-w="rasskaz" rows="3" placeholder="Что хотел заказчик, что придумали, сроки, материалы">' + esc(w.rasskaz || "") + "</textarea></div></div>" + wfInputs(w, null);
     } else {
       h += '<div class="g2"><div class="f w"><label>Название работы</label><input data-w="nazvanie" data-voice value="' + esc(w.nazvanie != null ? w.nazvanie : base.nazvanie || "") + '"></div>' +
-        '<div class="f w"><label>Рассказ о работе</label><textarea data-w="rasskaz" rows="3" placeholder="Что хотел заказчик, что придумали, сроки, материалы">' + esc(w.rasskaz != null ? w.rasskaz : base.rasskaz || "") + "</textarea></div></div>" +
+        '<div class="f w"><label>Рассказ о работе</label><textarea data-w="rasskaz" rows="3" placeholder="Что хотел заказчик, что придумали, сроки, материалы">' + esc(w.rasskaz != null ? w.rasskaz : base.rasskaz || "") + "</textarea></div></div>" + wfInputs(w, base) +
         '<label class="chk"><input type="checkbox" data-skryt' + (w.skryt ? " checked" : "") + "> Скрыть эту работу с витрины (потом можно вернуть)</label>";
     }
     h += '<div class="media"></div><div class="btns"><span class="btn sm file">Добавить фото и видео<input type="file" accept="image/*,video/*" multiple data-add></span>' +
@@ -482,8 +486,8 @@
     var nm = 0, nv = 0;
     S.novye.concat(S.k).forEach(function (w) { (w.media || []).forEach(function (m) { if (m.st !== "ok") return; if (m.tip === "video") nv++; else nm++; }); });
     return { m: Object.keys(S.master).length, k: Object.keys(S.kontakty).length, logo: !!S.logo, foto: nm, video: nv,
-      raboty: S.novye.filter(function (w) { return (w.media || []).some(function (m) { return m.st === "ok"; }) || w.nazvanie || w.rasskaz; }).length,
-      pravka: S.k.filter(function (w) { return w.nazvanie != null || w.rasskaz != null; }).length,
+      raboty: S.novye.filter(function (w) { return (w.media || []).some(function (m) { return m.st === "ok"; }) || w.nazvanie || w.rasskaz || wfHas(w); }).length,
+      pravka: S.k.filter(function (w) { return w.nazvanie != null || w.rasskaz != null || WF.some(function (f) { return w[f[0]] != null; }); }).length,
       skryt: S.k.filter(function (w) { return w.skryt; }).length, vernut: (S.vernut || []).length };
   }
   function changeLines(c) {
@@ -622,20 +626,23 @@
       var chain = S.logo ? enc("logo").then(function (r) { if (r) L.logo = r; }) : Promise.resolve(), neu = [];
       S.novye.forEach(function (w) {
         chain = chain.then(function () { return media(w.media || []); }).then(function (md) {
-          if (!md.foto.length && !md.video.length && !w.nazvanie && !w.rasskaz) return;
-          neu.push({ id: w.id, nazvanie: w.nazvanie || "Новая работа", komnata: w.komnata, rasskaz: w.rasskaz || "", foto: md.foto, video: md.video });
+          if (!md.foto.length && !md.video.length && !w.nazvanie && !w.rasskaz && !wfHas(w)) return;
+          var nw = { id: w.id, nazvanie: w.nazvanie || "Новая работа", komnata: w.komnata, rasskaz: w.rasskaz || "", foto: md.foto, video: md.video };
+          WF.forEach(function (f) { if (w[f[0]] && String(w[f[0]]).trim()) nw[f[0]] = String(w[f[0]]).trim(); });
+          neu.push(nw);
         });
       });
       chain = chain.then(function () { L.novye_raboty = neu.concat(L.novye_raboty); });
       S.k.forEach(function (w) {
         chain = chain.then(function () { return media(w.media || []); }).then(function (md) {
-          var txt = (w.nazvanie != null && w.nazvanie.trim()) || (w.rasskaz != null && w.rasskaz.trim());
+          var txt = (w.nazvanie != null && w.nazvanie.trim()) || (w.rasskaz != null && w.rasskaz.trim()) || WF.some(function (f) { return w[f[0]] != null; });
           if (txt || md.foto.length || md.video.length) {
             // своя опубликованная работа - правим её запись, чужая (из исходных данных) - запись в k_rabotam
             var t = L.novye_raboty.filter(function (x) { return x.id === w.rabota; })[0] || L.k_rabotam.filter(function (x) { return x.rabota === w.rabota; })[0];
             if (!t) { t = { rabota: w.rabota, foto: [], video: [] }; L.k_rabotam.push(t); }
             if (w.nazvanie != null && w.nazvanie.trim()) t.nazvanie = w.nazvanie.trim();
             if (w.rasskaz != null && w.rasskaz.trim()) t.rasskaz = w.rasskaz.trim();
+            WF.forEach(function (f) { if (w[f[0]] != null) t[f[0]] = String(w[f[0]]).trim(); }); // пустое значение - стереть поле
             t.foto = (t.foto || []).concat(md.foto); t.video = (t.video || []).concat(md.video);
           }
           if (w.skryt && L.skryt.indexOf(w.rabota) < 0) { L.skryt.push(w.rabota); L.imena[w.rabota] = (w.nazvanie && w.nazvanie.trim()) || wTitle(w.rabota) || "Работа"; }
@@ -661,8 +668,8 @@
     Object.keys(S.master).forEach(function (k) { if (S.master[k].trim()) M0[k] = S.master[k].trim(); });
     Object.keys(S.kontakty).forEach(function (k) { if (S.kontakty[k].trim()) K0[k] = S.kontakty[k].trim(); });
     D.raboty = D.raboty || [];
-    S.novye.forEach(function (w) { if (w.nazvanie || w.rasskaz || (w.media || []).length) D.raboty.unshift({ id: w.id, komnata: w.komnata, nazvanie: w.nazvanie || "Новая работа", rasskaz: w.rasskaz || "", foto: [] }); });
-    S.k.forEach(function (w) { var x = workById(w.rabota); if (!x) return; if (w.nazvanie && w.nazvanie.trim()) x.nazvanie = w.nazvanie.trim(); if (w.rasskaz && w.rasskaz.trim()) x.rasskaz = w.rasskaz.trim(); });
+    S.novye.forEach(function (w) { if (w.nazvanie || w.rasskaz || wfHas(w) || (w.media || []).length) { var x = { id: w.id, komnata: w.komnata, nazvanie: w.nazvanie || "Новая работа", rasskaz: w.rasskaz || "", foto: [] }; WF.forEach(function (f) { if (w[f[0]]) x[f[0]] = String(w[f[0]]).trim(); }); D.raboty.unshift(x); } });
+    S.k.forEach(function (w) { var x = workById(w.rabota); if (!x) return; if (w.nazvanie && w.nazvanie.trim()) x.nazvanie = w.nazvanie.trim(); if (w.rasskaz && w.rasskaz.trim()) x.rasskaz = w.rasskaz.trim(); WF.forEach(function (f) { if (w[f[0]] != null) x[f[0]] = String(w[f[0]]).trim(); }); });
     D.raboty = D.raboty.filter(function (x) { return L.skryt.indexOf(x.id) < 0; });
     window.KR_SLOJ = L;
     clearDraft(); banner();
@@ -721,11 +728,12 @@
       });
       return out;
     }
-    S.novye.forEach(function (w) { var md = media(w.media || []); if (!md.foto.length && !md.video.length && !w.nazvanie && !w.rasskaz) return; P.novye_raboty.push({ id: w.id, nazvanie: w.nazvanie || "Новая работа", komnata: w.komnata, rasskaz: w.rasskaz || "", foto: md.foto, video: md.video }); });
+    S.novye.forEach(function (w) { var md = media(w.media || []); if (!md.foto.length && !md.video.length && !w.nazvanie && !w.rasskaz && !wfHas(w)) return; var nw = { id: w.id, nazvanie: w.nazvanie || "Новая работа", komnata: w.komnata, rasskaz: w.rasskaz || "", foto: md.foto, video: md.video }; WF.forEach(function (f) { if (w[f[0]] && String(w[f[0]]).trim()) nw[f[0]] = String(w[f[0]]).trim(); }); P.novye_raboty.push(nw); });
     S.k.forEach(function (w) {
       var md = media(w.media || []), e = { rabota: w.rabota, foto: md.foto, video: md.video };
       if (w.nazvanie != null) e.nazvanie = w.nazvanie; if (w.rasskaz != null) e.rasskaz = w.rasskaz;
-      if (md.foto.length || md.video.length || e.nazvanie != null || e.rasskaz != null) P.k_rabotam.push(e);
+      var wf = false; WF.forEach(function (f) { if (w[f[0]] != null) { e[f[0]] = String(w[f[0]]).trim(); wf = true; } });
+      if (md.foto.length || md.video.length || e.nazvanie != null || e.rasskaz != null || wf) P.k_rabotam.push(e);
       if (w.skryt) P.skryt.push(w.rabota);
     });
     var lg = S.logo ? get("logo").then(function (b) { if (b) { var n = "foto/logo-" + (S.logoV || 1) + (/svg/.test(S.logo.type) ? ".svg" : ".png"); P.logo = n; files.push([n, "logo"]); } }) : Promise.resolve();
