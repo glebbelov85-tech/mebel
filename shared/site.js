@@ -115,7 +115,7 @@
 
   // --- пометка "Обновление" и подсказка "Доступно обновление" ---
   // VER вшивает build.py при сборке; version.json на сервере - номер самой свежей сборки.
-  var VER = {"v": "20261123182028", "at": "2026-11-23T18:20:28Z", "note": "Витрина Краснодара: низ страницы в тёмном стиле верха, с медленным фоном"};
+  var VER = {"v": "20261123183828", "at": "2026-11-23T18:38:28Z", "note": "Витрина Краснодара: фото комнат целиком, Max и Telegram в окне Написать, чистый низ для клиента"};
   var MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
   function verDate(v, withTime) {
     var d = v && new Date(v.at);
@@ -134,7 +134,7 @@
   }
   var lastCheck = 0;
   function checkUpdate() {
-    if (!VER || !window.fetch || location.protocol === "file:" || document.getElementById("msNew")) return;
+    if (!VER || !window.fetch || location.protocol === "file:" || document.getElementById("msNew") || me === "kr-klient") return; // клиенту мастера служебная подсказка не нужна
     if (Date.now() - lastCheck < 60000) return;
     lastCheck = Date.now();
     fetch(root() + "version.json?t=" + Date.now(), { cache: "no-store" })

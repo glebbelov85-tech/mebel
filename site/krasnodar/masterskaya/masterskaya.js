@@ -251,6 +251,7 @@
       fld("master", "znak", "Надпись водяного знака", { w: 1, hint: "Для новых фото и видео. Где и как стоит знак - во вкладке «Водяной знак»" }) + "</div>" +
       '<div class="eyebrow">Контакты</div><div class="card g2">' +
       fld("kontakty", "whatsapp", "WhatsApp (номер)", { mode: "tel", ph: "79990000000" }) + fld("kontakty", "telegram", "Telegram", { ph: "@имя" }) +
+      fld("kontakty", "max", "Max (ссылка)", { ph: "max.ru/...", hint: "В приложении Max: профиль - поделиться - скопировать ссылку" }) +
       fld("kontakty", "telefon", "Телефон для звонка", { mode: "tel" }) + fld("kontakty", "vk", "ВКонтакте", { ph: "vk.ru/..." }) +
       fld("kontakty", "adres", "Адрес или район") + fld("kontakty", "chasy", "Часы работы", { ph: "Пн-Сб 9-19" }) + "</div></section>";
     var box = $("lgBox"); box.innerHTML = LOGO_SVG || (LOGO_RASTER ? "" : '<span style="color:var(--muted);font-size:12px">нет</span>');

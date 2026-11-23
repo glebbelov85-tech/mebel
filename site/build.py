@@ -134,7 +134,7 @@ def krasnodar():
         ('<meta name="theme-color" content="#110F0C">', '<meta name="theme-color" content="#0F0F0E">'),
         ("</head>", '<link rel="stylesheet" href="../../vitrina/dizajn2/d2.css">\n</head>')],
         back="none", depth=1, sub=True,
-        head='<script>window.D2_TEMA = "kino"; window.D2_DOM = "linii"; window.D2_ZH = false; window.D2_P = true; window.VP_VID = "plitki"; window.VP_PREVIEW = true;</script>\n')
+        head='<script>window.D2_TEMA = "kino"; window.D2_DOM = "linii"; window.D2_ZH = false; window.D2_P = true; window.VP_VID = "plitki"; window.VP_PREVIEW = true; window.D2_KLIENT = true;</script>\n')
     wr(os.path.join(out, "klient", "index.html"), h)
     # старый адрес дома ведёт на главную (с тем же #rabota=/#komnata=)
     wr(os.path.join(out, "dom", "index.html"), '<!DOCTYPE html>\n<html lang="ru"><head><meta charset="UTF-8">\n' + noindex +
