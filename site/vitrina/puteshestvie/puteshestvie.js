@@ -86,6 +86,8 @@
   var K = {};
   var digits = function (s) { return String(s || "").replace(/\D/g, ""); };
   function waUrl(text) { var n = digits(K.whatsapp); return n ? "https://wa.me/" + n + (text ? "?text=" + encodeURIComponent(text) : "") : ""; }
+  // Max (мессенджер): ссылка на профиль или чат, как её даёт приложение (max.ru/...). Номер в ссылку не превращаем.
+  function maxUrl() { var u = String(K.max || "").trim(); return !u ? "" : /^https?:\/\//.test(u) ? u : /^(www\.)?max\.ru\//.test(u) ? "https://" + u : ""; }
   function tgUrl() { var u = String(K.telegram || "").replace(/^@|^https?:\/\/t\.me\//, ""); return u ? "https://t.me/" + u : ""; }
 
   // ---------- фото ----------
@@ -1581,6 +1583,12 @@
     $("mTg").hidden = !tgUrl();
     $("mTg").onclick = function () {
       var go = function () { window.open(tgUrl(), "_blank", "noopener"); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { toast("Текст скопирован - вставьте его в чат"); setTimeout(go, 600); }, go);
+      else go();
+    };
+    $("mMax").hidden = !maxUrl();
+    $("mMax").onclick = function () {
+      var go = function () { window.open(maxUrl(), "_blank", "noopener"); };
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { toast("Текст скопирован - вставьте его в чат"); setTimeout(go, 600); }, go);
       else go();
     };

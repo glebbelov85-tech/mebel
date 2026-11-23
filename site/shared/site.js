@@ -134,7 +134,7 @@
   }
   var lastCheck = 0;
   function checkUpdate() {
-    if (!VER || !window.fetch || location.protocol === "file:" || document.getElementById("msNew")) return;
+    if (!VER || !window.fetch || location.protocol === "file:" || document.getElementById("msNew") || me === "kr-klient") return; // клиенту мастера служебная подсказка не нужна
     if (Date.now() - lastCheck < 60000) return;
     lastCheck = Date.now();
     fetch(root() + "version.json?t=" + Date.now(), { cache: "no-store" })

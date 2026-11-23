@@ -105,6 +105,8 @@
   var side = el("div", "d2-mside"), wa = digits(K.whatsapp), tg = String(K.telegram || "").replace(/^@|^https?:\/\/t\.me\//, ""), tel = digits(K.telefon), vk = String(K.vk || "").trim();
   if (wa) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="https://wa.me/' + wa + '">WhatsApp</a>';
   if (tg) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="https://t.me/' + esc(tg) + '">Telegram</a>';
+  var mxu = String(K.max || "").trim(); mxu = /^https?:\/\//.test(mxu) ? mxu : /^(www\.)?max\.ru\//.test(mxu) ? "https://" + mxu : "";
+  if (mxu) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="' + esc(mxu) + '">Max</a>';
   if (tel) side.innerHTML += '<a class="d2-ln" href="tel:+' + tel + '">Позвонить</a>';
   if (vk) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="' + esc(/^https?:/.test(vk) ? vk : "https://" + vk) + '">ВКонтакте</a>';
   mbody.appendChild(side);
@@ -157,6 +159,7 @@
   function plur(n, f) { n = Math.abs(n) % 100; var d = n % 10; return n > 10 && n < 20 ? f[2] : d === 1 ? f[0] : d >= 2 && d <= 4 ? f[1] : f[2]; }
   if (PROSTO) {
     H.setAttribute("data-d2p", "");
+    if (window.D2_KLIENT) H.setAttribute("data-d2k", ""); // krasnodar/klient/: как у настоящего клиента - без подвала с именем и пометкой о тесте
     var hl = $("hLead"), HL = "Выберите комнату - внутри все её работы сразу.";
     if (hl) { hl.textContent = HL; new MutationObserver(function () { if (hl.textContent !== HL) hl.textContent = HL; }).observe(hl, { childList: true, characterData: true, subtree: true }); } // текст ставит и puteshestvie.js
   }
@@ -168,7 +171,7 @@
       var tg = r.querySelector(".tags span"), n = tg ? parseInt(tg.textContent, 10) : 0;
       if (n) t.querySelector("b").insertAdjacentHTML("afterend", '<i class="d2n">' + (PROSTO ? n + " " + plur(n, ["работа", "работы", "работ"]) : (n < 10 ? "0" : "") + n) + "</i>");
     });
-    layout(); build3D();
+    layout(); build3D(); fitPhotos();
   }
   new MutationObserver(decorRooms).observe(floors, { childList: true });
 
@@ -217,6 +220,26 @@
     });
   }
   if (NARROW.addEventListener) NARROW.addEventListener("change", function () { layout(); build3D(); });
+  // "Просто": фото комнаты почти целиком. Масштаб - между "вписать" и "заполнить" (ближе к "вписать"),
+  // чтобы было понятно, что на фото, и при этом без широких пустых полос по краям (их закрывает размытое фото).
+  var PHN = {};
+  function fitPhotos() {
+    if (!PROSTO || DOM !== "linii") return;
+    [].forEach.call(floors.querySelectorAll(".room .ph"), function (ph) {
+      var m = /url\(["']?([^"')]+)["']?\)/.exec(ph.style.backgroundImage || ""); if (!m) return;
+      var src = m[1], nat = PHN[src];
+      if (!nat) {
+        PHN[src] = "wait"; var im = new Image();
+        im.onload = function () { PHN[src] = { w: im.naturalWidth, h: im.naturalHeight }; fitPhotos(); };
+        im.src = src; return;
+      }
+      if (nat === "wait" || !nat.w) return;
+      var W = ph.clientWidth - 8, Hh = ph.clientHeight - 8; if (W <= 0 || Hh <= 0) return;
+      var sc = Math.min(W / nat.w, Hh / nat.h), sv = Math.max(W / nat.w, Hh / nat.h), k = sc * Math.pow(sv / sc, .3);
+      ph.style.setProperty("--bs", Math.round(nat.w * k) + "px " + Math.round(nat.h * k) + "px");
+    });
+  }
+  if (PROSTO && window.ResizeObserver) new ResizeObserver(function () { fitPhotos(); }).observe(floors);
 
   // ---------- объёмный дом ----------
   var F = {}; // грани: wl, wr - боковые стены; sl, sr - скаты крыши; gr - тень на земле
