@@ -514,7 +514,7 @@
     var list = any ? '<div class="list">' + L.map(function (t) { return '<div class="row"><span class="sp">' + esc(t) + "</span></div>"; }).join("") + "</div>" :
       '<p style="margin:0;color:var(--muted)">Пока нечего публиковать: правок и новых файлов нет.</p>';
     var h = '<section role="tabpanel"><h1>Опубликовать</h1>';
-    if (done) h += '<div class="card pub-ok"><h2>Опубликовано</h2><p>Клиенты увидят правки на витрине через 1-2 минуты - столько сайт обновляется. Черновик очищен, можно добавлять следующее.</p><div class="btns"><a class="btn" href="../klient/">Открыть витрину</a></div></div>';
+    if (done) h += '<div class="card pub-ok"><h2>Опубликовано</h2><p>Клиенты увидят правки на витрине через ' + KrPub.zhdat(PB) + ' - столько сайт обновляется. Черновик очищен, можно добавлять следующее.</p><div class="btns"><a class="btn" href="../klient/">Открыть витрину</a></div></div>';
     if (PJ && PB) {
       h += '<p class="lead">Правки уходят прямо на витрину - без файлов и пересылки.</p><div class="card">' + list +
         '<div class="btns"><button type="button" class="btn" id="pGo"' + (any ? "" : " disabled") + ">Опубликовать на сайт</button></div></div>";
@@ -644,7 +644,7 @@
       $("busy").hidden = true; $("busyX").hidden = false;
     });
   }
-  // сайт обновится через 1-2 минуты, а Мастерская должна сразу показывать опубликованное как "было"
+  // сайт обновится не сразу (1-2 или 10-20 минут, см. KrPub.zhdat), а Мастерская должна сразу показывать опубликованное как "было"
   function afterPublish(L) {
     Object.keys(S.master).forEach(function (k) { if (S.master[k].trim()) M0[k] = S.master[k].trim(); });
     Object.keys(S.kontakty).forEach(function (k) { if (S.kontakty[k].trim()) K0[k] = S.kontakty[k].trim(); });
@@ -659,9 +659,9 @@
     var b = $("banner"), P = null;
     try { P = JSON.parse(localStorage.getItem("kr-ms-pub") || "null"); } catch (e) {}
     var SL = window.KR_SLOJ || {};
-    var wait = P && Date.now() - P.at < 15 * 60000 && String(SL.sobrano || "") < String(P.sobrano || "");
+    var wait = P && Date.now() - P.at < 40 * 60000 && String(SL.sobrano || "") < String(P.sobrano || "");
     b.hidden = !wait;
-    if (wait) b.textContent = "Последняя публикация ещё появляется на витрине - обычно это 1-2 минуты. Если здесь не видно новых правок, обновите страницу чуть позже.";
+    if (wait) b.textContent = "Последняя публикация ещё появляется на витрине - обычно это " + KrPub.zhdat(PB) + ". Если здесь не видно новых правок, обновите страницу чуть позже.";
   }
 
   // ---------- Настройка публикации (Александр) ----------
@@ -689,7 +689,7 @@
         PJ = r.pj; PB = $("sRem").checked ? r.B : null;
         $("sOut").innerHTML = '<div class="card pub-ok"><h2>Готово</h2><p>Код мастера:</p><div class="code" id="sCode">' + esc(r.code) + "</div>" +
           '<div class="btns"><button type="button" class="btn l sm" id="sCopy">Скопировать код</button></div>' +
-          '<p class="note">Передайте код мастеру лично или в личном сообщении. Он вводит его в Мастерской во вкладке «Опубликовать» один раз на своём телефоне. Код больше нигде не показывается - сохраните его. Потеряли - пройдите настройку заново. Сайт подхватит настройку через 1-2 минуты.</p></div>';
+          '<p class="note">Передайте код мастеру лично или в личном сообщении. Он вводит его в Мастерской во вкладке «Опубликовать» один раз на своём телефоне. Код больше нигде не показывается - сохраните его. Потеряли - пройдите настройку заново. Сайт подхватит настройку через ' + esc(KrPub.zhdat(r.B)) + '.</p></div>';
         $("sCopy").onclick = function () { (navigator.clipboard ? navigator.clipboard.writeText(r.code) : Promise.reject()).then(function () { toast("Код скопирован"); }, function () { toast("Выделите код и скопируйте вручную"); }); };
         $("sGo").disabled = false;
       }, function (e) { $("sGo").disabled = false; $("sMsg").textContent = e.message || String(e); });
