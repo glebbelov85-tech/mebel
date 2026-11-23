@@ -11,8 +11,8 @@
   var css = document.createElement("style");
   css.textContent = [
     ".krbar{max-width:1240px;margin:0 auto;padding:calc(8px + env(safe-area-inset-top,0px)) clamp(14px,3vw,32px) 8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:13px;color:#BDB2A2}",
-    ".krbar .ms-prod{color:#EDE4D6}.krbar .ms-prod:empty{display:none}",
-    ".krbar .t{flex:1 1 200px;min-width:0;line-height:1.3}",
+    ".krbar .ms-prod{color:#EDE4D6}.krbar .ms-prod:empty{display:none}.krbar .ms-where{display:none}",
+    ".krbar .t{flex:1 1 0;min-width:0;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
     ".krbar .t b{color:#E0B47E;font-weight:700}",
     ".krbar .sec{display:flex;gap:8px}",
     ".krbar .sec a,.krbar button{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:0 14px;border-radius:999px;font:700 13px/1.1 Manrope,system-ui,sans-serif;text-decoration:none;white-space:nowrap;text-align:center}",
