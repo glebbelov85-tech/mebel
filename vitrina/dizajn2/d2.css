@@ -744,7 +744,7 @@ html[data-d2p] .mbtns [hidden]{display:none}
 /* дом ниже: обёртка .d2-hw (d2.js) задаёт отступ сверху; при входе дом нарисован выше и плавно опускается */
 html[data-d2p] .hero{justify-content:flex-start}
 .d2-hw{perspective:2600px;perspective-origin:50% 22%;width:100%}
-html[data-d2p] #home.enter .d2-hw{animation:d2hw 1.5s cubic-bezier(.45,0,.2,1) 1.9s both}
+html[data-d2p] #home.enter .d2-hw{animation:d2hw 1.3s cubic-bezier(.5,0,.2,1) 2.15s both}
 @keyframes d2hw{from{transform:translate3d(0,calc(var(--hd,0px) * -1),0)}to{transform:none}}
 html[data-d2p][data-d2q="0"] #home.enter .d2-hw{animation-duration:.01s;animation-delay:0s}
 @media (prefers-reduced-motion:reduce){html[data-d2p] #home.enter .d2-hw{animation:none}}
@@ -752,7 +752,8 @@ html[data-d2p][data-d2q="0"] #home.enter .d2-hw{animation-duration:.01s;animatio
 .d2-calm{position:absolute;inset:0;background:#0F0F0E;opacity:0;pointer-events:none}
 /* дом чёткий: плотная подложка под комнатами и крышей, видео сквозь них не мерцает; объёмные грани не нужны
    (из-за них пропадала часть контура крыши) */
-html[data-d2p][data-d2dom=linii] .floors{background:rgba(15,15,14,.94)}
+html[data-d2p][data-d2dom=linii] .floors{background:transparent}
+html[data-d2p][data-d2dom=linii] .room{background:rgba(15,15,14,.94)} /* подложка у каждой комнаты: при "стройке" дом заполняется этаж за этажом */
 html[data-d2p][data-d2dom=linii] .d2-rl polygon{fill:rgba(15,15,14,.9)}
 html[data-d2p] .d2-f{display:none}
 /* проблеск света по названию и знаку: раз в 7 секунд проходит светлая полоса */
@@ -774,3 +775,26 @@ html[data-d2p] #home{overscroll-behavior:none}
 html[data-d2p][data-d2dom=linii] .d2-rl polygon{stroke-dasharray:none;stroke-width:1.2}
 html[data-d2p][data-d2dom=linii] #home.enter .d2-rl polygon{animation:d2rlf 1.1s var(--ease) .15s both}
 @keyframes d2rlf{from{stroke-opacity:0;fill-opacity:0}to{stroke-opacity:1;fill-opacity:1}}
+
+/* надписи первого экрана: подзаголовок печатается по буквам, заголовок поднимается по словам, пояснение - следом */
+.d2-w{white-space:nowrap}
+.d2-wd{display:inline-block;overflow:hidden;vertical-align:top;padding:0 .02em .12em;margin-bottom:-.12em}
+.d2-wd>span{display:inline-block}
+html[data-d2p] #home.enter .hero-t>*{animation:none}
+html[data-d2p] #home.enter .d2-ch{animation:d2ch .18s linear both;animation-delay:calc(.2s + var(--c) * .026s)}
+@keyframes d2ch{from{opacity:0}to{opacity:1}}
+html[data-d2p] #home.enter .d2-wd>span{animation:d2wd 1s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.45s + var(--c) * .11s)}
+@keyframes d2wd{from{transform:translate3d(0,108%,0)}to{transform:none}}
+html[data-d2p] #home.enter .hero-t .lead{animation:d2fade 1s var(--ease) 1.15s both}
+/* дом строится: каркас растёт снизу, этажи встают снизу вверх, крыша опускается сверху, затем дом уходит вниз */
+html[data-d2p][data-d2dom=linii] #home.enter .floors{animation:d2fb .8s cubic-bezier(.6,0,.2,1) .4s both}
+@keyframes d2fb{from{clip-path:inset(100% 0 0 0)}to{clip-path:inset(0)}}
+html[data-d2p] #home.enter .room{transform-origin:50% 100%;animation:d2rb .55s cubic-bezier(.2,.9,.3,1.12) both;animation-delay:calc(.55s + var(--rb,0) * .2s + var(--cx,0) * .045s)}
+@keyframes d2rb{from{transform:scaleY(0);opacity:0}45%{opacity:1}to{transform:none;opacity:1}}
+html[data-d2p][data-d2dom=linii] #home.enter .roof{animation:d2rf .6s cubic-bezier(.2,.9,.3,1.25) 1.35s both}
+@keyframes d2rf{from{transform:translate3d(0,-46px,0);opacity:0}to{transform:none;opacity:1}}
+html[data-d2p][data-d2dom=linii] #home.enter .d2-rl polygon{animation:none}
+/* слабый телефон и "уменьшить движение": всё сразу, без побуквенного и стройки */
+html[data-d2p][data-d2q="0"] #home.enter .d2-ch,html[data-d2p][data-d2q="0"] #home.enter .d2-wd>span,html[data-d2p][data-d2q="0"] #home.enter .room,html[data-d2p][data-d2q="0"] #home.enter .roof,html[data-d2p][data-d2q="0"][data-d2dom=linii] #home.enter .floors{animation:none}
+html[data-d2p][data-d2q="0"] #home.enter .hero-t .lead{animation:d2fade .6s var(--ease) both}
+@media (prefers-reduced-motion:reduce){html[data-d2p] #home.enter .d2-ch,html[data-d2p] #home.enter .d2-wd>span,html[data-d2p] #home.enter .room,html[data-d2p] #home.enter .roof{animation:none}}
