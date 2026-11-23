@@ -80,6 +80,25 @@
   // вход: знак над названием
   var dui = document.querySelector("#doors .door-ui"), dmark = null;
   if (dui) { dmark = el("div", "d2-dmark"); dmark.hidden = true; dui.insertBefore(dmark, dui.firstChild); }
+  // "Просто": на заставке лёгкий "космос" сзади и завитки по углам кнопки "Войти в дом" (стили в d2.css)
+  if (window.D2_P && dui) {
+    var sp = el("div", "d2-space", '<i class="neb"></i><i class="s1"></i><i class="s2"></i>'); sp.setAttribute("aria-hidden", "true");
+    dui.parentNode.insertBefore(sp, dui);
+    // звёзды случайно рассыпаны по большой плитке (SVG), чтобы не было заметного повтора
+    var stars = function (n, sz, rmax, amax) {
+      var c = "";
+      for (var si = 0; si < n; si++) c += '<circle cx="' + (Math.random() * sz).toFixed(0) + '" cy="' + (Math.random() * sz).toFixed(0) + '" r="' + (.4 + Math.random() * rmax).toFixed(2) + '" fill-opacity="' + (.25 + Math.random() * amax).toFixed(2) + '"/>';
+      return 'url("data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="' + sz + '" height="' + sz + '" fill="#fff">' + c + "</svg>") + '")';
+    };
+    sp.children[1].style.backgroundImage = stars(70, 700, .6, .5); sp.children[1].style.backgroundSize = "700px 700px";
+    sp.children[2].style.backgroundImage = stars(16, 900, 1.1, .7); sp.children[2].style.backgroundSize = "900px 900px";
+    var eb = $("enterBtn");
+    if (eb) {
+      var C = '<path pathLength="1" d="M3 33 V15 C3 8 8 3 15 3 H33"/><path pathLength="1" d="M9 27 C9 17 14 11 21 11 C26 11 28 15 25.5 18 C23.5 20.5 19.5 19.5 19.8 16.6 M11 9 C14 7 17 6.6 19.5 7.2"/>';
+      var orn = el("span", "d2-orn", ["c1", "c2", "c3", "c4"].map(function (c) { return '<svg class="' + c + '" viewBox="0 0 36 36">' + C + "</svg>"; }).join("") + '<i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i>');
+      orn.setAttribute("aria-hidden", "true"); eb.appendChild(orn);
+    }
+  }
 
   // главная: мелкая строка над заголовком
   var h1 = home.querySelector(".hero-t h1");
@@ -180,7 +199,7 @@
       var tg = r.querySelector(".tags span"), n = tg ? parseInt(tg.textContent, 10) : 0;
       if (n) t.querySelector("b").insertAdjacentHTML("afterend", '<i class="d2n">' + (PROSTO ? n + " " + plur(n, ["работа", "работы", "работ"]) : (n < 10 ? "0" : "") + n) + "</i>");
     });
-    layout(); build3D(); fitPhotos();
+    layout(); d3faces(); build3D(); fitPhotos();
   }
   new MutationObserver(decorRooms).observe(floors, { childList: true });
 
@@ -192,6 +211,10 @@
   // Комнаты одного размера, по порядку из dannye.js: на компьютере 4 в ряд, на телефоне 2.
   var DOM = { razrez: 1, okna: 1, siluet: 1, linii: 1 }[window.D2_DOM] ? window.D2_DOM : "";
   if (DOM) H.setAttribute("data-d2dom", DOM);
+  // v14 "Просто: поворот" (пробный, window.D2_3D): дом - объёмная коробка с комнатами на всех четырёх стенах,
+  // поворачивается пальцем/мышью и кнопками. На других стенах - другие фото тех же комнат, нажатие открывает эту работу.
+  var D3 = !!window.D2_3D && PROSTO && DOM === "linii", D3R = 0, D3F = null, D3K = null;
+  if (D3) H.setAttribute("data-d23", "");
   var NARROW = mm("(max-width: 640px)");
   function layout() {
     if (!DOM) return;
@@ -240,7 +263,7 @@
   var PHN = {};
   function fitPhotos() {
     if (!PROSTO || DOM !== "linii") return;
-    [].forEach.call(floors.querySelectorAll(".room .ph"), function (ph) {
+    [].forEach.call(house.querySelectorAll(".room .ph"), function (ph) {
       var m = /url\(["']?([^"')]+)["']?\)/.exec(ph.style.backgroundImage || ""); if (!m) return;
       var src = m[1], nat = PHN[src];
       if (!nat) {
@@ -266,7 +289,7 @@
     var W = floors.offsetWidth, Hf = floors.offsetHeight, fl = floors.offsetLeft, ft = floors.offsetTop;
     var Wr = roof.offsetWidth, Hr = roof.offsetHeight, rl = roof.offsetLeft, rt = roof.offsetTop;
     if (!W || !Hf) return;
-    var Dp = Math.max(56, Math.min(190, W * .24));
+    var Dp = D3 ? W : Math.max(56, Math.min(190, W * .24));
     var rows = 1; [].forEach.call(floors.children, function (r) { rows = Math.max(rows, parseInt(r.style.gridRow, 10) || 1); });
     house.style.setProperty("--rh", ((Hf - 4) / rows) + "px");
     place(F.wr, fl + W, ft, Dp, Hf, "0 0", "rotateY(90deg)");
@@ -277,6 +300,7 @@
     place(F.gr, fl - Dp * .9, ft + Hf, W + Dp * 1.8, Dp * 2.4, "50% 0", "translateZ(" + px(Dp * .7) + ") rotateX(-90deg)");
     house.style.transformOrigin = "50% 62% " + px(-Dp / 2);
     GEO = { W: W, D: Dp };
+    if (D3) d3place(W, Hf, fl, ft, Hr);
   }
   if (window.ResizeObserver) new ResizeObserver(function () { build3D(); }).observe(house);
   else addEventListener("resize", build3D);
@@ -303,7 +327,8 @@
     return { ry: ry, rx: rx, tz: tz };
   }
   function apply() {
-    house.style.transform = "translateZ(" + cur.tz.toFixed(1) + "px) rotateX(" + cur.rx.toFixed(2) + "deg) rotateY(" + cur.ry.toFixed(2) + "deg)";
+    house.style.transform = "translateZ(" + cur.tz.toFixed(1) + "px) rotateX(" + cur.rx.toFixed(2) + "deg) rotateY(" + (cur.ry + D3R).toFixed(2) + "deg)" + d3scale();
+    if (D3) d3shade();
     if (DOM === "okna" || DOM === "linii") { // фото за стеклом сдвигается против поворота - глубина комнаты
       house.style.setProperty("--px", Math.max(-1, Math.min(1, (cur.ry - RY0) / 12)).toFixed(3));
       house.style.setProperty("--py", Math.max(-1, Math.min(1, (cur.rx - RX0) / 4)).toFixed(3));
@@ -331,6 +356,120 @@
     addEventListener("pointermove", function (e) { if (e.pointerType !== "mouse") return; ptr = { x: e.clientX / innerWidth, y: e.clientY / innerHeight }; kick(); }, { passive: true });
     document.addEventListener("mouseleave", function () { ptr = null; kick(); });
   }
+  // ---------- v14: дом с поворотом (D3) ----------
+  // Три стены-копии фасада (справа, сзади, слева) и четырёхскатная крыша. Коробка квадратная в плане (глубина = ширина),
+  // поэтому каждая стена - та же сетка комнат. Поворот: D3R прибавляется к повороту дома в apply() без сглаживания.
+  function d3faces() {
+    if (!D3) return;
+    var rs = floors.querySelectorAll(".room"); if (!rs.length) return;
+    if (!D3F) {
+      D3F = []; D3K = [];
+      // стена - обёртка .d2-3s (на ней положение и поворот), внутри копия сетки: у .floors своя анимация входа,
+      // и её transform перекрыл бы поворот, если ставить его на саму копию
+      for (var j = 1; j < 4; j++) { var sd = el("div", "d2-3s"), f = el("div", "floors d2-3w"); sd.setAttribute("aria-hidden", "true"); sd.appendChild(f); house.appendChild(sd); f.sd = sd; D3F.push(f); }
+      for (var q = 0; q < 4; q++) {
+        var r = el("div", "d2-3r", '<svg class="d2-rl" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="50,0.8 99.6,99.6 0.4,99.6" vector-effect="non-scaling-stroke"/></svg>');
+        r.setAttribute("aria-hidden", "true"); house.appendChild(r); D3K.push(r);
+      }
+    }
+    D3F.forEach(function (f, j0) {
+      var j = j0 + 1; f.innerHTML = "";
+      f.className = floors.className + " d2-3w"; f.style.gridTemplateColumns = floors.style.gridTemplateColumns;
+      [].forEach.call(rs, function (r) {
+        var c = r.cloneNode(true), n = r.vpN || 0, idx = n ? j % n : 0, src = r.vpCover ? r.vpCover(idx) : "", ph = c.querySelector(".ph");
+        c.tabIndex = -1; c.classList.remove("lit");
+        if (src && ph) ph.style.backgroundImage = 'url("' + src + '")';
+        c.onclick = function () { if (r.vpGo && n) r.vpGo(idx); else r.click(); };
+        f.appendChild(c);
+      });
+    });
+  }
+  function d3place(W, Hf, fl, ft, Hr) {
+    if (!D3F) return;
+    place(D3F[0].sd, fl + W, ft, W, Hf, "0 0", "rotateY(90deg)");
+    place(D3F[1].sd, fl, ft, W, Hf, "50% 50%", "translateZ(" + px(-W) + ") rotateY(180deg)");
+    place(D3F[2].sd, fl - W, ft, W, Hf, "100% 0", "rotateY(-90deg)");
+    var L = Math.hypot(Hr, W / 2), th = Math.atan2(W / 2, Hr) + "rad";
+    place(D3K[0], fl, ft - L, W, L, "50% 100%", "rotateX(" + th + ")");
+    place(D3K[1], fl + W, ft - L, W, L, "0 100%", "rotateY(90deg) rotateX(" + th + ")");
+    place(D3K[2], fl, ft - L, W, L, "50% 100%", "translateZ(" + px(-W) + ") rotateY(180deg) rotateX(" + th + ")");
+    place(D3K[3], fl - W, ft - L, W, L, "100% 100%", "rotateY(-90deg) rotateX(" + th + ")");
+  }
+  // повёрнутая коробка шире фасада (по диагонали) - чуть уменьшаем, чтобы на телефоне дом не вылезал за экран
+  function d3scale() {
+    if (!D3 || !D3R) return "";
+    var a = D3R * Math.PI / 180, k = Math.pow(1 / (Math.abs(Math.cos(a)) + Math.abs(Math.sin(a))), NARROW.matches ? 1 : .55);
+    return " scale3d(" + k.toFixed(4) + "," + k.toFixed(4) + "," + k.toFixed(4) + ")";
+  }
+  // стена темнеет, когда отворачивается: так коробка читается объёмной (только прозрачность слоя - дёшево)
+  function d3shade() {
+    if (!D3F) return;
+    [floors].concat(D3F).forEach(function (f, j) {
+      var a = (cur.ry + D3R + 90 * j) * Math.PI / 180, v = Math.max(0, Math.min(.62, (1 - Math.cos(a)) * .6));
+      f.style.setProperty("--sh", v.toFixed(3));
+      if (!j) { var cf = Math.max(0, Math.cos(a)); roof.style.opacity = (cf * cf).toFixed(3); } // надпись на фронтоне - только спереди
+    });
+  }
+  if (D3) (function () {
+    var tw = 0, touched = false;
+    function to(goal, dur) {
+      cancelAnimationFrame(tw); var a = D3R, t0 = performance.now();
+      (function st(now) {
+        var k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+        D3R = a + (goal - a) * e; apply();
+        if (k < 1) tw = requestAnimationFrame(st); else tw = 0;
+      })(t0);
+    }
+    function snap(v) { return Math.round(v / 90) * 90; }
+    var dr = null, moved = false;
+    house.addEventListener("pointerdown", function (e) {
+      if (e.button) return;
+      cancelAnimationFrame(tw); tw = 0;
+      dr = { x: e.clientX, y: e.clientY, r: D3R, t: performance.now(), lx: e.clientX, v: 0, id: e.pointerId }; moved = false;
+    });
+    addEventListener("pointermove", function (e) {
+      if (!dr || e.pointerId !== dr.id) return;
+      var dx = e.clientX - dr.x;
+      if (!moved) {
+        if (Math.abs(e.clientY - dr.y) > 10 && Math.abs(dx) < 10) { dr = null; return; } // вертикально - это прокрутка
+        if (Math.abs(dx) < 8) return;
+        moved = true; touched = true; H.classList.add("d2-3go");
+        try { house.setPointerCapture(e.pointerId); } catch (x) {}
+      }
+      var now = performance.now(), k = 200 / Math.max(280, house.offsetWidth);
+      D3R = dr.r + dx * k;
+      var dt = Math.max(8, now - dr.t); dr.v = dr.v * .4 + ((e.clientX - dr.lx) * k / dt) * .6; dr.lx = e.clientX; dr.t = now;
+      apply();
+    }, { passive: true });
+    function up() {
+      if (!dr) return;
+      var d = dr; dr = null; H.classList.remove("d2-3go");
+      if (!moved) return;
+      var v = performance.now() - d.t > 90 ? 0 : d.v; // палец остановился - без разгона
+      to(snap(D3R + Math.max(-140, Math.min(140, v * 260))), 650);
+    }
+    addEventListener("pointerup", up); addEventListener("pointercancel", up);
+    // после поворота отпускание пальца над комнатой - не нажатие
+    house.addEventListener("click", function (e) { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+    house.addEventListener("dragstart", function (e) { e.preventDefault(); });
+    // кнопки под домом
+    var c = el("div", "d2-3c", '<button type="button" class="d2-3b" data-d="1" aria-label="Повернуть дом влево"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>' +
+      '<span>Поверните дом</span><button type="button" class="d2-3b" data-d="-1" aria-label="Повернуть дом вправо"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>');
+    house.parentNode.insertBefore(c, house.nextSibling);
+    c.addEventListener("click", function (e) {
+      var b = e.target.closest(".d2-3b"); if (!b) return;
+      touched = true; to(snap(D3R) + 90 * (+b.getAttribute("data-d")), 900);
+    });
+    // подсказка: когда дом построился и опустился, он сам чуть поворачивается и возвращается - видно, что он объёмный
+    var hintT = 0;
+    new MutationObserver(function () {
+      if (!home.classList.contains("enter") || hintT) return;
+      hintT = setTimeout(function () {
+        if (touched || mqR.matches) return;
+        to(-32, 1100); setTimeout(function () { if (!touched && !dr) to(0, 1300); }, 1250);
+      }, 5600);
+    }).observe(home, { attributes: true, attributeFilter: ["class"] });
+  })();
   // ---------- плавный вход: сначала фото комнат и кадр фона, потом анимация ----------
   // Фото закрытой витрины расшифровываются по одному; если начать вход сразу, анимация дёргается, а фото
   // появляются рывком. Поэтому грузим и декодируем их заранее (не дольше 3,5 с), вход держим на паузе (html.d2-wait).
@@ -390,6 +529,7 @@
   // цикл работает только когда дом виден
   function loopCheck() {
     var vis = B.getAttribute("data-vp") === "home" && !B.classList.contains("pn-open") && (!MON || PROSTO) && !document.hidden; // в "Просто" меню полупрозрачное - видео за ним идёт
+    if (vis) vgoLater();
     live = vis;
     if (vis) kick(); else if (raf) { cancelAnimationFrame(raf); raf = 0; last = 0; }
     video(vis);
@@ -427,9 +567,13 @@
 
   // ---------- "Кино": видео на фоне первого экрана ----------
   var KV = null;
+  // "Просто": видео фона запускается, когда дом уже собрался и опустился - старт видео (декодер) во время
+  // анимации входа давал рывки на телефоне. До этого виден неподвижный кадр.
+  var VGO = !PROSTO, vgoT = 0;
+  function vgoLater() { if (VGO || vgoT) return; vgoT = setTimeout(function () { VGO = true; loopCheck(); }, Q === 0 || mqR.matches ? 600 : 5600); }
   function video(on) {
     if (!KV || !KV.v) return;
-    if (on && KV.ok) { var p = KV.v.play(); if (p && p.catch) p.catch(function () {}); }
+    if (on && KV.ok && VGO) { var p = KV.v.play(); if (p && p.catch) p.catch(function () {}); }
     else if (!on) KV.v.pause();
   }
   if (tema === "kino") {

@@ -111,7 +111,8 @@ def krasnodar():
     d2 = [(5, "galereya", "Галерея", ""), (6, "kino", "Кино", ""), (7, "grafit", "Тёмный зал", ""), (8, "liniya", "Линия", ""),
           (9, "kino", "Кино: разрез", "razrez"), (10, "kino", "Кино: окна", "okna"), (11, "kino", "Кино: силуэт", "siluet"),
           (12, "kino", "Кино: линии", "linii"),
-          (13, "kino", "Кино: просто", "linii")]  # v12 (выбор Александра): основа 10, дом линиями из 11, комнаты как в 6, журнал-"сцена"
+          (13, "kino", "Кино: просто", "linii"),
+          (14, "kino", "Просто: поворот", "linii")]  # v14 (пробный, 2026-11-23): дом 13-го можно поворачивать (D2_3D)  # v12 (выбор Александра): основа 10, дом линиями из 11, комнаты как в 6, журнал-"сцена"
     d2try = json.dumps({"list": [{"n": n, "name": nm} for n, _, nm, _ in d2]}, ensure_ascii=False)
     for n, t, nm, dom in d2:
         h = locked(v4, "kr-dizajn", ["../../../vitrina/risunki.js", "../../../vitrina/dizajn2/d2.js", "../../../vitrina/puteshestvie/puteshestvie.js"], [
@@ -123,7 +124,7 @@ def krasnodar():
             ("</head>", '<link rel="stylesheet" href="../../../vitrina/dizajn2/d2.css">\n</head>')],
             back="none", depth=2,
             head='<script>window.D2_TEMA = "%s"; window.D2_TRY = %s; window.D2_TRY.n = %d; window.D2_DOM = "%s"; window.D2_ZH = %s; %swindow.VP_PREVIEW = true;</script>\n' % (t, d2try, n, dom, "true" if n == 12 else "false",
-                 'window.D2_P = true; window.VP_VID = "plitki"; ' if n == 13 else ""))  # v13 "Просто": см. d2.js
+                 ('window.D2_P = true; window.VP_VID = "plitki"; ' if n in (13, 14) else "") + ("window.D2_3D = true; " if n == 14 else "")))  # v13 "Просто": см. d2.js
         wr(os.path.join(out, "dizajn", "v%d" % n, "index.html"), h)
     # Чистый вход для клиента (2026-11-23, просьба Александра): krasnodar/klient/ - вариант 13 "Просто" без служебной
     # полосы ("Варианты дизайна", путь, пометка "Пробный дизайн"). Пин-код тот же. Страницы сравнения не трогает.
