@@ -269,6 +269,8 @@
         '<div class="t"><b>' + esc(k.nazvanie) + "</b><span>" + esc(ws.length ? (k.hint || "") : "скоро здесь появятся работы") + "</span></div>";
       b.setAttribute("aria-label", k.nazvanie + (ws.length ? ", " + ws.length + " " + plural(ws.length, ["работа", "работы", "работ"]) : ", пока пусто"));
       b.onclick = function () { if (!ws.length) { toast("В этой комнате работы появятся позже"); return; } nav({ s: "room", k: k }); };
+      // для слоя оформления (d2.js, дом с поворотом): другие фото этой комнаты и переход прямо к работе
+      b.vpN = ws.length; b.vpCover = function (j) { return ws[j] ? cover(ws[j]) : ""; }; b.vpGo = function (j) { if (ws[j]) nav({ s: "work", w: ws[j] }); };
       b.style.setProperty("--i", (k.row - 1) * 3 + k.col - 1);
       if (k.span === 1 && String(k.nazvanie || "").length > 16) b.classList.add("long"); // на телефоне - мельче, чтобы не налезало
       f.appendChild(b); TILES[k.id] = b;
