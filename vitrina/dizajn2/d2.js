@@ -263,9 +263,43 @@
     addEventListener("pointermove", function (e) { if (e.pointerType !== "mouse") return; ptr = { x: e.clientX / innerWidth, y: e.clientY / innerHeight }; kick(); }, { passive: true });
     document.addEventListener("mouseleave", function () { ptr = null; kick(); });
   }
+  // ---------- плавный вход: сначала фото комнат и кадр фона, потом анимация ----------
+  // Фото закрытой витрины расшифровываются по одному; если начать вход сразу, анимация дёргается, а фото
+  // появляются рывком. Поэтому грузим и декодируем их заранее (не дольше 3,5 с), вход держим на паузе (html.d2-wait).
+  var READY = false, readyCbs = [];
+  function whenReady(f) { if (READY) f(); else readyCbs.push(f); }
+  (function () {
+    var list = [], seen = {};
+    (D.komnaty || []).forEach(function (k) {
+      var w = (D.raboty || []).filter(function (r) { return r.komnata === k.id; })[0], f = w && (w.foto || [])[0];
+      if (f && f.src) list.push(url(f.src));
+    });
+    if (tema === "kino") {
+      var F1 = D.fon || {}, tall1 = innerHeight > innerWidth * 1.05, kd = tall1 ? (F1.kadr_tel || F1.kadr) : (F1.kadr || F1.kadr_tel);
+      if (kd) list.unshift(url(kd));
+    }
+    var done = function () { if (READY) return; READY = true; var c = readyCbs; readyCbs = []; c.forEach(function (f) { f(); }); };
+    var left = 0;
+    list.forEach(function (u) {
+      if (seen[u]) return; seen[u] = 1; left++;
+      var im = new Image(), fin = function () { if (im) { im = null; if (--left <= 0) done(); } };
+      im.decoding = "async"; im.onload = function () { if (im && im.decode) im.decode().then(fin, fin); else fin(); }; im.onerror = fin; im.src = u;
+      (home.d2pre = home.d2pre || []).push(im); // держим ссылку, чтобы браузер не выбросил декодированное фото
+    });
+    if (!left) done();
+    setTimeout(done, 3500);
+  })();
+  function enterGate() {
+    if (READY) { startIntro(); return; }
+    H.classList.add("d2-wait");
+    whenReady(function () {
+      // два кадра на раскладку, затем снимаем паузу - анимации входа идут с начала и без рывка
+      requestAnimationFrame(function () { requestAnimationFrame(function () { H.classList.remove("d2-wait"); H.classList.add("d2-in"); setTimeout(function () { H.classList.remove("d2-in"); }, 1200); if (home.classList.contains("enter")) startIntro(); }); });
+    });
+  }
   function startIntro() { if (Q === 0) { kick(); return; } intro = { t0: performance.now(), dur: 2300 }; frames = 0; slow = 0; cur = { ry: -58, rx: -14, tz: -240 }; apply(); kick(); }
   // puteshestvie.js добавляет #home.enter при входе на главную (после дверей или по прямой ссылке)
-  new MutationObserver(function () { if (home.classList.contains("enter") && !home.d2in) { home.d2in = 1; startIntro(); } if (!home.classList.contains("enter")) home.d2in = 0; })
+  new MutationObserver(function () { if (home.classList.contains("enter") && !home.d2in) { home.d2in = 1; enterGate(); } if (!home.classList.contains("enter")) home.d2in = 0; })
     .observe(home, { attributes: true, attributeFilter: ["class"] });
   // цикл работает только когда дом виден
   function loopCheck() {
@@ -323,7 +357,9 @@
     var bg = layer.firstChild;
     if (vsrc) {
       if (kadr) bg.style.backgroundImage = 'url("' + kadr.replace(/"/g, "%22") + '")';
-      if (Q > 0) {
+      whenReady(function () { bg.classList.add("rdy"); });
+      // видео (1-1,6 МБ) качаем после входа, чтобы оно не отнимало канал и процессор у фото комнат
+      if (Q > 0) whenReady(function () { setTimeout(function () {
         var v = el("video"); v.muted = true; v.defaultMuted = true; v.loop = true; v.playsInline = true; v.setAttribute("playsinline", ""); v.setAttribute("muted", ""); v.preload = "auto";
         if (kadr) v.poster = kadr;
         KV = { v: v, ok: false };
@@ -334,14 +370,14 @@
           v.addEventListener("playing", function () { layer.classList.add("vid"); }, { once: true });
           bg.appendChild(v); KV.ok = true; loopCheck();
         }).catch(function () {});
-      }
+      }, 1600); });
     } else {
       // запасной фон без видео: медленная смена фото работ
       var covers = [];
       (D.raboty || []).forEach(function (w) { var f = (w.foto || [])[0]; if (f && f.src && covers.length < 5) covers.push(url(f.src)); });
       for (var ci = 0; covers.length && covers.length < 5; ci++) covers.push(covers[ci]);
       covers.forEach(function (c, i) { var s = el("i", "d2-ks"); s.style.backgroundImage = 'url("' + c.replace(/"/g, "%22") + '")'; s.style.setProperty("--k", i); bg.appendChild(s); });
-      layer.classList.add("vid", "slides");
+      layer.classList.add("vid", "slides"); whenReady(function () { bg.classList.add("rdy"); });
     }
   }
 
