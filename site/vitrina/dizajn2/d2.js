@@ -185,6 +185,8 @@
     if (!DOM) return;
     var rs = [].slice.call(floors.querySelectorAll(".room")), n = rs.length;
     if (!n) return;
+    if (PROSTO && !NARROW.matches && n >= 7) return layout3(rs, n);
+    floors.classList.remove("d2-e3");
     var cols = NARROW.matches ? 2 : n <= 4 ? n : n % 4 === 0 || n > 9 ? 4 : n % 3 === 0 ? 3 : 4;
     var rem = n % cols, full = n - rem;
     floors.style.gridTemplateColumns = "repeat(" + cols + ",minmax(0,1fr))";
@@ -196,6 +198,22 @@
       r.style.gridColumn = "auto / span " + span;
       r.style.setProperty("--i", i);
       var tb = r.querySelector(".t b"); if (tb) r.classList.toggle("long", tb.textContent.length > 15);
+    });
+  }
+  // "13. Просто" на широком экране: дом в три этажа и выше (просьба Александра 2026-11-23).
+  // Сетка из 6 долей: в ряду по 3 комнаты, неполный ряд - наверху, под крышей, комнаты в нём крупнее
+  // (при 8 комнатах: Кухни и Гостиные наверху, по 3 ниже).
+  function layout3(rs, n) {
+    var rem = n % 3, top = rem ? 6 / rem : 2;
+    floors.style.gridTemplateColumns = "repeat(6,minmax(0,1fr))";
+    floors.classList.toggle("r4", Math.ceil(n / 3) > 3);
+    floors.classList.add("d2-e3");
+    rs.forEach(function (r, i) {
+      var j = rem ? i - rem : i; // номер среди "полных" рядов
+      r.style.gridRow = String(i < rem ? 1 : Math.floor(j / 3) + 1 + (rem ? 1 : 0));
+      r.style.gridColumn = "auto / span " + (i < rem ? top : 2);
+      r.style.setProperty("--i", i);
+      var tb = r.querySelector(".t b"); if (tb) r.classList.toggle("long", tb.textContent.length > (i < rem ? 26 : 15));
     });
   }
   if (NARROW.addEventListener) NARROW.addEventListener("change", function () { layout(); build3D(); });
@@ -363,6 +381,26 @@
     home.insertBefore(layer, home.firstChild);
     var reels = $("reels"), ft = home.querySelector(".foot");
     if (reels) reels.classList.add("d2-light"); if (ft) ft.classList.add("d2-light");
+    // "13. Просто": фон (кадр/видео) тянется под весь первый экран вместе с высоким домом, а не на 100vh,
+    // и ниже без резкой границы светлеет в раздел видео (переход - в d2.css, .d2-fade)
+    if (PROSTO) {
+      var hero0 = home.querySelector(".hero");
+      if (reels) reels.insertAdjacentHTML("afterbegin", '<i class="d2-fade" aria-hidden="true"></i>');
+      var kh = function () { if (hero0) layer.style.height = Math.max(innerHeight, hero0.offsetTop + hero0.offsetHeight) + "px"; };
+      kh(); addEventListener("resize", kh);
+      if (window.ResizeObserver && hero0) new ResizeObserver(kh).observe(hero0);
+      // шапка светлеет, когда под ней уже светлый раздел (иначе сверху остаётся чёрная полоса)
+      var htop0 = home.querySelector(".htop"), fade0 = reels && reels.querySelector(".d2-fade"), ltT = 0;
+      if (htop0 && reels) home.addEventListener("scroll", function () {
+        if (ltT) return;
+        ltT = requestAnimationFrame(function () { ltT = 0; htop0.classList.toggle("d2-light", home.scrollTop + htop0.offsetHeight > reels.offsetTop + (fade0 ? fade0.offsetHeight * .72 : 0)); });
+      }, { passive: true });
+      // раздел видео проявляется, когда до него докрутили (без IntersectionObserver - сразу виден)
+      if (reels) {
+        if (window.IntersectionObserver) new IntersectionObserver(function (es, o) { es.forEach(function (e) { if (e.isIntersecting) { reels.classList.add("d2-vis"); o.disconnect(); } }); }, { rootMargin: "0px 0px -18% 0px" }).observe(reels);
+        else reels.classList.add("d2-vis");
+      }
+    }
     var F0 = D.fon || {}, tall = innerHeight > innerWidth * 1.05;
     var vsrc = url(tall ? (F0.video_tel || F0.video) : (F0.video || F0.video_tel));
     var kadr = url(tall ? (F0.kadr_tel || F0.kadr) : (F0.kadr || F0.kadr_tel));

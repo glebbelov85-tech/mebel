@@ -673,3 +673,20 @@ html[data-d2p] #work .grp.zoom,html[data-d2p] #uiTg,html[data-d2p] #dragHint{dis
   html[data-d2p] .rlist.plitki{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 10px;padding-left:12px;padding-right:12px}
   html[data-d2p] .plitki .rcard .rm b{font-size:15.5px;-webkit-line-clamp:3}
 }
+
+/* --- 13. "Просто": дом в три этажа на компьютере, фон под весь первый экран, плавный переход в светлый раздел --- */
+/* высота слоя фона задаётся в d2.js (до низа дома); вуаль темнеет к низу, а ниже .d2-fade ведёт тёмное в светлое */
+html[data-d2p] .d2-veil{background:linear-gradient(180deg,rgba(10,10,9,.66) 0,rgba(10,10,9,.3) 22%,rgba(10,10,9,.34) 55%,rgba(13,13,12,.72) 82%,#0F0F0E 100%)}
+html[data-d2p] .reels.d2-light{padding-top:0}
+html[data-d2p] .reels.d2-light>.d2-fade{display:block;max-width:none;height:clamp(200px,34vh,360px);margin:0 0 clamp(8px,2vh,24px);pointer-events:none;
+  background:linear-gradient(180deg,#0F0F0E 0%,#1A1918 12%,#2E2C2A 26%,#55524E 42%,#8A8680 58%,#B9B5AF 72%,#DAD7D1 85%,var(--bg) 100%)}
+html[data-d2p] .hero{padding-bottom:clamp(28px,6vh,72px)}
+html[data-d2p] .reels-h{transition:opacity 1s var(--ease),transform 1s var(--ease)}
+html[data-d2p] .reels:not(.d2-vis) .reels-h,html[data-d2p] .reels:not(.d2-vis) .reel-row{opacity:0;transform:translateY(18px)}
+html[data-d2p] .reels .reel-row{transition:opacity 1.1s var(--ease) .15s,transform 1.1s var(--ease) .15s}
+@media (prefers-reduced-motion:reduce){html[data-d2p] .reels:not(.d2-vis) .reels-h,html[data-d2p] .reels:not(.d2-vis) .reel-row{opacity:1;transform:none}}
+@media (min-width:641px){
+  html[data-d2p] .floors.d2-e3,html[data-d2p] .floors.d2-e3.r4{grid-auto-rows:clamp(150px,min(14.5vw,(100vh - 330px)/2.4),226px)}
+  html[data-d2p][data-d2dom] .house{max-width:940px}
+}
+html[data-d2p] #home.d2-sc .htop.d2-light{background:rgba(236,234,229,.94);border-bottom-color:var(--line)}
