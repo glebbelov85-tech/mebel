@@ -1,7 +1,7 @@
 # Сразу после каждой правки витрин в main (наши PR и публикации мастера из Мастерской) собирает сайт витрин
 # и публикует его на новом адресе https://vitrina-mastera.github.io/ (репозиторий vitrina-mastera/vitrina-mastera.github.io).
-# Запись в тот репозиторий - ключом развёртывания: секрет VITRINY_DEPLOY_KEY здесь, открытая часть ключа - там
-# (Settings - Deploy keys, с правом записи). Без секрета шаги публикации пропускаются, ошибки нет.
+# Запись в тот репозиторий - секретом здесь: VITRINY_TOKEN (личный токен fine-grained только на то репо, Contents: Read and write)
+# или VITRINY_DEPLOY_KEY (закрытая часть ключа развёртывания с правом записи). Без секрета публикация пропускается, ошибки нет.
 # Запасной путь: действие obnovlenie-vitrin.yml в новом репозитории (по расписанию и вручную).
 name: Витрины на новом адресе
 on:
@@ -19,11 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      HAS_KEY: ${{ secrets.VITRINY_DEPLOY_KEY != '' }}
+      HAS_KEY: ${{ secrets.VITRINY_TOKEN != '' || secrets.VITRINY_DEPLOY_KEY != '' }}
     steps:
       - name: Нет ключа
         if: env.HAS_KEY != 'true'
-        run: echo "::notice::Секрет VITRINY_DEPLOY_KEY не задан - новый адрес не обновлён (см. site/pereezd/PEREEZD.md)"
+        run: echo "::notice::Секрет VITRINY_TOKEN не задан - новый адрес не обновлён (см. site/pereezd/PEREEZD.md)"
       - uses: actions/checkout@v4
         if: env.HAS_KEY == 'true'
         with:
@@ -35,6 +35,7 @@ jobs:
           repository: vitrina-mastera/vitrina-mastera.github.io
           ref: main
           path: sajt
+          token: ${{ secrets.VITRINY_TOKEN || github.token }}
           ssh-key: ${{ secrets.VITRINY_DEPLOY_KEY }}
       - name: Сборка витрин
         if: env.HAS_KEY == 'true'
