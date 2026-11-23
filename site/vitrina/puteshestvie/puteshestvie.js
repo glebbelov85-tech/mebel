@@ -188,7 +188,17 @@
     $("hLead").textContent = n ? "Нажмите на комнату - войдёте и посмотрите работы вблизи." : "Работы скоро появятся.";
     $("allCnt").textContent = n || "";
     $("fUpd").textContent = ((D.master || {}).chelovek ? "Мастер - " + D.master.chelovek + ". " : "") + (D.obnovleno ? "Сайт обновлён " + day(D.obnovleno) + "." : "");
-    if (STAFF) {
+    // закрытая витрина Краснодара: на главной своя полоса (kr-dom.js), на пробном дизайне - "← Варианты дизайна"
+    // всегда (и мастеру тоже); ссылки на демо-Мастерскую там нет - у Краснодара своя Мастерская
+    var KR = /^kr-/.test(window.MEBEL_TOOL || "");
+    if (KR) {
+      var ed = document.querySelector("#staff a.ed"); if (ed) ed.remove();
+      if (window.MEBEL_TOOL === "kr-dizajn" && !window.VP_TRY) { // у вариантов 1-4 "назад" стоит в их полосе (dizajn.js)
+        $("staff").hidden = false;
+        var vn = (/\/v(\d+)\/?$/.exec(location.pathname.replace(/index\.html$/, "")) || [])[1];
+        $("staffNote").innerHTML = "<b>Пробный дизайн" + (vn ? " " + vn : "") + ".</b> Главную витрину он не меняет.";
+      }
+    } else if (STAFF) {
       $("staff").hidden = false;
       $("staffNote").innerHTML = DRAFT ? "<b>Черновик</b> из Мастерской - так увидит клиент после публикации." :
         D.shablon ? "<b>Вариант 4, путешествие по дому.</b> Шаблон: фото нарисованы, тексты - пример. Клиент эту полоску не видит." :

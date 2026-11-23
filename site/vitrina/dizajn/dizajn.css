@@ -169,3 +169,7 @@ html[data-tema] #doors.open .door{filter:none}
 html[data-tema] #doors.open{background:transparent}
 /* ручки ниже таблички и кнопки - на телефоне они попадали на "Войти в дом" */
 @media (max-width:600px){html[data-tema] .door i{top:76%;height:110px;margin-top:0}}
+/* навигация "← Варианты дизайна" / "Главная" (shared/site.js) - в полосе пробного дизайна */
+.dz-nav{flex:none;color:var(--ink)}
+.dz-nav:empty{display:none}
+@media (max-width:560px){.dz-t{display:none}.dz-nav{flex:1;min-width:0}}

@@ -500,20 +500,18 @@
       document.addEventListener("click", function (e) { var m = $("dzMenu"); if (m && !m.hidden && !e.target.closest("#dzbar")) { m.hidden = true; $("dzMore").setAttribute("aria-expanded", "false"); } });
     }
     var open = $("dzMenu") && !$("dzMenu").hidden;
+    // Варианты открываются по одному (просьба Александра, 2026-11-23): посмотрел - "← Варианты дизайна" -
+    // открыл другой. Листать варианты внутри варианта больше нельзя, остались только настройки анимации.
     BAR.innerHTML =
-      '<div class="dz-t"><b>Пробный дизайн</b><span>' + t.n + " из 4 - " + t.name + "</span></div>" +
-      '<div class="dz-n" role="group" aria-label="Вариант дизайна">' + THEMES.map(function (x) {
-        return '<button type="button" data-t="' + x.id + '"' + (x.id === tema ? ' class="on" aria-current="true"' : "") + ' title="' + x.name + '"><b>' + x.n + "</b><span>" + x.short + "</span></button>";
-      }).join("") + "</div>" +
-      '<button type="button" class="dz-more" id="dzMore" aria-haspopup="true" aria-expanded="' + (open ? "true" : "false") + '" aria-label="Ещё"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>' +
+      '<nav class="dz-nav"></nav>' +
+      '<div class="dz-t"><b>Пробный дизайн ' + t.n + '</b><span>' + t.name + " - главную витрину не меняет</span></div>" +
+      '<button type="button" class="dz-more" id="dzMore" aria-haspopup="true" aria-expanded="' + (open ? "true" : "false") + '" aria-label="Настройки анимации"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>' +
       '<div class="dz-menu" id="dzMenu"' + (open ? "" : " hidden") + ">" +
       '<div class="dz-mh">Анимация фона</div><div class="dz-q">' +
       [["auto", "Авто"], ["max", "Максимум"], ["lite", "Лёгкая"]].map(function (a) { return '<button type="button" data-q="' + a[0] + '"' + (mode === a[0] ? ' class="on"' : "") + ">" + a[1] + "</button>"; }).join("") +
       '</div><p class="dz-qn">Сейчас: ' + qn + (mode === "auto" ? " (подобрано под это устройство)" : "") + (mqR.matches ? ". В настройках телефона включено «уменьшить движение»" : "") + "</p>" +
-      '<button type="button" class="dz-mi" id="dzIntro">Показать вход в дом ещё раз</button>' +
-      '<a class="dz-mi" href="../">Все варианты и описание</a>' +
-      '<a class="dz-mi" href="../../">Текущая витрина (без изменений)</a>' +
-      '<a class="dz-mi" href="../../master/">Вопросы и правки</a></div>';
+      '<button type="button" class="dz-mi" id="dzIntro">Показать вход в дом ещё раз</button></div>';
+    if (window.MebelSite && MebelSite.nav) MebelSite.nav(BAR.querySelector(".dz-nav"));
   }
 
   // ---------- заголовок по словам (для появления слово за словом) ----------
