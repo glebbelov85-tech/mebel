@@ -27,7 +27,10 @@
   try { S = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {}
   S = S || {};
   S.master = S.master || {}; S.kontakty = S.kontakty || {};
-  S.znak = Object.assign({ chto: "oba", pos: "np", razmer: 11, prozr: 70, cvet: "#ffffff", tekst: M0.znak || M0.imya || "" }, S.znak || {});
+  // знак: опубликованный (m.bin, window.KR_SLOJ.znak) главнее черновика, пока мастер не тронул знак на этом устройстве (S.znakEd)
+  var ZN0 = { chto: "oba", pos: "np", razmer: 11, prozr: 70, cvet: "#ffffff", tekst: M0.znak || M0.imya || "" };
+  var ZPUB = (window.KR_SLOJ && window.KR_SLOJ.znak) || null;
+  S.znak = Object.assign({}, ZN0, S.znakEd || !ZPUB ? S.znak || {} : ZPUB);
   if (!/^(uzor|[vcn][lcp])$/.test(S.znak.pos)) S.znak.pos = "np";
   S.novye = S.novye || []; S.k = S.k || []; // k - добавки к готовым работам: [{ rabota, media: [...] }]
   var saveT = 0;
@@ -222,7 +225,7 @@
     var k = t.getAttribute("data-k"), base = ((sec === "master" ? M0 : K0)[k] || "");
     if (t.value.trim() === String(base).trim()) delete S[sec][k]; else S[sec][k] = t.value; // лишний пробел - не правка
     if (k === "imya") drawTop();
-    if (k === "znak" && sec === "master") { S.znak.tekst = t.value; }
+    if (k === "znak" && sec === "master") { S.znak.tekst = t.value; S.znakEd = true; }
     save();
   });
 
@@ -238,7 +241,7 @@
   function counts() {
     var n = 0; S.novye.concat(S.k).forEach(function (w) { n += (w.media || []).filter(function (m) { return m.st === "ok"; }).length; });
     $("cntL").textContent = n || "";
-    var c = changes(), ch = c.m + c.k + (c.logo ? 1 : 0) + n + c.raboty + c.pravka + c.skryt + c.vernut + c.fon;
+    var c = changes(), ch = c.m + c.k + (c.logo ? 1 : 0) + n + c.raboty + c.pravka + c.skryt + c.vernut + (c.znak ? 1 : 0) + c.fon;
     $("cntP").textContent = ch || "";
   }
 
@@ -388,11 +391,11 @@
       $("zRe").innerHTML = old ? '<p class="note">Уже добавлено ' + old + " " + plural(old, ["фото", "фото", "фото"]) + ' со старым знаком.</p><button type="button" class="btn l sm" id="zReB">Наложить новый знак на них</button>' : "";
       if ($("zReB")) $("zReB").onclick = rewm;
     }
-    function set(k, v) { S.znak[k] = v; if (k === "cvet") logoImgP = null; save(); redraw(); }
+    function set(k, v) { S.znak[k] = v; S.znakEd = true; if (k === "cvet") logoImgP = null; save(); redraw(); }
     function seg(id, k) { var g = $(id); g.onclick = function (e) { var b = e.target.closest("button[data-v]"); if (!b) return; [].forEach.call(g.querySelectorAll("button"), function (x) { x.setAttribute("aria-pressed", x === b); }); if (k === "pos") $("zUzor").setAttribute("aria-pressed", "false"); set(k, b.getAttribute("data-v")); }; }
     seg("zChto", "chto"); seg("zPos", "pos"); seg("zCv", "cvet");
     $("zUzor").onclick = function () { [].forEach.call($("zPos").querySelectorAll("button"), function (x) { x.setAttribute("aria-pressed", "false"); }); this.setAttribute("aria-pressed", "true"); set("pos", "uzor"); };
-    $("zTekst").oninput = function () { S.znak.tekst = this.value; save(); redraw(); };
+    $("zTekst").oninput = function () { S.znak.tekst = this.value; S.znakEd = true; save(); redraw(); };
     $("zR").oninput = function () { $("zRo").textContent = this.value + "%"; set("razmer", +this.value); };
     $("zP").oninput = function () { $("zPo").textContent = this.value + "%"; set("prozr", +this.value); };
     redraw();
@@ -628,14 +631,21 @@
     return { m: Object.keys(S.master).length, k: Object.keys(S.kontakty).length, logo: !!S.logo, foto: nm, video: nv,
       raboty: S.novye.filter(function (w) { return (w.media || []).some(function (m) { return m.st === "ok"; }) || w.nazvanie || w.rasskaz || wfHas(w); }).length,
       pravka: S.k.filter(function (w) { return w.nazvanie != null || w.rasskaz != null || WF.some(function (f) { return w[f[0]] != null; }); }).length,
-      skryt: S.k.filter(function (w) { return w.skryt; }).length, vernut: (S.vernut || []).length,
+      skryt: S.k.filter(function (w) { return w.skryt; }).length, vernut: (S.vernut || []).length, znak: znakChanged(),
       fon: fonCh() ? 1 : 0, fonV: fonCh() && S.fon.tip === "video" ? fonVids().length : 0 };
+  }
+  // знак изменён, если мастер его трогал и он отличается от опубликованного (или опубликованного ещё нет)
+  function znakChanged() {
+    if (!S.znakEd) return false;
+    var P = (window.KR_SLOJ && window.KR_SLOJ.znak) || ZN0;
+    return Object.keys(ZN0).some(function (k) { return String(S.znak[k]) !== String(P[k] == null ? ZN0[k] : P[k]); });
   }
   function changeLines(c) {
     var L = [];
     if (c.m) L.push("Данные мастера: " + c.m + " " + plural(c.m, ["поле", "поля", "полей"]));
     if (c.k) L.push("Контакты: " + c.k + " " + plural(c.k, ["поле", "поля", "полей"]));
     if (c.logo) L.push("Новый знак");
+    if (c.znak) L.push("Настройки водяного знака");
     if (c.raboty) L.push("Новые работы: " + c.raboty);
     if (c.pravka) L.push("Правка готовых работ: " + c.pravka);
     if (c.foto) L.push("Фото со знаком: " + c.foto);
@@ -723,7 +733,7 @@
     S.novye.concat(S.k).forEach(function (w) { (w.media || []).forEach(function (m) { del("m:" + m.id); del("o:" + m.id); del("k:" + m.id); }); });
     if (S.logo) del("logo");
     fonVids(true).forEach(function (m) { del("m:" + m.id); del("k:" + m.id); });
-    S = { master: {}, kontakty: {}, znak: S.znak, novye: [], k: [], logoV: S.logoV || 0 };
+    S = { master: {}, kontakty: {}, znak: S.znak, znakEd: false, novye: [], k: [], logoV: S.logoV || 0 };
     try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
     LOGO_RASTER = null; counts();
   }
@@ -765,7 +775,8 @@
       L.v = 1; L.master = L.master || {}; L.kontakty = L.kontakty || {}; L.novye_raboty = L.novye_raboty || []; L.k_rabotam = L.k_rabotam || []; L.skryt = L.skryt || []; L.imena = L.imena || {};
       Object.keys(S.master).forEach(function (k) { L.master[k] = String(S.master[k]).trim(); });
       Object.keys(S.kontakty).forEach(function (k) { L.kontakty[k] = String(S.kontakty[k]).trim(); });
-      L.znak = S.znak;
+      // знак с этого устройства - только если мастер его менял, иначе остаётся опубликованный (с другого устройства)
+      if (S.znakEd || !L.znak) L.znak = S.znak; else S.znak = Object.assign({}, ZN0, L.znak);
       var chain = S.logo ? enc("logo").then(function (r) { if (r) L.logo = r; }) : Promise.resolve(), neu = [];
       S.novye.forEach(function (w) {
         chain = chain.then(function () { return media(w.media || []); }).then(function (md) {
