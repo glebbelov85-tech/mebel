@@ -115,6 +115,14 @@ def adapt(out):
     for f, href in ((os.path.join(out, "vitrina", "index.html"), "../konfigurator/"),
                     (os.path.join(out, "krasnodar", "vitrina", "index.html"), "../../konfigurator/")):
         patch(f, [('<a class="btn gh" href="%s" id="c3d">' % href, '<a class="btn gh hide" href="#" id="c3d" hidden>')])
+    # Мастерская: в копии на новом адресе не светим имя владельца старого репозитория. Куда публиковать, хранит
+    # зашифрованная настройка публикации (enc/p.json); если её ещё нет, название репо вводится при настройке.
+    pj = os.path.join(out, "krasnodar", "masterskaya", "publik.js")
+    if os.path.exists(pj):
+        s = rd(pj)
+        s = re.sub(r"\(main glebbelov[\w-]*/[\w.-]+\)", "(main, см. настройку публикации)", s)
+        s = re.sub(r'repo: "glebbelov[\w-]*/[\w.-]+"', 'repo: ""', s)
+        wr(pj, s)
 
 
 LINK_RE = re.compile(r'''(?:href|src)\s*=\s*["']([^"'#?]+)''', re.I)

@@ -177,7 +177,7 @@
     var m = D.master || {};
     var role = [m.rol, m.gorod].filter(Boolean).join(", ");
     $("dName").textContent = m.imya || "Мастер";
-    $("dRole").textContent = role.toLowerCase();
+    $("dRole").textContent = (window.VP_ZAST_ROL ? (m.rol || "") : role).toLowerCase(); // слой может оставить на заставке только род занятий
     $("hName").textContent = m.imya || "Мастер";
     $("hRole").textContent = role;
     var av = $("hAv");

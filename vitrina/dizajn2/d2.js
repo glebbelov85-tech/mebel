@@ -137,6 +137,12 @@
   if (mxu) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="' + esc(mxu) + '">' + MI.mx + 'Max</a>';
   if (tel) side.innerHTML += '<a class="d2-ln" href="tel:+' + tel + '">' + MI.tel + 'Позвонить</a>';
   if (vk) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="' + esc(/^https?:/.test(vk) ? vk : "https://" + vk) + '">' + MI.vk + 'ВКонтакте</a>';
+  if (window.D2_P) { // "Просто": одной строкой в порядке WhatsApp, ВКонтакте, Позвонить, Telegram, Max
+    var ord = ["wa.me", "vk", "tel:", "t.me", "max"], ls = [].slice.call(side.children);
+    ls.sort(function (a, b) { var f = function (x) { var h = x.getAttribute("href"); for (var i = 0; i < ord.length; i++) if (h.indexOf(ord[i]) >= 0) return i; return 9; }; return f(a) - f(b); });
+    ls.forEach(function (x, i) { x.style.setProperty("--i", i); side.appendChild(x); });
+    side.style.setProperty("--n", ls.length);
+  }
   mbody.appendChild(side);
   var foot = [M.chelovek ? "Мастер - " + M.chelovek : "", M.gorod || ""].filter(Boolean).join(". ");
   if (foot) mbody.appendChild(el("div", "d2-mfoot", esc(foot)));
@@ -151,13 +157,13 @@
   }
   function openMenu() {
     if (MON) return; drawMenu(); MON = true; mFrom = document.activeElement;
-    menu.inert = false; menu.classList.add("on"); burger.setAttribute("aria-expanded", "true");
+    menu.inert = false; menu.classList.add("on"); burger.setAttribute("aria-expanded", "true"); H.classList.add("d2-mopen");
     setTimeout(function () { if (MON) mx.focus({ preventScroll: true }); }, 60);
     loopCheck();
   }
   function closeMenu(then) {
     if (!MON) return; MON = false;
-    menu.classList.remove("on"); menu.inert = true; burger.setAttribute("aria-expanded", "false");
+    menu.classList.remove("on"); menu.inert = true; burger.setAttribute("aria-expanded", "false"); H.classList.remove("d2-mopen");
     if (!then && mFrom && mFrom.focus) mFrom.focus({ preventScroll: true });
     if (then) setTimeout(then, Q ? 380 : 0);
     loopCheck();
@@ -174,10 +180,11 @@
   addEventListener("keydown", function (e) { if (e.key === "Escape" && MON) { e.stopImmediatePropagation(); closeMenu(); } }, true);
 
   // ---------- шапка при прокрутке ----------
+  var HT = $("htop"); // в "Просто" доля подложки (--hk) ставится на самой шапке - пересчёт стилей только у неё
   var scT = 0;
   home.addEventListener("scroll", function () {
     if (scT) return;
-    scT = requestAnimationFrame(function () { scT = 0; home.classList.toggle("d2-sc", home.scrollTop > 8); if (!FINE) kick(); });
+    scT = requestAnimationFrame(function () { scT = 0; home.classList.toggle("d2-sc", home.scrollTop > 8); if (PROSTO && HT) HT.style.setProperty("--hk", Math.min(1, home.scrollTop / 220).toFixed(3)); if (!FINE) kick(); });
   }, { passive: true });
 
   // ---------- "Просто" (window.D2_P, вариант 13): человек зашёл первый раз - сразу понятно, куда нажать ----------
@@ -849,7 +856,7 @@
   // "На весь экран" - значок в углу. Во весь экран нажатие на фото показывает описание: материал, цвет, размеры, год,
   // рассказ (только то, что мастер заполнил; служебные пометки черновика убирает puteshestvie.js).
   if (PROSTO) (function () {
-    window.VP_RUCHKA = true; window.VP_HOCHU = "Обсудить такую же";
+    window.VP_RUCHKA = true; window.VP_HOCHU = "Обсудить такую же"; window.VP_ZAST_ROL = true; // на заставке без города
     var wk = $("work"), pb = $("panoBtn"); if (!wk || !pb) return;
     var FS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
     var fs = el("button", "d2-fs", FS); fs.type = "button"; fs.setAttribute("aria-label", "Фото на весь экран"); fs.title = "На весь экран";
