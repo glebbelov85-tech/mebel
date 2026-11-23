@@ -992,3 +992,70 @@ html[data-d2p] .d2-orn .c4 path{animation-delay:3.3s}html[data-d2p] .d2-orn .c4 
 .d2-space .neb2{background:radial-gradient(30% 22% at 70% 40%,rgba(190,140,240,.16),transparent 70%),radial-gradient(26% 20% at 30% 70%,rgba(150,120,230,.14),transparent 70%);animation:d2neb2 26s ease-in-out infinite alternate}
 @keyframes d2neb2{from{opacity:.5;transform:translate3d(-3%,2%,0) scale(1)}to{opacity:1;transform:translate3d(3%,-2%,0) scale(1.1)}}
 html[data-d2p][data-d2q="0"] .d2-space .neb2{animation:none}
+
+/* заставка, правка 3 (сценарий Александра): название - умеренная вспышка с одним проблеском, светлее;
+   потом снизу проявляется род занятий (без города); у "Войти в дом" никакой рамки - штрихи рисуются по очереди,
+   сначала левый верхний, затем правый нижний */
+html[data-d2p] .plate b{color:#fff;text-shadow:0 0 26px rgba(255,240,215,.36),0 0 4px rgba(255,255,255,.45);animation:d2flash 1.6s cubic-bezier(.25,.6,.25,1) .45s both}
+@keyframes d2flash{0%{opacity:0;transform:scale(1.035)}35%{opacity:1}100%{opacity:1;transform:none}}
+html[data-d2p] .plate b::before{content:"";position:absolute;left:-12%;right:-12%;top:-60%;bottom:-60%;z-index:-1;pointer-events:none;background:radial-gradient(50% 50% at 50% 50%,rgba(255,244,226,.30),rgba(255,244,226,0) 70%);opacity:0;animation:d2halo 2.4s ease-out .45s both}
+@keyframes d2halo{0%{opacity:0;transform:scale(.7)}28%{opacity:1;transform:scale(1)}100%{opacity:.32;transform:scale(1.04)}}
+html[data-d2p] .plate b::after{background:linear-gradient(105deg,transparent 36%,rgba(255,250,240,.5) 50%,transparent 64%);animation:d2glowOnce 1.5s ease-in-out .75s both}
+@keyframes d2glowOnce{0%{opacity:0;transform:translate3d(-100%,0,0)}12%{opacity:1}85%{opacity:1}100%{opacity:0;transform:translate3d(100%,0,0)}}
+html[data-d2p] .d2-dmark::after{animation:d2glowOnce 1.5s ease-in-out .6s both}
+html[data-d2p] .d2-dmark{filter:brightness(1.35)}
+html[data-d2p] .plate span{animation:d2subS 1.5s cubic-bezier(.2,.7,.2,1) 1.9s both}
+html[data-d2p] .plate span::before,html[data-d2p] .plate span::after{animation:d2line 1.2s var(--swift) 2.5s both}
+html[data-d2p] #enterBtn{border:0!important;background:none!important;box-shadow:none!important;outline:0;animation:d2fade 1.1s var(--ease) 2.7s both}
+html[data-d2p] #enterBtn:focus-visible{outline:1px solid rgba(241,238,232,.4);outline-offset:6px}
+html[data-d2p] .d2-orn svg path{animation:d2orn 1.1s cubic-bezier(.45,0,.25,1) 3.1s both}
+html[data-d2p] .d2-orn .c1 path+path{animation:d2orn .9s cubic-bezier(.45,0,.25,1) 3.95s both}
+html[data-d2p] .d2-orn .c4 path{animation:d2orn 1.1s cubic-bezier(.45,0,.25,1) 4.7s both}
+html[data-d2p] .d2-orn .c4 path+path{animation:d2orn .9s cubic-bezier(.45,0,.25,1) 5.55s both}
+html[data-d2p][data-d2q="0"] .plate b::before{animation:none;opacity:.32}
+html[data-d2p][data-d2q="0"] .plate b::after,html[data-d2p][data-d2q="0"] .d2-dmark::after{animation:none;opacity:0}
+html[data-d2p][data-d2q="0"] .plate b{animation:d2fade 1.2s var(--ease) .4s both}
+html[data-d2p][data-d2q="0"] .d2-orn svg path{animation:none;stroke-dashoffset:0}
+@media (prefers-reduced-motion:reduce){html[data-d2p] .plate b,html[data-d2p] .plate b::before,html[data-d2p] .plate b::after,html[data-d2p] .d2-dmark::after{animation:none}html[data-d2p] .plate b::after{opacity:0}html[data-d2p] .plate b::before{opacity:.32}html[data-d2p] .d2-orn svg path{animation:none;stroke-dashoffset:0}}
+/* проблеск по названию: полоса с наложением давала серую "плашку" рядом с буквами (наложение внутри своего слоя).
+   Теперь - свет по самим буквам (фон, обрезанный по тексту), один проход при появлении; ореол - на подложке .plate */
+html[data-d2p] .plate{position:relative}
+html[data-d2p] .plate b{isolation:auto;background:linear-gradient(105deg,#EFE9DF 0 40%,#fff 47%,#FFFDF8 50%,#fff 53%,#EFE9DF 60% 100%) 100% 0/260% 100% no-repeat;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  animation:d2flash 1.6s cubic-bezier(.25,.6,.25,1) .45s both,d2sweep 1.7s ease-in-out .8s both}
+@keyframes d2sweep{from{background-position:100% 0}to{background-position:0 0}}
+html[data-d2p] .plate b::before,html[data-d2p] .plate b::after{display:none}
+html[data-d2p] .plate::before{content:"";position:absolute;z-index:-1;left:-14%;right:-14%;top:calc(clamp(38px,6.6vw,78px) * -.7);height:calc(clamp(38px,6.6vw,78px) * 2.5);pointer-events:none;
+  background:radial-gradient(50% 50% at 50% 50%,rgba(255,244,226,.26),rgba(255,244,226,0) 70%);opacity:0;animation:d2halo 2.4s ease-out .45s both}
+html[data-d2p][data-d2q="0"] .plate b{animation:d2fade 1.2s var(--ease) .4s both;background-position:0 0}
+html[data-d2p][data-d2q="0"] .plate::before{animation:none;opacity:.32}
+@media (prefers-reduced-motion:reduce){html[data-d2p] .plate b{animation:none;background-position:0 0}html[data-d2p] .plate::before{animation:none;opacity:.32}}
+
+/* "Просто": подложка шапки проявляется постепенно с прокруткой (за ~220 px), а не включается рывком */
+html[data-d2p] #home .htop,html[data-d2p] #home.d2-sc .htop{background:transparent;border-bottom-color:transparent;isolation:isolate}
+html[data-d2p] #home .htop::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:rgba(15,15,14,.9);border-bottom:1px solid rgba(241,238,232,.12);opacity:var(--hk,0);transition:opacity .25s linear}
+
+/* ===== "Просто": меню по задумке Александра =====
+   Полоса выезжает от значка справа налево поверх видео (сдвиг transform - плавно на телефоне, без размытия подложки).
+   Текст страницы под меню прячется (только прозрачность), видео-фон остаётся виден. Вверху "Фактура и Форма",
+   ниже пункты тонким широким шрифтом выкатываются по очереди, затем контакты в одну строку. Закрытие - обратно. */
+html[data-d2p] .d2-menu{clip-path:none;-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(270deg,rgba(12,12,11,.78),rgba(12,12,11,.5));transform:translate3d(100%,0,0);visibility:hidden;transition:transform .7s cubic-bezier(.65,0,.25,1),visibility 0s linear .7s}
+html[data-d2p] .d2-menu.on{transform:none;visibility:visible;transition:transform .8s cubic-bezier(.2,.8,.2,1)}
+html[data-d2p][data-d2q="0"] .d2-menu{background:rgba(12,12,11,.86)}
+html[data-d2p] #home>*:not(.d2-kino){transition:opacity .45s ease}
+html[data-d2p].d2-mopen #home>*:not(.d2-kino){opacity:0}
+html[data-d2p] .d2-mbody{grid-template-columns:1fr;align-content:start;gap:0;padding:clamp(20px,6vh,64px) var(--pad) calc(30px + var(--sb));max-width:900px;width:100%;margin-left:auto}
+html[data-d2p] .d2-mnav{grid-column:1;align-items:stretch}
+html[data-d2p] .d2-mnav button{font:300 clamp(17px,2.1vw,24px)/1 var(--sans);letter-spacing:.32em;text-transform:uppercase;padding:clamp(18px,2.6vh,26px) 0;border-bottom:1px solid rgba(238,233,225,.16);width:100%;text-align:left;opacity:0;transform:translate3d(0,-16px,0);transition:opacity .35s ease,transform .45s ease}
+html[data-d2p] .d2-mnav button:first-child{border-top:1px solid rgba(238,233,225,.16)}
+html[data-d2p] .d2-menu.on .d2-mnav button{opacity:1;transform:none;transition:opacity .6s ease,transform .8s cubic-bezier(.2,.8,.2,1);transition-delay:calc(.45s + var(--i) * .13s)}
+html[data-d2p] .d2-mnav button span::after{bottom:-.3em}
+html[data-d2p] .d2-mside{grid-column:1;display:grid;grid-template-columns:repeat(var(--n,3),minmax(0,1fr));gap:0;max-width:none;margin-top:clamp(28px,5vh,52px);opacity:1;transition:none}
+html[data-d2p] .d2-mside .d2-ln{flex-direction:column;justify-content:center;gap:9px;min-height:74px;padding:6px 4px;border:0;border-left:1px solid rgba(238,233,225,.16);background:none!important;color:rgba(238,233,225,.88)!important;font-size:10px;font-weight:400;letter-spacing:.2em;text-transform:uppercase;opacity:0;transform:translate3d(0,-10px,0);transition:opacity .3s ease,transform .4s ease}
+html[data-d2p] .d2-mside .d2-ln:first-child{border-left:0;background:none;color:rgba(238,233,225,.88)}
+html[data-d2p] .d2-menu.on .d2-mside .d2-ln{opacity:1;transform:none;transition:opacity .6s ease,transform .8s cubic-bezier(.2,.8,.2,1);transition-delay:calc(1.05s + var(--i) * .1s)}
+html[data-d2p] .d2-mside .d2-mi{width:20px;height:20px}
+@media (hover:hover){html[data-d2p] .d2-mside .d2-ln:hover{color:#fff!important}html[data-d2p] .d2-mnav button:hover{color:#fff}}
+@media (max-width:760px){html[data-d2p] .d2-mside{grid-template-columns:repeat(var(--n,3),minmax(0,1fr))}html[data-d2p] .d2-mbody{padding-top:4vh}}
+@media (prefers-reduced-motion:reduce){html[data-d2p] .d2-menu,html[data-d2p] .d2-mnav button,html[data-d2p] .d2-mside .d2-ln{transition:none!important}}
+html[data-d2p] #htop{transition:opacity .45s ease}
+html[data-d2p].d2-mopen #htop{opacity:0}
