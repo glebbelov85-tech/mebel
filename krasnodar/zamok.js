@@ -45,7 +45,7 @@
   function dropKey() {
     return idb().then(function (db) {
       return new Promise(function (ok) {
-        var t = db.transaction(ST, "readwrite"); t.objectStore(ST).delete("aes");
+        var t = db.transaction(ST, "readwrite"); t.objectStore(ST).delete("aes"); t.objectStore(ST).delete("pub"); // pub - ключ публикации мастера
         t.oncomplete = function () { ok(); }; t.onerror = function () { ok(); };
       });
     }).catch(function () {});
@@ -215,6 +215,9 @@
       return askPin(meta, dataBuf);
     }).then(function (r) {
       var data = JSON.parse(new TextDecoder().decode(r.plain));
+      return sloj(r.key, data).then(function () { r.data = data; return r; });
+    }).then(function (r) {
+      var data = r.data;
       var el = document.getElementById("krLock");
       if (el) msg("Открываю фото...", true);
       return photoMap(r.key, data, function (d, n) { if (el) msg("Открываю фото: " + d + " из " + n, true); }).then(function (fn) {
@@ -226,6 +229,26 @@
       throw e;
     });
   }
+  // ---------- правки мастера ----------
+  // enc/m.bin - то, что мастер опубликовал сам из Мастерской (тексты, новые работы, фото, скрытые работы).
+  // Нет файла - витрина как была. Не читается - показываем витрину без правок (и пишем в консоль).
+  function loadScript(src) {
+    return new Promise(function (ok, no) { var s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = function () { no(new Error("нет " + src)); }; document.head.appendChild(s); });
+  }
+  function sloj(key, data) {
+    window.KR_SLOJ = null;
+    return fetch(BASE + "enc/m.bin", { cache: "no-cache" }).then(function (r) {
+      if (!r.ok) return null;
+      return r.arrayBuffer().then(function (buf) { return open(key, buf); }).then(function (p) {
+        var L = JSON.parse(new TextDecoder().decode(p));
+        return (window.KrSloj ? Promise.resolve() : loadScript(BASE + "sloj.js")).then(function () {
+          window.KR_SLOJ = JSON.parse(JSON.stringify(L)); // как есть, со ссылками "@id" - для Мастерской
+          if (data.vitrina) window.KrSloj.apply(data.vitrina, L);
+        });
+      });
+    }).catch(function (e) { try { console.warn("Правки мастера не подмешаны:", e); } catch (x) {} });
+  }
+
   function logout() {
     try { if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage("kr-forget"); } catch (e) {}
     return dropKey().then(function () { location.href = BASE; });
@@ -245,6 +268,8 @@
         });
       }, Promise.resolve()).then(function () {
         hide.remove();
+        // чистая версия для клиентов: скрытый вход мастера удержанием знака (master-vhod.js)
+        if (window.MEBEL_TOOL === "kr-klient") loadScript(BASE + "master-vhod.js").catch(function () {});
         if (opts && opts.back === "none") return; // главная (дом): возвращаться некуда
         var a = document.createElement("a"); a.id = "krBack"; a.href = BASE; a.textContent = "← Назад"; a.title = "Назад к дому"; if (opts && opts.back === "bl") a.className = "bl";
         document.body.appendChild(a);
@@ -252,5 +277,5 @@
     });
   }
 
-  window.KrZamok = { unlock: unlock, page: page, logout: logout, base: BASE };
+  window.KrZamok = { unlock: unlock, page: page, logout: logout, base: BASE, idb: idb, b64: b64, fetchBin: fetchBin, mime: mime };
 })();

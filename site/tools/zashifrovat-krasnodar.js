@@ -18,7 +18,8 @@
    Тот же вывод ключа делает браузер (krasnodar/zamok.js) через Web Crypto.
 
    Соль не меняется между сборками, если не указать --new-salt (тогда мастер введёт пин заново).
-   Фото, которые уже зашифрованы, не перешифровываются (то же имя - тот же файл), лишние .bin удаляются. */
+   Фото, которые уже зашифрованы, не перешифровываются (то же имя - тот же файл), лишние .bin удаляются.
+   Правки, которые мастер опубликовал сам (enc/m.bin, enc/p.json и фото из m.bin), не удаляются - см. ниже. */
 "use strict";
 const fs = require("fs"), path = require("path"), vm = require("vm"), crypto = require("crypto");
 
@@ -46,54 +47,53 @@ const Qs = JSON.parse(fs.readFileSync(QF, "utf8"));
 // правки из Мастерской (masterskaya/): pravki.json из ZIP-пакета кладут в папку витрины как pravki-mastera.json
 // (или pravki-ГГГГММДД-ЧЧММ.json - несколько пакетов применяются по порядку имён), фото и видео - в foto/.
 // dannye.js при этом не меняется: правки подмешиваются только в зашифрованную копию.
+const Sloj = require(path.join(__dirname, "..", "krasnodar", "sloj.js"));
 const pravki = fs.readdirSync(SRC).filter((n) => /^pravki.*\.json$/i.test(n)).sort();
 for (const n of pravki) {
   let P;
   try { P = JSON.parse(fs.readFileSync(path.join(SRC, n), "utf8")); } catch (e) { console.error("Не читается " + n + ": " + e.message); process.exit(1); }
-  const keep = (o, src) => { for (const k of Object.keys(src || {})) if (typeof src[k] === "string" && src[k].trim() !== "") o[k] = src[k].trim(); };
-  V.master = V.master || {}; V.kontakty = V.kontakty || {}; V.video = V.video || [];
-  keep(V.master, P.master); keep(V.kontakty, P.kontakty);
-  if (P.logo) V.master.logo = P.logo;
-  const rooms = new Set((V.komnaty || []).map((k) => k.id));
-  const vids = new Set(V.video.map((v) => v.fajl).filter(Boolean));
-  const addVideo = (list, w) => (list || []).forEach((v) => {
-    if (!v || !v.fajl || vids.has(v.fajl)) return; vids.add(v.fajl);
-    V.video.unshift({ nazvanie: w.nazvanie || "Видео", fajl: v.fajl, oblozhka: v.oblozhka || "", rabota: w.id });
-  });
-  let nw = 0, nf = 0, nv = 0;
-  (P.novye_raboty || []).forEach((r) => {
-    if (!r || !r.id) return;
-    const komnata = rooms.has(r.komnata) ? r.komnata : (V.komnaty && V.komnaty[0] ? V.komnaty[0].id : "");
-    const room = (V.komnaty || []).find((k) => k.id === komnata);
-    let foto = (r.foto || []).map((f) => ({ src: f.src, znak: true }));
-    if (!foto.length) foto = (r.video || []).filter((v) => v.oblozhka).slice(0, 1).map((v) => ({ src: v.oblozhka, znak: true }));
-    const w = { id: r.id, komnata, vid: room ? room.nazvanie : "", nazvanie: r.nazvanie || "Новая работа", gde: "", kogda: "", srok: "", material: "", cena: "", rasskaz: r.rasskaz || "", foto };
-    const i = V.raboty.findIndex((x) => x.id === r.id);
-    if (i >= 0) V.raboty[i] = Object.assign(V.raboty[i], w); else { V.raboty.unshift(w); nw++; }
-    nf += foto.length; nv += (r.video || []).length; addVideo(r.video, w);
-  });
-  (P.k_rabotam || []).forEach((r) => {
-    const w = V.raboty.find((x) => x.id === r.rabota);
-    if (!w) { console.warn(n + ": нет работы " + r.rabota + " - пропускаю"); return; }
-    w.foto = w.foto || [];
-    const have = new Set(w.foto.map((f) => f.src));
-    (r.foto || []).forEach((f) => { if (f.src && !have.has(f.src)) { w.foto.push({ src: f.src, znak: true }); nf++; } });
-    nv += (r.video || []).length; addVideo(r.video, w);
-  });
-  console.log(n + ": новых работ " + nw + ", фото " + nf + ", видео " + nv);
+  const c = Sloj.apply(V, P, (t) => console.warn(n + ": " + t));
+  console.log(n + ": новых работ " + c.raboty + ", фото " + c.foto + ", видео " + c.video + (c.skryto ? ", скрыто " + c.skryto : ""));
 }
 
 fs.mkdirSync(OUT, { recursive: true });
 const metaPath = path.join(OUT, "meta.json");
-let meta = fs.existsSync(metaPath) && !newSalt ? JSON.parse(fs.readFileSync(metaPath, "utf8")) : null;
+const oldMeta = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, "utf8")) : null;
+let meta = oldMeta && !newSalt ? oldMeta : null;
 if (!meta || meta.iter !== ITER) meta = { v: 1, iter: ITER, salt: crypto.randomBytes(16).toString("base64") };
 
 const bits = crypto.pbkdf2Sync(Buffer.from(pin, "utf8"), Buffer.from(meta.salt, "base64"), ITER, 64, "sha256");
 const aesKey = bits.subarray(0, 32), macKey = bits.subarray(32);
 
-function seal(buf) {
-  const iv = crypto.randomBytes(12), c = crypto.createCipheriv("aes-256-gcm", aesKey, iv);
+function seal(buf, key) {
+  const iv = crypto.randomBytes(12), c = crypto.createCipheriv("aes-256-gcm", key || aesKey, iv);
   return Buffer.concat([iv, c.update(buf), c.final(), c.getAuthTag()]);
+}
+function unseal(buf, key) {
+  const d = crypto.createDecipheriv("aes-256-gcm", key, buf.subarray(0, 12));
+  d.setAuthTag(buf.subarray(buf.length - 16));
+  return Buffer.concat([d.update(buf.subarray(12, buf.length - 16)), d.final()]);
+}
+
+// Слой мастера: enc/m.bin (что мастер опубликовал сам из Мастерской) и его фото enc/<id>.bin, настройка публикации
+// enc/p.json. Их пишет в репозиторий сама Мастерская - сборка их не трогает и не удаляет. Если сменился пин или соль,
+// слой и фото мастера перешифровываются новым ключом (старый пин - KR_OLD_PIN, если он тоже сменился).
+const keepSloj = new Set(["p.json"]);
+const mPath = path.join(OUT, "m.bin");
+if (fs.existsSync(mPath) && oldMeta) {
+  const oldPin = String(process.env.KR_OLD_PIN || pin).replace(/\s+/g, "");
+  const oldKey = crypto.pbkdf2Sync(Buffer.from(oldPin, "utf8"), Buffer.from(oldMeta.salt, "base64"), oldMeta.iter, 64, "sha256").subarray(0, 32);
+  let sloj;
+  try { sloj = JSON.parse(unseal(fs.readFileSync(mPath), oldKey).toString("utf8")); }
+  catch (e) { console.error("enc/m.bin (правки мастера) не расшифровывается. Если пин сменили - запустите с KR_OLD_PIN=<старый пин>."); process.exit(1); }
+  const ids = Object.keys(Sloj.refs(sloj));
+  const same = oldKey.equals(aesKey);
+  if (!same) {
+    fs.writeFileSync(mPath, seal(Buffer.from(JSON.stringify(sloj), "utf8")));
+    ids.forEach((id) => { const f = path.join(OUT, id + ".bin"); if (fs.existsSync(f)) fs.writeFileSync(f, seal(unseal(fs.readFileSync(f), oldKey))); });
+  }
+  keepSloj.add("m.bin"); ids.forEach((id) => keepSloj.add(id + ".bin"));
+  console.log("Правки мастера (m.bin): работ " + (sloj.novye_raboty || []).length + ", файлов " + ids.length + (same ? "" : " - перешифрованы новым ключом"));
 }
 
 // фото: каждая строка вида "foto/..." в данных -> "@<id>", файл шифруется в enc/<id>.bin
@@ -118,8 +118,9 @@ function walk(x) {
 const data = { v: 1, sobrano: new Date().toISOString(), vitrina: walk(V), anketa: Qs };
 fs.writeFileSync(path.join(OUT, "d.bin"), seal(Buffer.from(JSON.stringify(data), "utf8")));
 used.add("d.bin"); used.add("meta.json");
+keepSloj.forEach((n) => used.add(n));
 fs.writeFileSync(metaPath, JSON.stringify(meta) + "\n");
 
 let removed = 0;
 for (const n of fs.readdirSync(OUT)) if (!used.has(n)) { fs.unlinkSync(path.join(OUT, n)); removed++; }
-console.log("Зашифровано: работ " + V.raboty.length + ", фото " + (used.size - 2) + " (новых " + fresh + ", удалено старых " + removed + "), " + Math.round(bytes / 1024) + " КБ фото.");
+console.log("Зашифровано: работ " + V.raboty.length + ", фото " + (used.size - 2 - keepSloj.size) + " (новых " + fresh + ", удалено старых " + removed + "), " + Math.round(bytes / 1024) + " КБ фото.");
