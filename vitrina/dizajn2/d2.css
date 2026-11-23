@@ -1059,3 +1059,8 @@ html[data-d2p] .d2-mside .d2-mi{width:20px;height:20px}
 @media (prefers-reduced-motion:reduce){html[data-d2p] .d2-menu,html[data-d2p] .d2-mnav button,html[data-d2p] .d2-mside .d2-ln{transition:none!important}}
 html[data-d2p] #htop{transition:opacity .45s ease}
 html[data-d2p].d2-mopen #htop{opacity:0}
+/* Видео-фон "Просто": слой фона тянется на высоту всего дома, и видео на нём растягивалось - на экране был
+   крупный план одной детали. Теперь видео ровно в первый экран (листается вместе со страницей - так плавнее, чем
+   держать его на месте), низ плавно уходит в тёмный фон слоя. */
+html[data-d2p] .d2-kbg{inset:auto;top:0;left:0;width:100%;height:100vh;height:100lvh}
+html[data-d2p] .d2-kbg::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:34%;background:linear-gradient(180deg,rgba(15,15,14,0),#0F0F0E);z-index:1;pointer-events:none}
