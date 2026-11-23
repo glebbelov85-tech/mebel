@@ -52,14 +52,14 @@ def build_full(tmp):
 def clean(out):
     os.makedirs(out, exist_ok=True)
     for n in os.listdir(out):
-        if n == ".git": continue
+        if n in (".git", ".github"): continue  # .github - автообновление нового репо (Actions)
         p = os.path.join(out, n)
         shutil.rmtree(p) if os.path.isdir(p) and not os.path.islink(p) else os.remove(p)
 
 
 def commit_info():
     try:
-        h = subprocess.run(["git", "-C", REPO, "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+        h = subprocess.run(["git", "-C", REPO, "rev-parse", "--short=12", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
         dirty = subprocess.run(["git", "-C", REPO, "status", "--porcelain", "--", "site", "src"], capture_output=True, text=True).stdout.strip()
         return h + (" (+ несохранённые правки)" if dirty else "")
     except Exception:
@@ -123,7 +123,7 @@ LINK_RE = re.compile(r'''(?:href|src)\s*=\s*["']([^"'#?]+)''', re.I)
 def check(out):
     bad = []
     for dp, dn, fn in os.walk(out):
-        dn[:] = [d for d in dn if d != ".git"]
+        dn[:] = [d for d in dn if d not in (".git", ".github")]
         for f in fn:
             p = os.path.join(dp, f)
             rel = os.path.relpath(p, out)
