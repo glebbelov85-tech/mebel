@@ -101,14 +101,23 @@
   mtop.appendChild(mx); menu.appendChild(mtop);
   var mbody = el("div", "d2-mbody"), mnav = el("nav", "d2-mnav"); mnav.setAttribute("aria-label", "Разделы");
   var ITEMS = [["raboty", "Работы"], ["video", "Видео"], ["otzyvy", "Отзывы"], ["master", "О мастере"], ["write", "Написать мастеру"]];
+  if (window.D2_P) ITEMS.pop(); // "Просто": ниже в меню ряд мессенджеров, отдельный пункт "Написать мастеру" лишний
   mbody.appendChild(mnav);
   var side = el("div", "d2-mside"), wa = digits(K.whatsapp), tg = String(K.telegram || "").replace(/^@|^https?:\/\/t\.me\//, ""), tel = digits(K.telefon), vk = String(K.vk || "").trim();
-  if (wa) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="https://wa.me/' + wa + '">WhatsApp</a>';
-  if (tg) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="https://t.me/' + esc(tg) + '">Telegram</a>';
+  // значки для ряда контактов в "Просто" (в остальных вариантах значки скрыты стилями)
+  var MI = {
+    wa: '<svg class="d2-mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 19.5l1.2-3.6A8 8 0 1 1 8.4 18.6z"/><path d="M9.2 8.6c.2 2.9 2.4 5.3 5.6 6l1.1-1.3-1.8-1-1 .8a4.6 4.6 0 0 1-2.4-2.4l.8-1-1-1.8z"/></svg>',
+    tg: '<svg class="d2-mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 4.5L3.5 11l6 2.2L20.5 4.5l-8.3 10.2.4 5 2.7-3.7 4.2 3z"/></svg>',
+    mx: '<svg class="d2-mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M12 4a8 8 0 0 0-6.9 12.1L4 20l3.9-1.1A8 8 0 1 0 12 4z"/><path d="M8.5 14.5v-5l3.5 3.2 3.5-3.2v5" stroke-linecap="round"/></svg>',
+    tel: '<svg class="d2-mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h3l1.5 4-2 1.3a10 10 0 0 0 6.2 6.2l1.3-2 4 1.5v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2z"/></svg>',
+    vk: '<svg class="d2-mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M7 9c.4 3.6 2.2 6 5.3 6v-2.2c1.2.2 2.1 1.1 2.5 2.2H17c-.5-1.7-1.6-2.8-2.6-3.3 1-.6 1.9-1.8 2.2-3.2h-1.9c-.4 1.3-1.4 2.4-2.4 2.5V9h-1.9v4.6C9.3 13.2 8.9 11 8.8 9z" stroke-width="1.1"/></svg>'
+  };
+  if (wa) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="https://wa.me/' + wa + '">' + MI.wa + 'WhatsApp</a>';
+  if (tg) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="https://t.me/' + esc(tg) + '">' + MI.tg + 'Telegram</a>';
   var mxu = String(K.max || "").trim(); mxu = /^https?:\/\//.test(mxu) ? mxu : /^(www\.)?max\.ru\//.test(mxu) ? "https://" + mxu : "";
-  if (mxu) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="' + esc(mxu) + '">Max</a>';
-  if (tel) side.innerHTML += '<a class="d2-ln" href="tel:+' + tel + '">Позвонить</a>';
-  if (vk) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="' + esc(/^https?:/.test(vk) ? vk : "https://" + vk) + '">ВКонтакте</a>';
+  if (mxu) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="' + esc(mxu) + '">' + MI.mx + 'Max</a>';
+  if (tel) side.innerHTML += '<a class="d2-ln" href="tel:+' + tel + '">' + MI.tel + 'Позвонить</a>';
+  if (vk) side.innerHTML += '<a class="d2-ln" target="_blank" rel="noopener" href="' + esc(/^https?:/.test(vk) ? vk : "https://" + vk) + '">' + MI.vk + 'ВКонтакте</a>';
   mbody.appendChild(side);
   var foot = [M.chelovek ? "Мастер - " + M.chelovek : "", M.gorod || ""].filter(Boolean).join(". ");
   if (foot) mbody.appendChild(el("div", "d2-mfoot", esc(foot)));
@@ -197,6 +206,7 @@
     rs.forEach(function (r, i) {
       r.style.gridRow = String(Math.floor(i / cols) + 1);
       r.style.setProperty("--rb", Math.ceil(n / cols) - Math.floor(i / cols) - 1); r.style.setProperty("--cx", i % cols);
+      r.style.setProperty("--fx", (((i % cols) - (cols - 1) / 2) * 55).toFixed(0) + "%"); r.style.setProperty("--fy", ((Math.floor(i / cols) - (Math.ceil(n / cols) - 1) / 2) * 40).toFixed(0) + "%");
       var span = 1;
       if (rem && i >= full) span = cols % rem === 0 ? cols / rem : (i === n - 1 ? cols - rem + 1 : 1); // неполный последний ряд - без дыр
       r.style.gridColumn = "auto / span " + span;
@@ -218,6 +228,8 @@
       r.style.gridColumn = "auto / span " + (i < rem ? top : 2);
       var R3 = Math.ceil(n / 3), row3 = i < rem ? 1 : Math.floor(j / 3) + 1 + (rem ? 1 : 0);
       r.style.setProperty("--rb", R3 - row3); r.style.setProperty("--cx", i < rem ? i : j % 3);
+      var inRow = i < rem ? rem : 3, cxx = i < rem ? i : j % 3; // откуда "летит" комната при сборке: от центра наружу
+      r.style.setProperty("--fx", ((cxx - (inRow - 1) / 2) * 55).toFixed(0) + "%"); r.style.setProperty("--fy", ((row3 - (R3 + 1) / 2) * 45).toFixed(0) + "%");
       r.style.setProperty("--i", i);
       var tb = r.querySelector(".t b"); if (tb) r.classList.toggle("long", tb.textContent.length > (i < rem ? 26 : 15));
     });
@@ -377,7 +389,7 @@
     .observe(home, { attributes: true, attributeFilter: ["class"] });
   // цикл работает только когда дом виден
   function loopCheck() {
-    var vis = B.getAttribute("data-vp") === "home" && !B.classList.contains("pn-open") && !MON && !document.hidden;
+    var vis = B.getAttribute("data-vp") === "home" && !B.classList.contains("pn-open") && (!MON || PROSTO) && !document.hidden; // в "Просто" меню полупрозрачное - видео за ним идёт
     live = vis;
     if (vis) kick(); else if (raf) { cancelAnimationFrame(raf); raf = 0; last = 0; }
     video(vis);
