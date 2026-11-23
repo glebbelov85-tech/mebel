@@ -220,7 +220,7 @@
   document.addEventListener("input", function (e) {
     var t = e.target, sec = t.getAttribute && t.getAttribute("data-s"); if (!sec) return;
     var k = t.getAttribute("data-k"), base = ((sec === "master" ? M0 : K0)[k] || "");
-    if (t.value === base) delete S[sec][k]; else S[sec][k] = t.value;
+    if (t.value.trim() === String(base).trim()) delete S[sec][k]; else S[sec][k] = t.value; // лишний пробел - не правка
     if (k === "imya") drawTop();
     if (k === "znak" && sec === "master") { S.znak.tekst = t.value; }
     save();
@@ -323,7 +323,7 @@
     var base = isNew ? null : (workById(w.rabota) || {});
     [].forEach.call(card.querySelectorAll("[data-w]"), function (e) { e.addEventListener(e.tagName === "SELECT" ? "change" : "input", function () {
       var k = e.getAttribute("data-w");
-      if (!isNew && e.value === (base[k] || "")) delete w[k]; else w[k] = e.value; // у готовой работы храним только изменённое
+      if (!isNew && e.value.trim() === String(base[k] || "").trim()) delete w[k]; else w[k] = e.value; // у готовой работы храним только изменённое
       save();
     }); });
     var sk = card.querySelector("[data-skryt]");
@@ -366,7 +366,7 @@
   }
   function vZnak() {
     var Z = S.znak, POS = [["vl", "вверху слева"], ["vc", "вверху"], ["vp", "вверху справа"], ["cl", "слева"], ["cc", "в центре"], ["cp", "справа"], ["nl", "внизу слева"], ["nc", "внизу"], ["np", "внизу справа"]];
-    $("main").innerHTML = '<section role="tabpanel"><h1>Водяной знак</h1><p class="lead">Ставится на все новые фото и видео сам. Защищает от того, чтобы ваши работы выдавали за свои.</p>' +
+    $("main").innerHTML = '<section role="tabpanel"><h1>Водяной знак</h1><p class="lead">Впечатывается в новые фото и видео, которые вы добавляете во вкладке «Работы». Защищает от того, чтобы ваши работы выдавали за свои.</p><p class="note">Название на витрине здесь не меняется - оно во вкладке «О мастере», поле «Название». Уже выложенные фото тоже остаются как были.</p>' +
       '<div class="wm-grid"><div class="wm-pv"><div class="pv"><canvas id="pvC" width="1200" height="900"></canvas></div><p class="note">Так знак ляжет на фото. На видео - так же, в каждом кадре.</p></div><div>' +
       '<div class="eyebrow" style="margin-top:0">Что ставить</div><div class="seg" id="zChto">' + [["oba", "Знак и надпись"], ["logo", "Только знак"], ["tekst", "Только надпись"]].map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (Z.chto === o[0]) + '">' + o[1] + "</button>"; }).join("") + "</div>" +
       '<div class="f" style="margin-top:12px"><label>Надпись</label><input id="zTekst" value="' + esc(Z.tekst) + '"></div>' +
@@ -620,8 +620,8 @@
     }).then(function (cur) {
       L = cur || {};
       L.v = 1; L.master = L.master || {}; L.kontakty = L.kontakty || {}; L.novye_raboty = L.novye_raboty || []; L.k_rabotam = L.k_rabotam || []; L.skryt = L.skryt || []; L.imena = L.imena || {};
-      Object.keys(S.master).forEach(function (k) { L.master[k] = S.master[k]; });
-      Object.keys(S.kontakty).forEach(function (k) { L.kontakty[k] = S.kontakty[k]; });
+      Object.keys(S.master).forEach(function (k) { L.master[k] = String(S.master[k]).trim(); });
+      Object.keys(S.kontakty).forEach(function (k) { L.kontakty[k] = String(S.kontakty[k]).trim(); });
       L.znak = S.znak;
       var chain = S.logo ? enc("logo").then(function (r) { if (r) L.logo = r; }) : Promise.resolve(), neu = [];
       S.novye.forEach(function (w) {
