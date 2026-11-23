@@ -164,9 +164,10 @@
   // ---------- другие формы дома (window.D2_DOM, варианты 9-11) ----------
   // razrez - дом в разрезе: ровная сетка одинаковых комнат, в каждой фото висит как картина в раме;
   // okna   - фасад с одинаковыми окнами, фото - за стеклом и чуть сдвигается при повороте (как будто смотришь в комнату);
+  // linii  - вариант 12: дом белыми линиями (как siluet), в комнатах фото-окна с подписью снизу (как okna);
   // siluet - дом контуром, внутри названия комнат; фото комнаты при наведении (на телефоне - при прокрутке) - на весь фон.
   // Комнаты одного размера, по порядку из dannye.js: на компьютере 4 в ряд, на телефоне 2.
-  var DOM = { razrez: 1, okna: 1, siluet: 1 }[window.D2_DOM] ? window.D2_DOM : "";
+  var DOM = { razrez: 1, okna: 1, siluet: 1, linii: 1 }[window.D2_DOM] ? window.D2_DOM : "";
   if (DOM) H.setAttribute("data-d2dom", DOM);
   var NARROW = mm("(max-width: 640px)");
   function layout() {
@@ -214,8 +215,8 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(build3D);
 
   // поворот: мышь (компьютер), лёгкое покачивание и прокрутка (телефон), разворот при входе
-  var RY0 = -14, RX0 = -3, AMP = DOM === "okna" ? .45 : DOM === "siluet" ? .5 : 1; // фасад и контур поворачиваются меньше
-  if (DOM === "okna") RY0 = -5; else if (DOM === "siluet") RY0 = -8;
+  var RY0 = -14, RX0 = -3, AMP = DOM === "okna" || DOM === "linii" ? .45 : DOM === "siluet" ? .5 : 1; // фасад и контур поворачиваются меньше
+  if (DOM === "okna" || DOM === "linii") RY0 = -5; else if (DOM === "siluet") RY0 = -8;
   var cur = { ry: RY0, rx: RX0, tz: 0 }, ptr = null, raf = 0, last = 0, intro = null, live = true;
   function ease4(t) { return 1 - Math.pow(1 - t, 4); }
   function target(now) {
@@ -235,7 +236,7 @@
   }
   function apply() {
     house.style.transform = "translateZ(" + cur.tz.toFixed(1) + "px) rotateX(" + cur.rx.toFixed(2) + "deg) rotateY(" + cur.ry.toFixed(2) + "deg)";
-    if (DOM === "okna") { // фото за стеклом сдвигается против поворота - глубина комнаты
+    if (DOM === "okna" || DOM === "linii") { // фото за стеклом сдвигается против поворота - глубина комнаты
       house.style.setProperty("--px", Math.max(-1, Math.min(1, (cur.ry - RY0) / 12)).toFixed(3));
       house.style.setProperty("--py", Math.max(-1, Math.min(1, (cur.rx - RX0) / 4)).toFixed(3));
     }
@@ -278,8 +279,8 @@
   apply();
 
   // ---------- "Линия" и "Силуэт": контур фронтона ----------
-  if (tema === "liniya" || DOM === "siluet") {
-    roof.insertAdjacentHTML("afterbegin", '<svg class="d2-rl" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points="50,0.8 99.6,99.6 0.4,99.6" vector-effect="non-scaling-stroke"/></svg>');
+  if (tema === "liniya" || DOM === "siluet" || DOM === "linii") {
+    roof.insertAdjacentHTML("afterbegin", '<svg class="d2-rl" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points="50,0.8 99.6,99.6 0.4,99.6" pathLength="1" vector-effect="non-scaling-stroke"/></svg>');
   }
 
   // ---------- разделы: фото проявляются при прокрутке ----------
@@ -371,6 +372,158 @@
     new MutationObserver(function () { if (FINE) return; var l = floors.querySelector(".room.lit"); showRoom(l && home.scrollTop > 40 ? l : null); })
       .observe(floors, { subtree: true, attributes: true, attributeFilter: ["class"] });
   }
+
+  // ---------- журнал-"сцена" (window.D2_ZH): вместо перелистывания страниц ----------
+  // Кадр стоит на месте, меняется содержимое: новое фото входит сбоку косой шторкой с лёгким сдвигом глубины,
+  // маленькая плитка с деталью и подписи сменяются внутри своих рамок. Листание - горизонтально: палец, колесо, стрелки.
+  // Рисует d2.js, а номер страницы, точки и открытие работы ведёт puteshestvie.js (хук window.VP_ZHURNAL).
+  if (window.D2_ZH) (function () {
+    H.setAttribute("data-d2zh", "1");
+    var stage = $("roomStage"), sc = el("div", "d2-sc"), api = null, room = null, cur = 0, busy = null, drag = null;
+    sc.id = "d2scena"; sc.setAttribute("role", "group"); sc.setAttribute("aria-roledescription", "журнал"); sc.setAttribute("aria-label", "Работы в комнате");
+    sc.innerHTML = '<div class="d2-sf"><div class="d2-sl a"></div><div class="d2-sl b"></div><i class="d2-sv"></i>' +
+      '<div class="d2-sn"><span></span></div><div class="d2-st"><i></i></div>' +
+      '<div class="d2-sx"></div><i class="d2-sp"><i></i></i></div>';
+    stage.appendChild(sc);
+    var fr = sc.firstChild, LA = fr.querySelector(".d2-sl.a"), LB = fr.querySelector(".d2-sl.b"), top = LA,
+      num = fr.querySelector(".d2-sn"), tile = fr.querySelector(".d2-st"), txt = fr.querySelector(".d2-sx"), bar = fr.querySelector(".d2-sp i");
+    var ARR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+    function e2(x) { return api.esc(x); }
+    function layer(l, w) { l.innerHTML = '<img src="' + e2(api.cover(w)) + '" alt="" draggable="false" decoding="async">' + api.wm(api.fotos(w)[0]); l._w = w; }
+    function tileSrc(w) { var f = (w.foto || [])[1]; return f && f.src ? { u: api.src(f), zoom: false } : { u: api.cover(w), zoom: true }; }
+    function pad(n) { return (n < 10 ? "0" : "") + n; }
+    function textHTML(w, i) {
+      var t = w.rasskaz || (w.resheniya || []).join(". "), meta = [w.gde, w.material, w.srok ? "Срок: " + w.srok : ""].filter(Boolean);
+      return '<div class="d2-sxi"><h3>' + e2(w.nazvanie) + "</h3>" + (meta.length ? '<p class="m">' + meta.map(e2).join(" · ") + "</p>" : "") +
+        (t ? '<p class="x">' + e2(t) + "</p>" : "") + '<button type="button" class="d2-ln d2-sgo" data-open="' + i + '">Смотреть работу' + ARR + "</button></div>";
+    }
+    function setSide(i, dir, anim) { // номер, плитка, текст: старое уезжает, новое въезжает с той же стороны, что и фото
+      var w = room.works[i], n = room.works.length, ts = tileSrc(w), cls = anim ? (dir > 0 ? " in-r" : " in-l") : "";
+      var oldN = num.lastChild, nn = el("span", cls.trim(), "[ " + pad(i + 1) + " / " + pad(n) + " ]");
+      var oldT = tile.lastChild, nt = el("i", (ts.zoom ? "z" : "") + cls); nt.style.backgroundImage = 'url("' + ts.u.replace(/"/g, "%22") + '")';
+      var oldX = txt.lastChild, nx = el("div", "d2-sxw" + cls, textHTML(w, i));
+      num.appendChild(nn); tile.appendChild(nt); txt.appendChild(nx);
+      [oldN, oldT, oldX].forEach(function (o) {
+        if (!o) return;
+        if (!anim) { o.remove(); return; }
+        o.classList.remove("in-r", "in-l"); o.classList.add(dir > 0 ? "out-l" : "out-r");
+        setTimeout(function () { o.remove(); }, 700);
+      });
+      tile.setAttribute("data-open", i);
+      bar.style.transform = "scaleX(" + ((i + 1) / n).toFixed(4) + ")";
+    }
+    function setP(l, p, dir) { l.style.setProperty("--p", p.toFixed(4)); l.style.setProperty("--d", dir); }
+    function lite() { return api.lite() || Q === 0; }
+    function finish(b, done) {
+      var nw = b.nw, old = b.old;
+      nw.classList.remove("en"); old.classList.remove("ex"); nw.style.removeProperty("--p"); old.style.removeProperty("--p");
+      if (done) { old.classList.remove("on"); old.innerHTML = ""; nw.classList.add("on"); top = nw; }
+      else { nw.classList.remove("on"); nw.innerHTML = ""; }
+      fr.classList.remove("mv"); busy = null;
+    }
+    function prep(i, dir) {
+      var nw = top === LA ? LB : LA, old = top;
+      layer(nw, room.works[i]);
+      nw.classList.add("en", "on"); old.classList.add("ex"); fr.classList.add("mv"); fr.setAttribute("data-dir", dir);
+      setP(nw, 0, dir); setP(old, 0, dir);
+      return { nw: nw, old: old, i: i, dir: dir, p: 0 };
+    }
+    function run(b, to, dur, cb) {
+      var p0 = b.p, t0 = 0;
+      function ease(t) { return 1 - Math.pow(1 - t, 3.2); }
+      b.raf = requestAnimationFrame(function step(now) {
+        if (b.dead) return;
+        if (!t0) t0 = now;
+        var k = Math.min(1, (now - t0) / dur), p = p0 + (to - p0) * ease(k);
+        b.p = p; setP(b.nw, p, b.dir); setP(b.old, p, b.dir);
+        if (k < 1) b.raf = requestAnimationFrame(step); else cb();
+      });
+    }
+    function go(i, dir) {
+      if (busy) return false;
+      if (lite()) { // слабый телефон или "без анимаций": мягкая смена без шторки
+        var nw = top === LA ? LB : LA, old = top; layer(nw, room.works[i]);
+        nw.classList.add("on", "fade"); top = nw; setSide(i, dir, false); cur = i;
+        setTimeout(function () { old.classList.remove("on"); old.innerHTML = ""; nw.classList.remove("fade"); }, 380);
+        return true;
+      }
+      var b = busy = prep(i, dir); cur = i; setSide(i, dir, true);
+      var im = b.nw.querySelector("img"), started = false;
+      var start = function () { if (started || b.dead) return; started = true; run(b, 1, 1150, function () { finish(b, true); }); };
+      if (im && im.decode) im.decode().then(start, start); else start();
+      setTimeout(start, 260);
+      return true;
+    }
+    function bump(dir) {
+      if (!fr.animate || lite()) return;
+      fr.animate([{ transform: "none" }, { transform: "translateX(" + (-dir * 14) + "px)" }, { transform: "none" }], { duration: 420, easing: "cubic-bezier(.22,1,.36,1)" });
+    }
+    function size() {
+      var r = stage.getBoundingClientRect(), W = r.width, Hh = r.height, narrow = W < 720;
+      var w = narrow ? W - 20 : Math.min(W - 48, 1240, (Hh - 8) * 1.9), h = narrow ? Hh - 6 : Math.min(Hh - 8, w / 1.62);
+      fr.style.width = Math.round(w) + "px"; fr.style.height = Math.round(Math.max(200, h)) + "px";
+      sc.classList.toggle("nar", narrow);
+    }
+    window.VP_ZHURNAL = {
+      build: function (r, i, anim, a) {
+        api = a; room = r; cur = i;
+        if (busy) { busy.dead = true; cancelAnimationFrame(busy.raf); busy = null; }
+        [LA, LB].forEach(function (l) { l.className = "d2-sl " + (l === LA ? "a" : "b"); l.innerHTML = ""; l.style.removeProperty("--p"); });
+        num.innerHTML = ""; tile.innerHTML = ""; txt.innerHTML = ""; fr.classList.remove("mv");
+        top = LA; layer(LA, r.works[i]); LA.classList.add("on");
+        size(); setSide(i, 1, false);
+        sc.classList.remove("go"); if (anim) { void sc.offsetWidth; sc.classList.add("go"); }
+      },
+      go: go, bump: bump,
+      el: function () { return top.querySelector("img"); }
+    };
+    if (window.ResizeObserver) new ResizeObserver(function () { if (room && !stage.hidden) size(); }).observe(stage);
+    // палец или мышь: шторка идёт за движением, отпустили - доезжает или возвращается
+    fr.addEventListener("pointerdown", function (e) { if (e.button > 0 || busy || !room) return; drag = { x: e.clientX, y: e.clientY, id: e.pointerId, t: performance.now(), lx: e.clientX, v: 0, tgt: e.target }; });
+    fr.addEventListener("pointermove", function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var dx = e.clientX - drag.x;
+      if (!drag.b) {
+        if (Math.abs(dx) < 9 || Math.abs(dx) < Math.abs(e.clientY - drag.y)) return;
+        var dir = dx < 0 ? 1 : -1, ni = cur + dir;
+        if (ni < 0 || ni >= room.works.length) { drag = null; api.turn(dir); return; } // край: подскок и подсказка
+        if (lite()) { drag = null; api.turn(dir); return; }
+        drag.b = busy = prep(ni, dir); fr.classList.add("drag");
+        try { fr.setPointerCapture(drag.id); } catch (er) {}
+      }
+      var now = performance.now(); drag.v = (e.clientX - drag.lx) / Math.max(1, now - drag.t); drag.lx = e.clientX; drag.t = now;
+      var b = drag.b; b.p = Math.max(0, Math.min(1, (-dx * b.dir) / (fr.offsetWidth * .8)));
+      setP(b.nw, b.p, b.dir); setP(b.old, b.p, b.dir);
+    });
+    function up(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var d = drag; drag = null; fr.classList.remove("drag");
+      if (d.b) {
+        var b = d.b, fl = performance.now() - d.t < 120 ? -d.v * b.dir : 0, done = e.type === "pointerup" && (b.p > .3 || fl > .35);
+        if (done) {
+          // страницу ведёт puteshestvie.js: сообщаем ему о смене, а шторку доводим сами
+          busy = null; var keep = b; window.VP_ZHURNAL.go = function () { window.VP_ZHURNAL.go = go; busy = keep; cur = keep.i; setSide(keep.i, keep.dir, true); return true; };
+          api.turn(b.dir);
+          run(keep, 1, Math.round(260 + 520 * (1 - keep.p)), function () { finish(keep, true); });
+        } else run(b, 0, Math.round(200 + 360 * b.p), function () { finish(b, false); });
+        return;
+      }
+      if (e.type !== "pointerup" || busy) return;
+      if (d.tgt.closest && d.tgt.closest("[data-open]")) { api.open(cur); return; }
+      var r = fr.getBoundingClientRect(), x = (e.clientX - r.left) / r.width;
+      if (x > .72) api.turn(1); else if (x < .28) api.turn(-1); else api.open(cur);
+    }
+    fr.addEventListener("pointerup", up); fr.addEventListener("pointercancel", up);
+    fr.addEventListener("click", function (e) { if (e.detail === 0 && e.target.closest("[data-open]")) api.open(cur); }); // клавиатура
+    var wA = 0, wT = 0;
+    fr.addEventListener("wheel", function (e) {
+      e.preventDefault();
+      var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY, now = performance.now();
+      if (now - wT > 320) wA = 0;
+      wA += d;
+      if (Math.abs(wA) > 50 && now - wT > 320 && !busy) { api.turn(wA > 0 ? 1 : -1); wA = 0; wT = now; }
+    }, { passive: false });
+  })();
 
   // ---------- пробные страницы: переход между вариантами ----------
   var TRY = window.D2_TRY;
