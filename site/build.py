@@ -218,6 +218,14 @@ def main():
     wr(os.path.join(OUT, "zakazy", "mebel-order.js"), ORDER_JS)
     wr(os.path.join(OUT, "zakazy", "index.html"), inject(rd(P("uchet-zakazov", "index.html")), "zakazy"))
 
+    # Переезд витрин (site/pereezd/PEREEZD.md): только если есть site/pereezd.json - страницы витрин
+    # заменяются переадресациями на новый адрес. Без этого файла ничего не меняется.
+    # Сборка для нового репозитория (site/tools/vitriny-vynos.py) этот шаг выключает.
+    if not os.environ.get("MEBEL_BEZ_PEREEZDA"):
+        sys.path.insert(0, os.path.join(HERE, "tools"))
+        import pereezd_ssylki
+        pereezd_ssylki.from_config(HERE, OUT)
+
     print("Сайт собран в", OUT)
 
 
