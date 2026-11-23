@@ -59,9 +59,10 @@ https://vitrina-mastera.github.io/ (Pages включился сам).
 
 Расписание GitHub на деле не срабатывало, поэтому основной путь (2026-11-23) - действие в этом репо
 `.github/workflows/vitriny-novyj-adres.yml`: при каждом push в main с изменениями в `site/` или `src/`
-(наши PR и публикации мастера из Мастерской) собирает витрины и пушит в новое репо ключом развёртывания.
-Нужно один раз: открытая часть ключа - в новом репо (Settings - Deploy keys - Add, "Allow write access"),
-закрытая - секретом `VITRINY_DEPLOY_KEY` в этом репо (Settings - Secrets and variables - Actions).
+(наши PR и публикации мастера из Мастерской) собирает витрины и пушит в новое репо токеном из секрета.
+Нужно один раз (делает Александр): личный токен fine-grained (владелец ресурса vitrina-mastera, только репо
+vitrina-mastera.github.io, Contents: Read and write) - секретом `VITRINY_TOKEN` в этом репо
+(Settings - Secrets and variables - Actions). Вместо токена можно ключ развёртывания: `VITRINY_DEPLOY_KEY`.
 Без секрета действие ничего не публикует и не падает. Расписание в новом репо осталось запасным.
 
 ### 4. Переключение (Claude, по команде Александра)
