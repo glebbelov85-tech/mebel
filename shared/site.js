@@ -83,7 +83,7 @@
   function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Конструктор" : id === "start" ? "Главная" : id === "instrumenty" ? "Инструменты" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id === "vitrina" ? "Витрина мастера" : id === "vitrina-red" ? "Мастерская витрины" : id === "vitrina-put" ? "Витрина: путешествие" : id === "vitriny" ? "Витрины" : /^(krasnodar|kr-)/.test(id) ? "Витрина для Краснодара" : id; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   // "start" - стартовая страница (корень сайта), "home" - главная Конструктора (konstruktor/, в ней <base href="../">)
-  function root() { return me === "home" || me === "start" ? "./" : me === "vitrina-red" || me === "vitrina-put" || me === "kr-vitrina" || me === "krasnodar" || me === "kr-dizajn-list" || me === "kr-masterskaya" ? "../../" : me === "kr-dizajn" ? "../../../" : "../"; } // krasnodar = вопросы мастеру (krasnodar/master/), kr-dom = главная krasnodar/, kr-dizajn-list = krasnodar/dizajn/, kr-dizajn = krasnodar/dizajn/vN/
+  function root() { return me === "home" || me === "start" ? "./" : me === "vitrina-red" || me === "vitrina-put" || me === "kr-vitrina" || me === "krasnodar" || me === "kr-dizajn-list" || me === "kr-masterskaya" || me === "kr-klient" ? "../../" : me === "kr-dizajn" ? "../../../" : "../"; } // krasnodar = вопросы мастеру (krasnodar/master/), kr-dom = главная krasnodar/, kr-dizajn-list = krasnodar/dizajn/, kr-dizajn = krasnodar/dizajn/vN/
   function urlOf(id) { return id === "start" ? root() : root() + (id === "home" ? "konstruktor" : id) + "/"; }
   function money(n, cur) {
     if (window.MebelOrder) return MebelOrder.money(n, cur || MebelOrder.region().currency);
@@ -115,7 +115,7 @@
 
   // --- пометка "Обновление" и подсказка "Доступно обновление" ---
   // VER вшивает build.py при сборке; version.json на сервере - номер самой свежей сборки.
-  var VER = {"v": "20261123175142", "at": "2026-11-23T17:51:42Z", "note": "Вариант 13: длинные названия комнат на компьютере видны целиком"};
+  var VER = {"v": "20261123180502", "at": "2026-11-23T18:05:02Z", "note": "Витрина Краснодара: чистый вход для клиента, дом в три этажа, плавный переход к видео"};
   var MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
   function verDate(v, withTime) {
     var d = v && new Date(v.at);

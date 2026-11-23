@@ -65,7 +65,7 @@ def krasnodar():
     assert os.path.exists(os.path.join(out, "enc", "d.bin")), "нет krasnodar/enc - запустите site/tools/zashifrovat-krasnodar.js"
     noindex = '<meta name="robots" content="noindex, nofollow, noarchive, noimageindex">\n<meta name="referrer" content="no-referrer">\n'
 
-    def locked(html, tool, scripts, repl, back="tr", head="", depth=1):
+    def locked(html, tool, scripts, repl, back="tr", head="", depth=1, sub=False):
         html = html.replace("<head>\n", "<head>\n" + noindex + head, 1)
         html = re.sub(r"<title>.*?</title>", "<title>Закрытая витрина</title>", html, count=1)
         html = re.sub(r'<meta (name="description"|property="og:[a-z]+")[^>]*>\n', "", html)
@@ -74,7 +74,7 @@ def krasnodar():
             html = html.replace(a, b)
         i, j = html.index('<script>window.MEBEL_TOOL'), html.rindex("</script>") + len("</script>")
         up = "../" * depth  # depth - на сколько папок страница глубже krasnodar/
-        if back == "none" and depth == 1: up = ""
+        if back == "none" and depth == 1 and not sub: up = ""  # sub: страница в подпапке krasnodar/, но без кнопки "назад"
         tail = ('<script>window.MEBEL_TOOL = "%s";</script>\n<script src="%s../shared/site.js"></script>\n'
                 '<script src="%szamok.js"></script>\n<script>KrZamok.page({ scripts: %s, back: "%s" });</script>' % (tool, up, up, json.dumps(scripts), back))
         return html[:i] + tail + html[j:]
@@ -125,6 +125,17 @@ def krasnodar():
             head='<script>window.D2_TEMA = "%s"; window.D2_TRY = %s; window.D2_TRY.n = %d; window.D2_DOM = "%s"; window.D2_ZH = %s; %swindow.VP_PREVIEW = true;</script>\n' % (t, d2try, n, dom, "true" if n == 12 else "false",
                  'window.D2_P = true; window.VP_VID = "plitki"; ' if n == 13 else ""))  # v13 "Просто": см. d2.js
         wr(os.path.join(out, "dizajn", "v%d" % n, "index.html"), h)
+    # Чистый вход для клиента (2026-11-23, просьба Александра): krasnodar/klient/ - вариант 13 "Просто" без служебной
+    # полосы ("Варианты дизайна", путь, пометка "Пробный дизайн"). Пин-код тот же. Страницы сравнения не трогает.
+    h = locked(v4, "kr-klient", ["../../vitrina/risunki.js", "../../vitrina/dizajn2/d2.js", "../../vitrina/puteshestvie/puteshestvie.js"], [
+        ('href="../redaktor/"', 'href="../../vitrina/redaktor/"'),
+        ('href="../#raschet"', 'href="../vitrina/#raschet"'),
+        ('<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">\n', ""),
+        ('<meta name="theme-color" content="#110F0C">', '<meta name="theme-color" content="#0F0F0E">'),
+        ("</head>", '<link rel="stylesheet" href="../../vitrina/dizajn2/d2.css">\n</head>')],
+        back="none", depth=1, sub=True,
+        head='<script>window.D2_TEMA = "kino"; window.D2_DOM = "linii"; window.D2_ZH = false; window.D2_P = true; window.VP_VID = "plitki"; window.VP_PREVIEW = true;</script>\n')
+    wr(os.path.join(out, "klient", "index.html"), h)
     # старый адрес дома ведёт на главную (с тем же #rabota=/#komnata=)
     wr(os.path.join(out, "dom", "index.html"), '<!DOCTYPE html>\n<html lang="ru"><head><meta charset="UTF-8">\n' + noindex +
        '<title>Закрытая витрина</title>\n<script>location.replace("../" + location.search + location.hash);</script>\n'
