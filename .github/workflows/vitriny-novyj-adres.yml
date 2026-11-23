@@ -1,0 +1,55 @@
+# Сразу после каждой правки витрин в main (наши PR и публикации мастера из Мастерской) собирает сайт витрин
+# и публикует его на новом адресе https://vitrina-mastera.github.io/ (репозиторий vitrina-mastera/vitrina-mastera.github.io).
+# Запись в тот репозиторий - ключом развёртывания: секрет VITRINY_DEPLOY_KEY здесь, открытая часть ключа - там
+# (Settings - Deploy keys, с правом записи). Без секрета шаги публикации пропускаются, ошибки нет.
+# Запасной путь: действие obnovlenie-vitrin.yml в новом репозитории (по расписанию и вручную).
+name: Витрины на новом адресе
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", "src/**", ".github/workflows/vitriny-novyj-adres.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: vitriny-novyj-adres
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HAS_KEY: ${{ secrets.VITRINY_DEPLOY_KEY != '' }}
+    steps:
+      - name: Нет ключа
+        if: env.HAS_KEY != 'true'
+        run: echo "::notice::Секрет VITRINY_DEPLOY_KEY не задан - новый адрес не обновлён (см. site/pereezd/PEREEZD.md)"
+      - uses: actions/checkout@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          path: ishodniki
+          fetch-depth: 1
+      - uses: actions/checkout@v4
+        if: env.HAS_KEY == 'true'
+        with:
+          repository: vitrina-mastera/vitrina-mastera.github.io
+          ref: main
+          path: sajt
+          ssh-key: ${{ secrets.VITRINY_DEPLOY_KEY }}
+      - name: Сборка витрин
+        if: env.HAS_KEY == 'true'
+        run: python3 ishodniki/site/tools/vitriny-vynos.py "$GITHUB_WORKSPACE/sajt"
+      - name: Публикация
+        if: env.HAS_KEY == 'true'
+        working-directory: sajt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "Нечего публиковать"; exit 0; fi
+          git commit -q -m "Обновление витрин ($(git -C ../ishodniki rev-parse --short=12 HEAD))"
+          for i in 1 2 3; do
+            git push && exit 0
+            git pull --rebase -X theirs -q || true
+          done
+          exit 1
