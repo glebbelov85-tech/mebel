@@ -379,7 +379,7 @@
   // Рисует d2.js, а номер страницы, точки и открытие работы ведёт puteshestvie.js (хук window.VP_ZHURNAL).
   if (window.D2_ZH) (function () {
     H.setAttribute("data-d2zh", "1");
-    var stage = $("roomStage"), sc = el("div", "d2-sc"), api = null, room = null, cur = 0, busy = null, drag = null;
+    var stage = $("roomStage"), sc = el("div", "d2-zs"), api = null, room = null, cur = 0, busy = null, drag = null;
     sc.id = "d2scena"; sc.setAttribute("role", "group"); sc.setAttribute("aria-roledescription", "журнал"); sc.setAttribute("aria-label", "Работы в комнате");
     sc.innerHTML = '<div class="d2-sf"><div class="d2-sl a"></div><div class="d2-sl b"></div><i class="d2-sv"></i>' +
       '<div class="d2-sn"><span></span></div><div class="d2-st"><i></i></div>' +
