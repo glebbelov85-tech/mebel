@@ -381,20 +381,30 @@
     home.insertBefore(layer, home.firstChild);
     var reels = $("reels"), ft = home.querySelector(".foot");
     if (reels) reels.classList.add("d2-light"); if (ft) ft.classList.add("d2-light");
-    // "13. Просто": фон (кадр/видео) тянется под весь первый экран вместе с высоким домом, а не на 100vh,
-    // и ниже без резкой границы светлеет в раздел видео (переход - в d2.css, .d2-fade)
+    // "13. Просто": одна тёмная страница. Фон (кадр/видео) тянется под весь первый экран вместе с высоким домом,
+    // а раздел видео и подвал остаются тёмными, со своим медленным фоном из фото работ (.d2-low, стили в d2.css)
     if (PROSTO) {
+      if (reels) reels.classList.remove("d2-light"); if (ft) ft.classList.remove("d2-light");
       var hero0 = home.querySelector(".hero");
-      if (reels) reels.insertAdjacentHTML("afterbegin", '<i class="d2-fade" aria-hidden="true"></i>');
       var kh = function () { if (hero0) layer.style.height = Math.max(innerHeight, hero0.offsetTop + hero0.offsetHeight) + "px"; };
       kh(); addEventListener("resize", kh);
       if (window.ResizeObserver && hero0) new ResizeObserver(kh).observe(hero0);
-      // шапка светлеет, когда под ней уже светлый раздел (иначе сверху остаётся чёрная полоса)
-      var htop0 = home.querySelector(".htop"), fade0 = reels && reels.querySelector(".d2-fade"), ltT = 0;
-      if (htop0 && reels) home.addEventListener("scroll", function () {
-        if (ltT) return;
-        ltT = requestAnimationFrame(function () { ltT = 0; htop0.classList.toggle("d2-light", home.scrollTop + htop0.offsetHeight > reels.offsetTop + (fade0 ? fade0.offsetHeight * .72 : 0)); });
-      }, { passive: true });
+      if (reels) {
+        reels.classList.add("d2-low");
+        var low = el("div", "d2-lbg", '<i class="d2-lglow"></i><i class="d2-lveil"></i>'); low.setAttribute("aria-hidden", "true");
+        reels.insertBefore(low, reels.firstChild);
+        // фото берём с конца списка работ, чтобы не повторять первый экран; грузим, только когда до раздела докрутили
+        var lows = [], ws = D.raboty || [];
+        for (var li = ws.length - 1; li >= 0 && lows.length < 3; li--) { var lf = (ws[li].foto || [])[0]; if (lf && lf.src) lows.push(url(lf.src)); }
+        if (Q === 0) lows = lows.slice(0, 1);
+        var lowOn = function () {
+          lows.forEach(function (c, k) { var s = el("i", "d2-ls"); s.style.backgroundImage = 'url("' + c.replace(/"/g, "%22") + '")'; s.style.setProperty("--k", k); s.style.setProperty("--n", lows.length); low.insertBefore(s, low.firstChild); });
+          low.classList.toggle("one", lows.length === 1);
+          requestAnimationFrame(function () { low.classList.add("on"); });
+        };
+        if (window.IntersectionObserver) new IntersectionObserver(function (es, o) { es.forEach(function (e) { if (e.isIntersecting) { lowOn(); o.disconnect(); } }); }, { rootMargin: "60% 0px" }).observe(reels);
+        else lowOn();
+      }
       // раздел видео проявляется, когда до него докрутили (без IntersectionObserver - сразу виден)
       if (reels) {
         if (window.IntersectionObserver) new IntersectionObserver(function (es, o) { es.forEach(function (e) { if (e.isIntersecting) { reels.classList.add("d2-vis"); o.disconnect(); } }); }, { rootMargin: "0px 0px -18% 0px" }).observe(reels);
