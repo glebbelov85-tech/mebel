@@ -154,7 +154,7 @@ def main():
     assert "/*SITE_VERSION*/null" in sj
     wr(os.path.join(OUT, "shared", "site.js"), sj.replace("/*SITE_VERSION*/null", json.dumps(ver, ensure_ascii=False)))
     wr(os.path.join(OUT, "shared", "mebel-order.js"), ORDER_JS)
-    # Корень сайта - стартовая страница: выбор продукта (Конструктор, Блокнот мастера, Витрины).
+    # Корень сайта - стартовая страница: два раздела, "Инструменты мастера" (instrumenty/) и "Витрины" (vitriny/).
     # Главная Конструктора (сводка, путь заказа, настройки) - в konstruktor/.
     wr(os.path.join(OUT, "index.html"), rd(os.path.join(HERE, "start", "index.html")))
     wr(os.path.join(OUT, "konstruktor", "index.html"), rd(os.path.join(HERE, "home", "index.html")))
@@ -167,6 +167,8 @@ def main():
     shutil.copytree(os.path.join(HERE, "vitrina"), os.path.join(OUT, "vitrina"))
     # Карточка "Витрины" на стартовой странице: экран выбора витрины (мастера, путешествие, Краснодар)
     shutil.copytree(os.path.join(HERE, "vitriny"), os.path.join(OUT, "vitriny"))
+    # Раздел "Инструменты мастера" (2026-11-23): Конструктор и Блокнот мастера
+    shutil.copytree(os.path.join(HERE, "instrumenty"), os.path.join(OUT, "instrumenty"))
     # Закрытая витрина для Краснодара: страница входа по пин-коду + зашифрованные данные и фото (enc/).
     # Внутри - те же витрины вариантов 3 и 4, но данные они получают из расшифровки (zamok.js).
     krasnodar()

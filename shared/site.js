@@ -80,10 +80,10 @@
 
   // --- мелочи ---
   function tool(id) { for (var i = 0; i < TOOLS.length; i++) if (TOOLS[i].id === id) return TOOLS[i]; return null; }
-  function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Конструктор" : id === "start" ? "Главная" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id === "vitrina" ? "Витрина мастера" : id === "vitrina-red" ? "Мастерская витрины" : id === "vitrina-put" ? "Витрина: путешествие" : id === "vitriny" ? "Витрины" : /^(krasnodar|kr-)/.test(id) ? "Витрина для Краснодара" : id; }
+  function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Конструктор" : id === "start" ? "Главная" : id === "instrumenty" ? "Инструменты" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id === "vitrina" ? "Витрина мастера" : id === "vitrina-red" ? "Мастерская витрины" : id === "vitrina-put" ? "Витрина: путешествие" : id === "vitriny" ? "Витрины" : /^(krasnodar|kr-)/.test(id) ? "Витрина для Краснодара" : id; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   // "start" - стартовая страница (корень сайта), "home" - главная Конструктора (konstruktor/, в ней <base href="../">)
-  function root() { return me === "home" || me === "start" ? "./" : me === "vitrina-red" || me === "vitrina-put" || me === "kr-vitrina" || me === "krasnodar" ? "../../" : me === "kr-dizajn" ? "../../../" : "../"; } // krasnodar = вопросы мастеру (krasnodar/master/), kr-dom = главная krasnodar/
+  function root() { return me === "home" || me === "start" ? "./" : me === "vitrina-red" || me === "vitrina-put" || me === "kr-vitrina" || me === "krasnodar" || me === "kr-dizajn-list" || me === "kr-masterskaya" ? "../../" : me === "kr-dizajn" ? "../../../" : "../"; } // krasnodar = вопросы мастеру (krasnodar/master/), kr-dom = главная krasnodar/, kr-dizajn-list = krasnodar/dizajn/, kr-dizajn = krasnodar/dizajn/vN/
   function urlOf(id) { return id === "start" ? root() : root() + (id === "home" ? "konstruktor" : id) + "/"; }
   function money(n, cur) {
     if (window.MebelOrder) return MebelOrder.money(n, cur || MebelOrder.region().currency);
@@ -115,7 +115,7 @@
 
   // --- пометка "Обновление" и подсказка "Доступно обновление" ---
   // VER вшивает build.py при сборке; version.json на сервере - номер самой свежей сборки.
-  var VER = {"v": "20261123062127", "at": "2026-11-23T06:21:27Z", "note": "Витрина Краснодара: ещё 3 варианта дома на фоне Кино (9-11): разрез, окна, силуэт."};
+  var VER = {"v": "20261123150939", "at": "2026-11-23T15:09:39Z", "note": "Витрина Краснодара: ещё 3 варианта дома на фоне Кино (9-11): разрез, окна, силуэт."};
   var MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
   function verDate(v, withTime) {
     var d = v && new Date(v.at);
@@ -232,7 +232,8 @@
     var host = adapter && adapter.mount ? document.querySelector(adapter.mount) : null;
     if (host) el.className = "inline";
     el.innerHTML =
-      '<a class="ms-home" href="' + urlOf("home") + '" title="Все инструменты Конструктора"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 4h8v7H3zM13 4h8v4h-8zM13 10h8v10h-8zM3 13h8v7H3z"/></svg><span>Все инструменты</span></a>' +
+      '<a class="ms-home" href="' + urlOf("home") + '" title="Назад: все инструменты Конструктора">' + BACK + '<span>Конструктор</span></a>' +
+      '<a class="ms-home ms-start" href="' + urlOf("start") + '" title="На главную" aria-label="На главную">' + HOME + '</a>' +
       '<span class="ms-name">' + esc(t ? t.full : "") + "</span>" +
       '<button type="button" class="ms-send" id="msSend" title="Передать заказ в другой инструмент"><svg class="ms-ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M14 4l7 7-7 7v-4c-5 0-8.5 1.6-11 5 1-5 4-10 11-11z"/></svg><span>Передать заказ</span><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg></button>';
     if (host) host.insertBefore(el, host.firstChild); else document.body.insertBefore(el, document.body.firstChild);
@@ -326,7 +327,7 @@
   var NAV = [
     [/калькулятор|расчет|посчитать|смет/, "kalkulyator"], [/конфигуратор/, "konfigurator"],
     [/(^|\s)кп(\s|$)|коммерческ|договор|pdf|пдф/, "kp"], [/раскро|распил|раскладк/, "raskroy"],
-    [/учет|заказы|список заказов|журнал/, "zakazy"], [/блокнот|вариант (2|два)|второй вариант/, "bloknot"], [/витрин|вариант (3|три)|третий вариант/, "vitriny"], [/главн|(^|\s)домой|начальн|выбор продукт|стартов/, "start"], [/все инструменты|меню сайта|конструктор|основно[йм] продукт|вариант (1|один)|первый вариант/, "home"]
+    [/учет|заказы|список заказов|журнал/, "zakazy"], [/блокнот|вариант (2|два)|второй вариант/, "bloknot"], [/витрин|вариант (3|три)|третий вариант/, "vitriny"], [/главн|(^|\s)домой|начальн|выбор продукт|стартов/, "start"], [/^(все )?инструменты( мастера)?$/, "instrumenty"], [/меню сайта|конструктор|основно[йм] продукт|вариант (1|один)|первый вариант/, "home"]
   ];
   var VSTOP = { "нажми": 1, "нажать": 1, "кликни": 1, "кнопку": 1, "кнопка": 1, "на": 1, "открой": 1, "вкладку": 1, "вкладка": 1, "перейди": 1, "в": 1, "во": 1, "выбери": 1, "включи": 1, "пожалуйста": 1, "давай": 1, "покажи": 1, "раздел": 1, "пункт": 1 };
   function vn(t) { return String(t || "").toLowerCase().replace(/ё/g, "е").replace(/[.,!?;:"«»]/g, " ").replace(/\s+/g, " ").trim(); }
@@ -440,31 +441,97 @@
     try { if (localStorage.getItem("ms-voice-open") === "1") show(true); } catch (e) {}
   }
 
-  // --- переключатель вариантов: любой <nav data-variants> заполняется сам ---
+  // --- навигация: любой <nav data-variants> заполняется сам ---
   function variantOf(page) { for (var i = 0; i < VARIANTS.length; i++) if (VARIANTS[i].pages.indexOf(page) >= 0) return VARIANTS[i]; return VARIANTS[0]; }
   function variantUrl(v) { return root() + v.path; }
   // Продукты разделены (просьба Александра, 2026-11-21): переходы между ними - только через
-  // стартовую страницу. Внутри продукта ни вкладок, ни полосы с другими продуктами нет -
-  // <nav data-variants> превращается в небольшую кнопку "На главную" (а у витрин ещё "Все витрины").
+  // стартовую страницу и разделы. Внутри продукта вкладок с другими продуктами нет.
   function prodOf(page) { if (page === "vitriny") return "vg"; var v = variantOf(page); return v.group || v.id; }
-  function sameProduct(id) { return me === "start" || id === "start" || prodOf(me) === prodOf(id); }
-  var BACK = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M14.7 5.3a1 1 0 0 1 0 1.4L9.4 12l5.3 5.3a1 1 0 0 1-1.4 1.4l-6-6a1 1 0 0 1 0-1.4l6-6a1 1 0 0 1 1.4 0z"/></svg>';
-  function variantsNav() {
-    var cur = me === "vitriny" ? VG : variantOf(me);
-    [].forEach.call(document.querySelectorAll("[data-variants]"), function (el) {
-      el.classList.add("ms-prod");
-      el.setAttribute("aria-label", "Переход");
-      var h = '<a class="ms-back" href="' + esc(root()) + '" title="К выбору продукта">' + BACK + "<span>На главную</span></a>";
-      if (cur.group) h += '<a class="ms-back ms-up" href="' + esc(root() + VG.path) + '" title="К выбору витрины"><span>Все витрины</span></a>';
-      el.innerHTML = h;
-    });
+  function sameProduct(id) { return me === "start" || me === "instrumenty" || id === "start" || id === "instrumenty" || prodOf(me) === prodOf(id); }
+  // Дерево сайта (2026-11-23, просьба Александра: понятный путь и везде "назад" и "на главную").
+  //   Главная -> Инструменты -> Конструктор (калькулятор, конфигуратор, КП, раскрой, учёт) / Блокнот мастера
+  //   Главная -> Витрины -> Витрина мастера (-> Мастерская витрины) / Путешествие по дому /
+  //                         Витрина для Краснодара (-> Варианты дизайна -> Вариант N, Мастерская, Вопросы и правки)
+  // [название, адрес от корня сайта, родитель]
+  var TREE = {
+    start: ["Главная", "", null],
+    instr: ["Инструменты", "instrumenty/", "start"],
+    home: ["Конструктор", "konstruktor/", "instr"],
+    bloknot: ["Блокнот мастера", "bloknot/", "instr"],
+    vitriny: ["Витрины", "vitriny/", "start"],
+    vitrina: ["Витрина мастера", "vitrina/", "vitriny"],
+    "vitrina-red": ["Мастерская витрины", "vitrina/redaktor/", "vitrina"],
+    "vitrina-put": ["Путешествие по дому", "vitrina/puteshestvie/", "vitriny"],
+    kr: ["Витрина для Краснодара", "krasnodar/", "vitriny"],
+    "kr-dz": ["Варианты дизайна", "krasnodar/dizajn/", "kr"],
+    "kr-v": ["Вариант", "", "kr-dz"],
+    "kr-ms": ["Мастерская", "krasnodar/masterskaya/", "kr"],
+    "kr-q": ["Вопросы и правки", "krasnodar/master/", "kr"],
+    "kr-calc": ["Расчёт", "krasnodar/vitrina/", "kr"]
+  };
+  var NODE = { start: "start", instrumenty: "instr", home: "home", bloknot: "bloknot", vitriny: "vitriny", vitrina: "vitrina", "vitrina-red": "vitrina-red", "vitrina-put": "vitrina-put",
+    "kr-dom": "kr", "kr-dizajn-list": "kr-dz", "kr-dizajn": "kr-v", "kr-masterskaya": "kr-ms", krasnodar: "kr-q", "kr-vitrina": "kr-calc" };
+  function nodeName(id) {
+    if (id === "kr-v") { var m = /\/v(\d+)\/?$/.exec(location.pathname.replace(/index\.html$/, "")); return "Вариант" + (m ? " " + m[1] : ""); }
+    // мастер из Краснодара (без пометки "мастер сайта") видит только свою витрину - для него она просто "Витрина"
+    if (id === "kr" && !isStaff()) return "Витрина";
+    return TREE[id][0];
   }
+  // путь от текущей страницы вверх: [текущая, родитель, ..., верх]
+  function trail() {
+    var id = NODE[me] || (tool(me) ? "home" : null), out = [];
+    if (!id) return out;
+    if (tool(me)) out.push({ id: me, name: tool(me).full, href: "" });
+    var staff = isStaff();
+    while (id) {
+      out.push({ id: id, name: nodeName(id), href: root() + TREE[id][1] });
+      if (id === "kr" && !staff) break; // мастеру Краснодара остальной сайт не показываем
+      id = TREE[id][2];
+    }
+    return out;
+  }
+  var BACK = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M14.7 5.3a1 1 0 0 1 0 1.4L9.4 12l5.3 5.3a1 1 0 0 1-1.4 1.4l-6-6a1 1 0 0 1 0-1.4l6-6a1 1 0 0 1 1.4 0z"/></svg>';
+  var HOME = '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 3.2 2.6 11H5v9h5.5v-6h3v6H19v-9h2.4z"/></svg>';
+  function navCss() {
+    if (document.getElementById("msNavCss")) return;
+    var st = document.createElement("style"); st.id = "msNavCss";
+    // цвета от currentColor: одна и та же кнопка читается и на тёмной шапке, и на светлой
+    st.textContent = ".ms-prod{display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%;min-width:0;font:600 13.5px/1.2 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;letter-spacing:0;text-transform:none}" +
+      ".ms-prod a{flex:none;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:5px 13px 5px 9px;color:inherit;text-decoration:none;white-space:nowrap;border:1px solid rgba(127,127,127,.4);border:1px solid color-mix(in srgb,currentColor 28%,transparent);border-radius:999px;background:color-mix(in srgb,currentColor 7%,transparent);transition:background .15s,border-color .15s}" +
+      ".ms-prod a:hover{background:color-mix(in srgb,currentColor 15%,transparent);border-color:color-mix(in srgb,currentColor 45%,transparent)}" +
+      ".ms-prod a:focus-visible{outline:2px solid currentColor;outline-offset:2px}" +
+      ".ms-prod a.ms-hm{padding-left:11px}.ms-prod svg{flex:none}" +
+      ".ms-prod .ms-where{margin-left:6px;font-weight:500;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}" +
+      ".ms-prod .ms-where b{font-weight:700;opacity:1}" +
+      "@media(max-width:899px){.ms-prod .ms-where{display:none}}" +
+      "@media(max-width:480px){.ms-prod a.ms-hm span{display:none}.ms-prod a.ms-hm{padding:5px 11px}}";
+    document.head.appendChild(st);
+  }
+  // Кнопки: "← Родитель" (на уровень выше) и "Главная" (если она не совпадает с родителем),
+  // на широком экране ещё строка "где вы": Витрины › Краснодар › Вариант 9.
+  function navHTML() {
+    var t = trail();
+    if (t.length < 2) return "";
+    var up = t[1], top = t[t.length - 1], h = "";
+    h += '<a class="ms-back" href="' + esc(up.href) + '" title="Назад: ' + esc(up.name) + '" aria-label="Назад: ' + esc(up.name) + '">' + BACK + "<span>" + esc(up.name) + "</span></a>";
+    if (top !== up) h += '<a class="ms-back ms-hm" href="' + esc(top.href) + '" title="На главную">' + HOME + "<span>" + (top.id === "start" ? "Главная" : esc(top.name)) + "</span></a>";
+    if (t.length > 2) h += '<span class="ms-where">' + t.slice(0, -1).reverse().map(function (x, i, a) { return i === a.length - 1 ? "<b>" + esc(x.name) + "</b>" : esc(x.name); }).join(" › ") + "</span>";
+    return h;
+  }
+  function navInto(el) {
+    if (!el) return;
+    navCss();
+    el.classList.add("ms-prod");
+    el.setAttribute("aria-label", "Переход");
+    el.innerHTML = navHTML();
+  }
+  function variantsNav() { [].forEach.call(document.querySelectorAll("[data-variants]"), navInto); }
 
   // --- запуск ---
   function start() {
     variantsNav();
     watchUpdates();
-    if (me === "home" || me === "vitriny") { setStaff(); voicePanel(); return; }
+    if (me === "home" || me === "vitriny" || me === "instrumenty") { setStaff(); voicePanel(); return; }
     // стартовая страница: выбор продукта, голос - общий
     if (me === "start") { setStaff(); voicePanel(); return; }
     // Блокнот мастера - отдельный продукт со своей шапкой: без полоски "Передать заказ", голос - общий
@@ -472,7 +539,7 @@
     // Витрина - страница для клиентов: ничего не добавляем и мастером не помечаем. Мастерская витрины - для мастера.
     if (me === "vitrina" || me === "vitrina-put") return;
     // Закрытая витрина для Краснодара: страница для одного мастера, вход по пин-коду - тоже ничего не добавляем
-    if (me === "krasnodar" || me === "kr-vitrina" || me === "kr-dom" || me === "kr-dizajn") return;
+    if (/^(krasnodar|kr-)/.test(me)) return;
     if (me === "vitrina-red") { setStaff(); return; }
     var fromHub = /[?&]from=/.test(location.search);
     // конфигуратор - страница для клиента: полоску видит только мастер (кто уже заходил на сайт)
@@ -483,7 +550,7 @@
   window.MebelSite = {
     TOOLS: TOOLS, tool: tool, toolName: toolName, read: read, write: write, clear: clear,
     summary: summary, ago: ago, money: money, toast: toast, saveFile: saveFile, urlOf: urlOf, isStaff: isStaff,
-    voiceNav: voiceNav, version: VER, VARIANTS: VARIANTS, sameProduct: sameProduct, TABS: TABS, VG: VG, variantOf: variantOf, variantUrl: variantUrl, checkUpdate: checkUpdate, terms: openTerms, sign: SIGN,
+    voiceNav: voiceNav, version: VER, VARIANTS: VARIANTS, sameProduct: sameProduct, TABS: TABS, VG: VG, variantOf: variantOf, variantUrl: variantUrl, nav: navInto, trail: trail, checkUpdate: checkUpdate, terms: openTerms, sign: SIGN,
     register: function (a) {
       adapter = a || {};
       if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
@@ -491,7 +558,7 @@
     }
   };
   // страница без адаптера (главная) запускается сама
-  if (me === "home" || me === "start" || me === "vitriny" || me === "vitrina" || me === "vitrina-red" || me === "vitrina-put" || me === "krasnodar" || me === "kr-vitrina" || me === "kr-dom" || me === "kr-dizajn") {
+  if (me === "home" || me === "start" || me === "vitriny" || me === "vitrina" || me === "vitrina-red" || me === "vitrina-put" || me === "instrumenty" || /^(krasnodar|kr-)/.test(me)) {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
   }
 })();

@@ -70,6 +70,7 @@ a{color:inherit}
 .top .sp{flex:1}
 .pill{display:inline-flex;align-items:center;min-height:38px;padding:0 15px;border-radius:999px;border:1px solid var(--line);font-size:14px;font-weight:700;text-decoration:none;color:var(--muted);transition:color .2s,border-color .2s}
 .pill:hover{color:var(--ink);border-color:#55555c}
+.top .ms-prod{color:var(--ink)}
 .eb{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--acc);font-weight:800}
 h1{font-family:Playfair,"Cormorant Garamond",Georgia,serif;font-weight:400;font-size:clamp(34px,5vw,58px);line-height:1.02;margin:6px 0 10px}
 .lead{color:var(--muted);max-width:720px;font-size:clamp(15px,1.5vw,17px)}
@@ -121,15 +122,10 @@ h1{font-family:Playfair,"Cormorant Garamond",Georgia,serif;font-weight:400;font-
 </head>
 <body>
 <div class="wrap">
-  <div class="top">
-    <a class="pill" href="../">← Текущая витрина</a>
-    <span class="sp"></span>
-    <a class="pill" href="../masterskaya/">Мастерская</a>
-    <a class="pill" href="../master/">Вопросы и правки</a>
-  </div>
+  <div class="top"><nav data-variants></nav></div>
   <div class="eb">Пробные варианты</div>
   <h1>Как может выглядеть путешествие по дому</h1>
-  <p class="lead">Одиннадцать оформлений главной. Работы, комнаты и тексты везде одни и те же, текущую витрину не меняли. Внутри любого варианта слева внизу есть переключатель: стрелками можно листать варианты на одном и том же экране.</p>
+  <p class="lead">Одиннадцать оформлений главной. Работы, комнаты и тексты везде одни и те же, текущую витрину не меняли. Откройте вариант, посмотрите и вернитесь сюда кнопкой "← Варианты дизайна" - она вверху каждого варианта.</p>
 
   <div class="sec"><h2>Кино: другой дом</h2><span>новые, 9-11: фон из "Кино", дом и комнаты по-новому</span></div>
   <p class="lead" style="margin-top:14px">По отзыву на "Кино": без лишней стены сбоку, комнаты одного размера ровными рядами, фото не растягиваются.</p>
@@ -174,7 +170,6 @@ h1{font-family:Playfair,"Cormorant Garamond",Georgia,serif;font-weight:400;font-
         <p>Почти архитектурный чертёж: тонкий контур дома, фото в окнах чёрно-белые и оживают в цвете при наведении. Самый минималистичный.</p>
         <span class="ln">Открыть</span></div></a>
   </div>
-  <a class="ms" href="../masterskaya/"><b>Мастерская</b><p>Для мастера: поправить "О мастере" и контакты, загрузить свой знак, добавить работы, фото и видео. Водяной знак ставится сам.</p><span class="ln">Открыть</span></a>
 
   <div class="sec"><h2>Первые варианты</h2><span>1-4, оставлены для сравнения</span></div>
   <div class="grid">
@@ -220,7 +215,7 @@ h1{font-family:Playfair,"Cormorant Garamond",Georgia,serif;font-weight:400;font-
   <div class="box">
     <h2>Что нового из современных приёмов</h2>
     <ul>
-      <li>Смена дизайна и времени суток - кругом от нажатой кнопки (View Transitions, как в новых приложениях).</li>
+      <li>Смена времени суток - кругом от нажатой кнопки (View Transitions, как в новых приложениях).</li>
       <li>Видео-лента въезжает при прокрутке силами самого браузера, без лишнего кода (scroll-driven animations).</li>
       <li>Слои фона с глубиной: при прокрутке и движении мыши ближние слои двигаются быстрее дальних (параллакс).</li>
       <li>Частицы света, листья и снег на canvas - сотни кадров без нагрузки на страницу.</li>
@@ -229,5 +224,7 @@ h1{font-family:Playfair,"Cormorant Garamond",Georgia,serif;font-weight:400;font-
   </div>
   <p class="foot">Разработка в тестовом режиме. Все права защищены.</p>
 </div>
+<script>window.MEBEL_TOOL = "kr-dizajn-list";</script>
+<script src="../../shared/site.js"></script>
 </body>
 </html>

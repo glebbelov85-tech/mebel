@@ -462,7 +462,7 @@
   function renderToDom() {
     var href = "";
     if (window.MEBEL_TOOL === "kr-vitrina") href = "../dom/";
-    else { try { href = sessionStorage.getItem("vp-dom") || ""; } catch (e) {} }
+    else { try { href = sessionStorage.getItem("vp-dom") || ""; } catch (e) {} if (!/\/vitrina\/puteshestvie\//.test(href)) href = ""; } // из закрытой витрины в открытую не ведём
     if (!href) return;
     var a = $("toDom"); a.href = href; a.hidden = false;
   }

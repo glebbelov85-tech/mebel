@@ -113,13 +113,14 @@ h2{font-family:var(--serif);font-weight:400;font-size:clamp(22px,2.6vw,30px);lin
 .busy .pb i{display:block;height:100%;width:0;background:var(--ink)}
 .busy span{color:var(--muted);font-size:14px;max-width:420px}
 @media (max-width:760px){.g2,.wm-grid{grid-template-columns:1fr}.brand b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:18px}.brand .bk{letter-spacing:.12em;flex:none}}
+.brand nav.kn{margin-left:auto;color:var(--ink);flex-wrap:nowrap;flex:none}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <header class="top">
   <div class="top-in">
-    <div class="brand"><i id="logoTop" hidden></i><b id="nmTop">Мастерская</b><a class="bk" href="../">← К витрине</a></div>
+    <div class="brand"><i id="logoTop" hidden></i><b id="nmTop">Мастерская</b><nav class="kn" data-variants></nav></div>
     <nav class="tabs" role="tablist" aria-label="Разделы Мастерской">
       <button type="button" role="tab" aria-selected="true" data-t="master">О мастере</button>
       <button type="button" role="tab" aria-selected="false" data-t="lenta">Лента<i id="cntL"></i></button>
@@ -131,6 +132,8 @@ h2{font-family:var(--serif);font-weight:400;font-size:clamp(22px,2.6vw,30px);lin
 <main id="main"></main>
 <div class="toast" id="toast" role="status"></div>
 <div class="busy" id="busy" hidden role="alertdialog" aria-live="polite"><b id="busyT">Готовлю видео</b><div class="pb"><i id="busyP"></i></div><span id="busyS"></span><button type="button" class="btn l sm" id="busyX">Остановить</button></div>
+<script>window.MEBEL_TOOL = "kr-masterskaya";</script>
+<script src="../../shared/site.js"></script>
 <script src="../zamok.js"></script>
 <script>KrZamok.page({ scripts: ["masterskaya.js"], back: "none" });</script>
 </body>

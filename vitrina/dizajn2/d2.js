@@ -372,19 +372,7 @@
       .observe(floors, { subtree: true, attributes: true, attributeFilter: ["class"] });
   }
 
-  // ---------- пробные страницы: переход между вариантами ----------
-  var TRY = window.D2_TRY;
-  if (TRY && TRY.list) {
-    var i = -1; TRY.list.forEach(function (x, k) { if (x.n === TRY.n) i = k; });
-    var pv = TRY.list[(i - 1 + TRY.list.length) % TRY.list.length], nx = TRY.list[(i + 1) % TRY.list.length], me = TRY.list[i] || {};
-    var bar = el("nav", "d2-try");
-    bar.setAttribute("aria-label", "Пробные варианты");
-    bar.innerHTML = '<button type="button" class="d2-tt" aria-expanded="false" title="Другие варианты"><span class="lg">Вариант </span>' + me.n + "</button>" +
-      '<div class="d2-tm"><a href="../v' + pv.n + '/" title="' + esc(pv.name) + '">← ' + pv.n + '</a><a href="#" data-x><b>' + me.n + '</b><span class="lg">&nbsp;· ' + esc(me.name) + '</span></a><a href="../v' + nx.n + '/" title="' + esc(nx.name) + '">' + nx.n + ' →</a><a href="../">Все</a><a href="#" data-vhod title="Показать вход ещё раз">Вход</a></div>';
-    var tt = bar.querySelector(".d2-tt");
-    tt.onclick = function () { var o = bar.classList.toggle("open"); tt.setAttribute("aria-expanded", o); };
-    bar.querySelector("[data-x]").onclick = function (e) { e.preventDefault(); bar.classList.remove("open"); tt.setAttribute("aria-expanded", "false"); };
-    bar.querySelector("[data-vhod]").onclick = function (e) { e.preventDefault(); try { localStorage.removeItem("vp-byl"); } catch (x) {} location.reload(); };
-    B.appendChild(bar);
-  }
+  // ---------- пробные страницы ----------
+  // Варианты открываются по одному (просьба Александра, 2026-11-23): листать варианты внутри варианта
+  // больше нельзя. Вернуться к списку - кнопка "← Варианты дизайна" в полосе сверху (#staff, shared/site.js).
 })();
