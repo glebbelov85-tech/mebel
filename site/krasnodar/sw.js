@@ -23,9 +23,12 @@ function getKey() {
   });
 }
 function mime(buf) {
-  var u = new Uint8Array(buf, 0, 12);
+  var u = new Uint8Array(buf, 0, Math.min(16, buf.byteLength));
   if (u[0] === 0x89 && u[1] === 0x50) return "image/png";
   if (u[8] === 0x57 && u[9] === 0x45 && u[10] === 0x42 && u[11] === 0x50) return "image/webp";
+  if (u[4] === 0x66 && u[5] === 0x74 && u[6] === 0x79 && u[7] === 0x70) return "video/mp4"; // ....ftyp
+  if (u[0] === 0x1A && u[1] === 0x45 && u[2] === 0xDF && u[3] === 0xA3) return "video/webm";
+  if (u[0] === 0x3C) return "image/svg+xml"; // "<svg" или "<?xml"
   return "image/jpeg";
 }
 function photo(id) {
@@ -55,8 +58,16 @@ self.addEventListener("fetch", function (e) {
   if (u.href.indexOf(BASE + "f/") !== 0) return;
   var m = /f\/([0-9a-f]{8,})\.jpg$/.exec(u.pathname);
   if (!m) return;
+  var range = e.request.headers.get("range");
   e.respondWith(photo(m[1]).then(function (it) {
-    return new Response(it.body.slice(0), { headers: { "Content-Type": it.type, "Cache-Control": "no-store" } });
+    // видео: Safari просит файл кусками (Range) и без ответа 206 не играет
+    var r = range && /^bytes=(\d*)-(\d*)$/.exec(range), n = it.body.byteLength;
+    if (r && (r[1] || r[2])) {
+      var a = r[1] ? +r[1] : Math.max(0, n - +r[2]), b = r[1] && r[2] ? Math.min(+r[2], n - 1) : n - 1;
+      if (a >= n || a > b) return new Response("", { status: 416, headers: { "Content-Range": "bytes */" + n } });
+      return new Response(it.body.slice(a, b + 1), { status: 206, headers: { "Content-Type": it.type, "Content-Range": "bytes " + a + "-" + b + "/" + n, "Content-Length": String(b - a + 1), "Accept-Ranges": "bytes", "Cache-Control": "no-store" } });
+    }
+    return new Response(it.body.slice(0), { headers: { "Content-Type": it.type, "Accept-Ranges": "bytes", "Cache-Control": "no-store" } });
   }).catch(function () {
     return new Response("", { status: 403 });
   }));
