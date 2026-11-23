@@ -157,9 +157,35 @@
       var tg = r.querySelector(".tags span"), n = tg ? parseInt(tg.textContent, 10) : 0;
       if (n) t.querySelector("b").insertAdjacentHTML("afterend", '<i class="d2n">' + (n < 10 ? "0" : "") + n + "</i>");
     });
-    build3D();
+    layout(); build3D();
   }
   new MutationObserver(decorRooms).observe(floors, { childList: true });
+
+  // ---------- другие формы дома (window.D2_DOM, варианты 9-11) ----------
+  // razrez - дом в разрезе: ровная сетка одинаковых комнат, в каждой фото висит как картина в раме;
+  // okna   - фасад с одинаковыми окнами, фото - за стеклом и чуть сдвигается при повороте (как будто смотришь в комнату);
+  // siluet - дом контуром, внутри названия комнат; фото комнаты при наведении (на телефоне - при прокрутке) - на весь фон.
+  // Комнаты одного размера, по порядку из dannye.js: на компьютере 4 в ряд, на телефоне 2.
+  var DOM = { razrez: 1, okna: 1, siluet: 1 }[window.D2_DOM] ? window.D2_DOM : "";
+  if (DOM) H.setAttribute("data-d2dom", DOM);
+  var NARROW = mm("(max-width: 640px)");
+  function layout() {
+    if (!DOM) return;
+    var rs = [].slice.call(floors.querySelectorAll(".room")), n = rs.length;
+    if (!n) return;
+    var cols = NARROW.matches ? 2 : n <= 4 ? n : n % 4 === 0 || n > 9 ? 4 : n % 3 === 0 ? 3 : 4;
+    var rem = n % cols, full = n - rem;
+    floors.style.gridTemplateColumns = "repeat(" + cols + ",minmax(0,1fr))";
+    floors.classList.toggle("r4", Math.ceil(n / cols) > 3);
+    rs.forEach(function (r, i) {
+      r.style.gridRow = String(Math.floor(i / cols) + 1);
+      var span = 1;
+      if (rem && i >= full) span = cols % rem === 0 ? cols / rem : (i === n - 1 ? cols - rem + 1 : 1); // неполный последний ряд - без дыр
+      r.style.gridColumn = "auto / span " + span;
+      r.style.setProperty("--i", i);
+    });
+  }
+  if (NARROW.addEventListener) NARROW.addEventListener("change", function () { layout(); build3D(); });
 
   // ---------- объёмный дом ----------
   var F = {}; // грани: wl, wr - боковые стены; sl, sr - скаты крыши; gr - тень на земле
@@ -188,17 +214,18 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(build3D);
 
   // поворот: мышь (компьютер), лёгкое покачивание и прокрутка (телефон), разворот при входе
-  var RY0 = -14, RX0 = -3;
+  var RY0 = -14, RX0 = -3, AMP = DOM === "okna" ? .45 : DOM === "siluet" ? .5 : 1; // фасад и контур поворачиваются меньше
+  if (DOM === "okna") RY0 = -5; else if (DOM === "siluet") RY0 = -8;
   var cur = { ry: RY0, rx: RX0, tz: 0 }, ptr = null, raf = 0, last = 0, intro = null, live = true;
   function ease4(t) { return 1 - Math.pow(1 - t, 4); }
   function target(now) {
     var ry = RY0, rx = RX0, tz = 0;
-    if (ptr && FINE) { ry += (ptr.x - .5) * -24; rx += (ptr.y - .5) * 7; }
+    if (ptr && FINE) { ry += (ptr.x - .5) * -24 * AMP; rx += (ptr.y - .5) * 7 * AMP; }
     else if (!FINE) {
       var s = Math.min(1.2, home.scrollTop / Math.max(1, innerHeight));
-      ry += s * 14; rx -= s * 7;
-      if (Q >= 2) ry += Math.sin(now / 2300) * 5;
-    } else if (Q >= 2) ry += Math.sin(now / 2600) * 4;
+      ry += s * 14 * AMP; rx -= s * 7 * AMP;
+      if (Q >= 2) ry += Math.sin(now / 2300) * 5 * AMP;
+    } else if (Q >= 2) ry += Math.sin(now / 2600) * 4 * AMP;
     if (intro) {
       var k = Math.min(1, (now - intro.t0) / intro.dur), e = ease4(k);
       ry = -58 + (ry + 58) * e; rx = -14 + (rx + 14) * e; tz = -240 * (1 - e);
@@ -208,6 +235,10 @@
   }
   function apply() {
     house.style.transform = "translateZ(" + cur.tz.toFixed(1) + "px) rotateX(" + cur.rx.toFixed(2) + "deg) rotateY(" + cur.ry.toFixed(2) + "deg)";
+    if (DOM === "okna") { // фото за стеклом сдвигается против поворота - глубина комнаты
+      house.style.setProperty("--px", Math.max(-1, Math.min(1, (cur.ry - RY0) / 12)).toFixed(3));
+      house.style.setProperty("--py", Math.max(-1, Math.min(1, (cur.rx - RX0) / 4)).toFixed(3));
+    }
   }
   var slow = 0, frames = 0;
   function frame(now) {
@@ -246,8 +277,8 @@
   document.addEventListener("visibilitychange", loopCheck);
   apply();
 
-  // ---------- "Линия": контур фронтона ----------
-  if (tema === "liniya") {
+  // ---------- "Линия" и "Силуэт": контур фронтона ----------
+  if (tema === "liniya" || DOM === "siluet") {
     roof.insertAdjacentHTML("afterbegin", '<svg class="d2-rl" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points="50,0.8 99.6,99.6 0.4,99.6" vector-effect="non-scaling-stroke"/></svg>');
   }
 
@@ -311,6 +342,34 @@
       covers.forEach(function (c, i) { var s = el("i", "d2-ks"); s.style.backgroundImage = 'url("' + c.replace(/"/g, "%22") + '")'; s.style.setProperty("--k", i); bg.appendChild(s); });
       layer.classList.add("vid", "slides");
     }
+  }
+
+  // ---------- "Силуэт": фото комнаты на весь фон ----------
+  if (DOM === "siluet") {
+    var host = home.querySelector(".d2-kino") || home, rph = el("div", "d2-rph"), shown = null, hideT = 0;
+    rph.setAttribute("aria-hidden", "true");
+    var veil = host.querySelector(".d2-veil"); if (veil) host.insertBefore(rph, veil); else host.appendChild(rph);
+    var LAY = {};
+    function photoOf(r) { var ph = r.querySelector(".ph"); return ph && ph.style.backgroundImage; }
+    function showRoom(r) {
+      clearTimeout(hideT);
+      if (r === shown) return; shown = r;
+      [].forEach.call(floors.querySelectorAll(".room"), function (x) { x.classList.toggle("d2-on", x === r); });
+      home.classList.toggle("d2-rph-on", !!r);
+      var bgi = r && photoOf(r);
+      [].forEach.call(rph.children, function (x) { x.classList.remove("on"); });
+      if (!bgi) return;
+      var k = r.getAttribute("aria-label") || bgi, lay = LAY[k];
+      if (!lay) { lay = LAY[k] = el("i"); lay.style.backgroundImage = bgi; rph.appendChild(lay); }
+      void lay.offsetWidth; lay.classList.add("on");
+    }
+    floors.addEventListener("pointerover", function (e) { if (e.pointerType !== "mouse") return; var r = e.target.closest(".room:not(.empty)"); if (r) showRoom(r); });
+    floors.addEventListener("pointerleave", function (e) { if (e.pointerType !== "mouse") return; hideT = setTimeout(function () { showRoom(null); }, 350); });
+    floors.addEventListener("focusin", function (e) { var r = e.target.closest(".room:not(.empty)"); if (r) showRoom(r); });
+    floors.addEventListener("focusout", function () { hideT = setTimeout(function () { if (!floors.contains(document.activeElement)) showRoom(null); }, 200); });
+    // телефон: puteshestvie.js отмечает .lit комнату посередине экрана при прокрутке
+    new MutationObserver(function () { if (FINE) return; var l = floors.querySelector(".room.lit"); showRoom(l && home.scrollTop > 40 ? l : null); })
+      .observe(floors, { subtree: true, attributes: true, attributeFilter: ["class"] });
   }
 
   // ---------- пробные страницы: переход между вариантами ----------
