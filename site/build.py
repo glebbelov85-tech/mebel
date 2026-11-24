@@ -115,7 +115,7 @@ def krasnodar():
           (14, "kino", "Просто: поворот", "linii")]  # v14 (пробный, 2026-11-23): дом 13-го можно поворачивать (D2_3D)  # v12 (выбор Александра): основа 10, дом линиями из 11, комнаты как в 6, журнал-"сцена"
     d2try = json.dumps({"list": [{"n": n, "name": nm} for n, _, nm, _ in d2]}, ensure_ascii=False)
     for n, t, nm, dom in d2:
-        h = locked(v4, "kr-dizajn", ["../../../vitrina/risunki.js", "../../../vitrina/dizajn2/d2.js", "../../../vitrina/puteshestvie/puteshestvie.js"], [
+        h = locked(v4, "kr-dizajn", ["../../../vitrina/risunki.js", "../../../vitrina/dizajn2/shrifty.js", "../../../vitrina/dizajn2/d2.js", "../../../vitrina/puteshestvie/puteshestvie.js"], [
             ('href="../../shared/site.css"', 'href="../../../shared/site.css"'),
             ('href="../redaktor/"', 'href="../../../vitrina/redaktor/"'),
             ('href="../#raschet"', 'href="../../vitrina/#raschet"'),
@@ -128,7 +128,7 @@ def krasnodar():
         wr(os.path.join(out, "dizajn", "v%d" % n, "index.html"), h)
     # Чистый вход для клиента (2026-11-23, просьба Александра): krasnodar/klient/ - вариант 13 "Просто" без служебной
     # полосы ("Варианты дизайна", путь, пометка "Пробный дизайн"). Пин-код тот же. Страницы сравнения не трогает.
-    h = locked(v4, "kr-klient", ["../../vitrina/risunki.js", "../../vitrina/dizajn2/d2.js", "../../vitrina/puteshestvie/puteshestvie.js"], [
+    h = locked(v4, "kr-klient", ["../../vitrina/risunki.js", "../../vitrina/dizajn2/shrifty.js", "../../vitrina/dizajn2/d2.js", "../../vitrina/puteshestvie/puteshestvie.js"], [
         ('href="../redaktor/"', 'href="../../vitrina/redaktor/"'),
         ('href="../#raschet"', 'href="../vitrina/#raschet"'),
         ('<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">\n', ""),
