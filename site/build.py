@@ -137,6 +137,17 @@ def krasnodar():
         back="none", depth=1, sub=True,
         head='<script>window.D2_TEMA = "kino"; window.D2_DOM = "linii"; window.D2_ZH = true; window.D2_P = true; window.VP_VID = "zhurnal"; window.VP_PREVIEW = true; window.D2_KLIENT = true; window.VP_ZASTAVKA = true;</script>\n')
     wr(os.path.join(out, "klient", "index.html"), h)
+    # Быстрый расчёт для клиента (2026-11-24, пробная версия): krasnodar/raschet/ - шаги "что - размеры - материалы -
+    # наполнение - итог", вилка цены и отправка мастеру. Цены - kalk в данных витрины (Мастерская, вкладка "Цены").
+    # krasnodar/proba/ - копия klient/ с входом в расчёт (пункт меню, кнопка у работы). klient/ не меняется.
+    kt = rd(os.path.join(HERE, "vitrina", "kalk", "index.html"))
+    wr(os.path.join(out, "raschet", "index.html"), locked(kt, "kr-raschet", ["../../vitrina/kalk/kalk-ceny.js", "../../vitrina/kalk/kalk.js"], [
+        ('href="kalk.css"', 'href="../../vitrina/kalk/kalk.css"'),
+        ("<!--stil-->", '<link rel="stylesheet" href="../stil.css">')], back="none", depth=1, sub=True))
+    hp = h.replace('window.MEBEL_TOOL = "kr-klient"', 'window.MEBEL_TOOL = "kr-proba"', 1).replace(
+        '"../../vitrina/puteshestvie/puteshestvie.js"]', '"../../vitrina/puteshestvie/puteshestvie.js", "../../vitrina/kalk/kalk-ceny.js", "../../vitrina/kalk/knopka.js"]', 1)
+    assert hp.count("kr-proba") == 1 and "knopka.js" in hp
+    wr(os.path.join(out, "proba", "index.html"), hp)
     # старый адрес дома ведёт на главную (с тем же #rabota=/#komnata=)
     wr(os.path.join(out, "dom", "index.html"), '<!DOCTYPE html>\n<html lang="ru"><head><meta charset="UTF-8">\n' + noindex +
        '<title>Закрытая витрина</title>\n<script>location.replace("../" + location.search + location.hash);</script>\n'
