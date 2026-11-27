@@ -148,6 +148,15 @@ def krasnodar():
         '"../../vitrina/puteshestvie/puteshestvie.js"]', '"../../vitrina/puteshestvie/puteshestvie.js", "../../vitrina/kalk/kalk-ceny.js", "../../vitrina/kalk/knopka.js"]', 1)
     assert hp.count("kr-proba") == 1 and "knopka.js" in hp
     wr(os.path.join(out, "proba", "index.html"), hp)
+    # Пробная главная "дом на фото" (2026-11-27, по голосовым мастера): krasnodar/novaya/ - копия klient/, но вместо дома
+    # линиями длинное фото дома, комнаты проявляются по мере прокрутки (site/vitrina/dizajn2/foto-dom.js + foto-dom.css),
+    # порядок комнат как просил мастер, ниже фото - белый фон. klient/ не меняется, пока Александр не скажет заменить.
+    hn = h.replace('window.MEBEL_TOOL = "kr-klient"', 'window.MEBEL_TOOL = "kr-novaya"', 1).replace(
+        '"../../vitrina/puteshestvie/puteshestvie.js"]', '"../../vitrina/puteshestvie/puteshestvie.js", "../../vitrina/dizajn2/foto-dom.js"]', 1).replace(
+        '<link rel="stylesheet" href="../../vitrina/dizajn2/d2.css">\n', '<link rel="stylesheet" href="../../vitrina/dizajn2/d2.css">\n<link rel="stylesheet" href="../../vitrina/dizajn2/foto-dom.css">\n', 1).replace(
+        "window.VP_ZASTAVKA = true;", 'window.VP_ZASTAVKA = true; window.D2_FOTO = true; window.VP_PORYADOK = ["spalni", "garderobnye", "vannye", "ofisy", "detali", "gostinye", "kuhni", "prihozhie"];', 1)
+    assert hn.count("kr-novaya") == 1 and "foto-dom.js" in hn and "foto-dom.css" in hn and "D2_FOTO" in hn
+    wr(os.path.join(out, "novaya", "index.html"), hn)
     # старый адрес дома ведёт на главную (с тем же #rabota=/#komnata=)
     wr(os.path.join(out, "dom", "index.html"), '<!DOCTYPE html>\n<html lang="ru"><head><meta charset="UTF-8">\n' + noindex +
        '<title>Закрытая витрина</title>\n<script>location.replace("../" + location.search + location.hash);</script>\n'
