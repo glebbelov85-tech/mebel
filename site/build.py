@@ -152,9 +152,9 @@ def krasnodar():
     # линиями длинное фото дома, комнаты проявляются по мере прокрутки (site/vitrina/dizajn2/foto-dom.js + foto-dom.css),
     # порядок комнат как просил мастер, ниже фото - белый фон. klient/ не меняется, пока Александр не скажет заменить.
     hn = h.replace('window.MEBEL_TOOL = "kr-klient"', 'window.MEBEL_TOOL = "kr-novaya"', 1).replace(
-        '"../../vitrina/puteshestvie/puteshestvie.js"]', '"../../vitrina/puteshestvie/puteshestvie.js", "../../vitrina/dizajn2/foto-dom.js"]', 1).replace(
+        '"../../vitrina/puteshestvie/puteshestvie.js"]', '"../../vitrina/dizajn2/svyaz.js", "../../vitrina/dizajn2/otzyv-forma.js", "../../vitrina/puteshestvie/puteshestvie.js", "../../vitrina/dizajn2/foto-dom.js"]', 1).replace(
         '<link rel="stylesheet" href="../../vitrina/dizajn2/d2.css">\n', '<link rel="stylesheet" href="../../vitrina/dizajn2/d2.css">\n<link rel="stylesheet" href="../../vitrina/dizajn2/foto-dom.css">\n', 1).replace(
-        "window.VP_ZASTAVKA = true;", 'window.VP_ZASTAVKA = true; window.D2_FOTO = true; window.VP_PORYADOK = ["spalni", "garderobnye", "vannye", "ofisy", "detali", "gostinye", "kuhni", "prihozhie"];', 1)
+        "window.VP_ZASTAVKA = true;", 'window.VP_ZASTAVKA = true; window.D2_FOTO = true; window.VP_VNUTRI = true; window.VP_PORYADOK = ["spalni", "garderobnye", "vannye", "ofisy", "detali", "gostinye", "kuhni", "prihozhie"];', 1)
     assert hn.count("kr-novaya") == 1 and "foto-dom.js" in hn and "foto-dom.css" in hn and "D2_FOTO" in hn
     wr(os.path.join(out, "novaya", "index.html"), hn)
     # старый адрес дома ведёт на главную (с тем же #rabota=/#komnata=)
