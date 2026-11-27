@@ -83,7 +83,7 @@
   function toolName(id) { var t = tool(id); return t ? t.name : id === "home" ? "Конструктор" : id === "start" ? "Главная" : id === "instrumenty" ? "Инструменты" : id === "file" ? "Файл" : id === "bloknot" ? "Блокнот мастера" : id === "vitrina" ? "Витрина мастера" : id === "vitrina-red" ? "Мастерская витрины" : id === "vitrina-put" ? "Витрина: путешествие" : id === "vitriny" ? "Витрины" : /^(krasnodar|kr-)/.test(id) ? "Витрина для Краснодара" : id; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   // "start" - стартовая страница (корень сайта), "home" - главная Конструктора (konstruktor/, в ней <base href="../">)
-  function root() { return me === "home" || me === "start" ? "./" : me === "vitrina-red" || me === "vitrina-put" || me === "kr-vitrina" || me === "krasnodar" || me === "kr-dizajn-list" || me === "kr-masterskaya" || me === "kr-klient" || me === "kr-proba" || me === "kr-raschet" ? "../../" : me === "kr-dizajn" ? "../../../" : "../"; } // krasnodar = вопросы мастеру (krasnodar/master/), kr-dom = главная krasnodar/, kr-dizajn-list = krasnodar/dizajn/, kr-dizajn = krasnodar/dizajn/vN/
+  function root() { return me === "home" || me === "start" ? "./" : me === "vitrina-red" || me === "vitrina-put" || me === "kr-vitrina" || me === "krasnodar" || me === "kr-dizajn-list" || me === "kr-masterskaya" || me === "kr-klient" || me === "kr-proba" || me === "kr-novaya" || me === "kr-raschet" ? "../../" : me === "kr-dizajn" ? "../../../" : "../"; } // krasnodar = вопросы мастеру (krasnodar/master/), kr-dom = главная krasnodar/, kr-dizajn-list = krasnodar/dizajn/, kr-dizajn = krasnodar/dizajn/vN/
   function urlOf(id) { return id === "start" ? root() : root() + (id === "home" ? "konstruktor" : id) + "/"; }
   function money(n, cur) {
     if (window.MebelOrder) return MebelOrder.money(n, cur || MebelOrder.region().currency);
@@ -134,7 +134,7 @@
   }
   var lastCheck = 0;
   function checkUpdate() {
-    if (!VER || !window.fetch || location.protocol === "file:" || document.getElementById("msNew") || me === "kr-klient" || me === "kr-proba" || me === "kr-raschet") return; // клиенту мастера служебная подсказка не нужна
+    if (!VER || !window.fetch || location.protocol === "file:" || document.getElementById("msNew") || me === "kr-klient" || me === "kr-proba" || me === "kr-novaya" || me === "kr-raschet") return; // клиенту мастера служебная подсказка не нужна
     if (Date.now() - lastCheck < 60000) return;
     lastCheck = Date.now();
     fetch(root() + "version.json?t=" + Date.now(), { cache: "no-store" })
