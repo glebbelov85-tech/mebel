@@ -19,6 +19,9 @@
 
    Соль не меняется между сборками, если не указать --new-salt (тогда мастер введёт пин заново).
    Фото, которые уже зашифрованы, не перешифровываются (то же имя - тот же файл), лишние .bin удаляются.
+   Открытый вход (с 2026-11-28, по просьбе Александра): скрипт кладёт enc/otkryto.json - готовый ключ AES (тот же,
+   что выводится из пин-кода), и витрина открывается без пин-кода. Вернуть пин-код: запустить с --zakryto
+   (файл удалится; лучше вместе с --new-salt, чтобы старый ключ перестал работать у всех).
    Правки, которые мастер опубликовал сам (enc/m.bin, enc/p.json и фото из m.bin), не удаляются - см. ниже. */
 "use strict";
 const fs = require("fs"), path = require("path"), vm = require("vm"), crypto = require("crypto");
@@ -29,6 +32,7 @@ function opt(name) { const i = args.indexOf(name); if (i < 0) return null; const
 function flag(name) { const i = args.indexOf(name); if (i < 0) return false; args.splice(i, 1); return true; }
 const pinFile = opt("--pin-file") || "/mnt/project-files/krasnodar/pin.txt";
 const newSalt = flag("--new-salt");
+const zakryto = flag("--zakryto");
 const SRC = path.resolve(args[0] || "/mnt/project-files/vitrina-vk");
 const QF = path.resolve(args[1] || "/mnt/project-files/krasnodar/voprosy.json");
 const OUT = path.join(__dirname, "..", "krasnodar", "enc");
@@ -118,9 +122,10 @@ function walk(x) {
 const data = { v: 1, sobrano: new Date().toISOString(), vitrina: walk(V), anketa: Qs };
 fs.writeFileSync(path.join(OUT, "d.bin"), seal(Buffer.from(JSON.stringify(data), "utf8")));
 used.add("d.bin"); used.add("meta.json");
+if (!zakryto) { fs.writeFileSync(path.join(OUT, "otkryto.json"), JSON.stringify({ v: 1, salt: meta.salt, k: aesKey.toString("base64") }) + "\n"); used.add("otkryto.json"); }
 keepSloj.forEach((n) => used.add(n));
 fs.writeFileSync(metaPath, JSON.stringify(meta) + "\n");
 
 let removed = 0;
 for (const n of fs.readdirSync(OUT)) if (!used.has(n)) { fs.unlinkSync(path.join(OUT, n)); removed++; }
-console.log("Зашифровано: работ " + V.raboty.length + ", фото " + (used.size - 2 - keepSloj.size) + " (новых " + fresh + ", удалено старых " + removed + "), " + Math.round(bytes / 1024) + " КБ фото.");
+console.log("Зашифровано: работ " + V.raboty.length + ", фото " + (used.size - 2 - (zakryto ? 0 : 1) - keepSloj.size) + " (новых " + fresh + ", удалено старых " + removed + "), " + Math.round(bytes / 1024) + " КБ фото.");
