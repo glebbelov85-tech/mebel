@@ -157,6 +157,11 @@ def krasnodar():
         "window.VP_ZASTAVKA = true;", 'window.VP_ZASTAVKA = true; window.D2_FOTO = true; window.VP_VNUTRI = true; window.VP_PORYADOK = ["spalni", "garderobnye", "vannye", "ofisy", "detali", "gostinye", "kuhni", "prihozhie"];', 1)
     assert hn.count("kr-novaya") == 1 and "foto-dom.js" in hn and "foto-dom.css" in hn and "D2_FOTO" in hn
     wr(os.path.join(out, "novaya", "index.html"), hn)
+    # 2026-11-28 (Александр: "да"): клиентская ссылка klient/ открывает "дом на фото" (то же, что novaya/).
+    # Прежний klient/ (дом линиями) сохранён в klient-staraya/. ОТКАТ: KLIENT_NOVAYA = False - klient/ снова прежний.
+    KLIENT_NOVAYA = True
+    wr(os.path.join(out, "klient-staraya", "index.html"), h)
+    if KLIENT_NOVAYA: wr(os.path.join(out, "klient", "index.html"), hn)
     # старый адрес дома ведёт на главную (с тем же #rabota=/#komnata=)
     wr(os.path.join(out, "dom", "index.html"), '<!DOCTYPE html>\n<html lang="ru"><head><meta charset="UTF-8">\n' + noindex +
        '<title>Закрытая витрина</title>\n<script>location.replace("../" + location.search + location.hash);</script>\n'
