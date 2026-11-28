@@ -67,7 +67,7 @@ def krasnodar():
 
     def locked(html, tool, scripts, repl, back="tr", head="", depth=1, sub=False):
         html = html.replace("<head>\n", "<head>\n" + noindex + head, 1)
-        html = re.sub(r"<title>.*?</title>", "<title>Закрытая витрина</title>", html, count=1)
+        html = re.sub(r"<title>.*?</title>", "<title>Fактура и Fорма</title>", html, count=1)  # с 2026-11-28 витрина открыта всем - название мастера, а не "Закрытая витрина"
         html = re.sub(r'<meta (name="description"|property="og:[a-z]+")[^>]*>\n', "", html)
         for a, b in repl:
             assert a in html, (tool, a)

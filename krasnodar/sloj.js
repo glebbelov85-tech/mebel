@@ -25,6 +25,14 @@
      shrift            - { titul, kartochki } - шрифты титульной страницы и карточек работ (список - vitrina/dizajn2/shrifty.js).
    С 2026-11-24 (быстрый расчёт):
      kalk              - цены быстрого расчёта для клиента (Мастерская, "Цены"; формат и формулы - vitrina/kalk/kalk-ceny.js).
+   С 2026-11-27 (отзывы):
+     otzyvy            - [{ id, imya, tekst, data, otkuda, otvet, foto: [{src}], video: [{fajl, oblozhka}] }] - весь список отзывов
+                         мастера (Мастерская, "Отзывы"): новые, правленые, с ответом; удалённого в списке просто нет.
+                         Контакт человека в данные не попадает никогда - он остаётся у мастера в WhatsApp.
+   С 2026-11-27 (дом на фото):
+     poryadok          - [id комнаты, ...] - порядок комнат в доме сверху вниз (остальные - следом, как были);
+     titul             - { id комнаты: src фото } - титульное фото комнаты в доме ("@id" или путь; пустая строка - снова
+                         первое фото первой работы). Фото должно быть у работы этой комнаты, иначе берётся первое.
    Функция меняет V на месте и возвращает счётчики. */
 (function (root) {
   "use strict";
@@ -131,6 +139,27 @@
       V.komnaty = V.komnaty.filter(function (k) { return !svoi[k.id] || used[k.id]; });
     }
     if (P.kalk && typeof P.kalk === "object") V.kalk = JSON.parse(JSON.stringify(P.kalk));
+    // отзывы из Мастерской (свежие сверху) - это весь список, он заменяет исходный
+    if (Array.isArray(P.otzyvy)) {
+      var str = function (x) { return typeof x === "string" ? x.trim() : ""; };
+      var oz = P.otzyvy.filter(function (o) { return o && str(o.tekst); }).map(function (o) {
+        return { id: str(o.id), imya: str(o.imya), tekst: str(o.tekst), data: str(o.data), otkuda: str(o.otkuda), otvet: str(o.otvet), rabota: str(o.rabota),
+          foto: (o.foto || []).filter(function (f) { return f && str(f.src); }).map(function (f) { return { src: f.src }; }),
+          video: (o.video || []).filter(function (v) { return v && str(v.fajl); }).map(function (v) { return { fajl: v.fajl, oblozhka: str(v.oblozhka) }; }) };
+      });
+      V.otzyvy = oz; // весь список: мастер правит и удаляет в Мастерской
+    }
+    // порядок комнат в доме (сверху вниз) и титульные фото комнат - см. описание формата вверху
+    if (Array.isArray(P.poryadok)) {
+      var po = P.poryadok.filter(function (id) { return typeof id === "string" && rooms[id]; });
+      if (po.length) V.poryadok = po;
+    }
+    if (P.titul && typeof P.titul === "object") V.komnaty.forEach(function (k) {
+      var t = P.titul[k.id]; if (typeof t !== "string") return;
+      // только фото, которое ещё есть у работы этой комнаты (фото удалили или работу перенесли - снова первое фото)
+      var ok = t && V.raboty.some(function (w) { return w.komnata === k.id && (w.foto || []).some(function (f) { return f && f.src === t; }); });
+      if (ok) k.titul = t; else delete k.titul;
+    });
     if (P.shrift && typeof P.shrift === "object") V.shrift = { titul: String(P.shrift.titul || ""), kartochki: String(P.shrift.kartochki || "") };
     var F = P.fon;
     if (F && typeof F === "object") {

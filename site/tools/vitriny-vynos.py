@@ -164,7 +164,8 @@ def main():
         enc_out, enc_new, kept = os.path.join(out, "krasnodar", "enc"), os.path.join(tmp, "krasnodar", "enc"), []
         if os.path.isdir(enc_out):
             for f in os.listdir(enc_out):
-                if not os.path.exists(os.path.join(enc_new, f)):
+                # otkryto.json (ключ открытого входа) не сохраняем: его удаляют в исходниках, чтобы вернуть пин-код
+                if f != "otkryto.json" and not os.path.exists(os.path.join(enc_new, f)):
                     shutil.copy2(os.path.join(enc_out, f), os.path.join(keep, f)); kept.append(f)
         clean(out)
         for d in TAKE_DIRS:

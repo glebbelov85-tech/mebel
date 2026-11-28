@@ -6,13 +6,13 @@
 <meta name="robots" content="noindex, nofollow, noarchive, noimageindex">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#121211">
-<title>Закрытая витрина - Мастерская</title>
+<title>Мастерская</title>
 <link rel="stylesheet" href="../stil.css">
 <style>
 /* Мастерская закрытой витрины: правка данных мастера, новые фото и видео в ленту с водяным знаком.
    Сайт статический: всё делается в браузере мастера. Если Александр включил публикацию (publik.js, код мастера),
    правки уходят на сайт кнопкой "Опубликовать"; иначе - пакетом (ZIP), который кладут в репозиторий.
-   Логика - masterskaya.js. Вход - тот же пин-код (zamok.js). */
+   Логика - masterskaya.js. Вход - через zamok.js (с 2026-11-28 без пин-кода, публикация - по коду мастера). */
 :root{--bg:var(--kr-bg);--bg2:var(--kr-bg2);--card:var(--kr-card);--line:var(--kr-line);--ink:var(--kr-ink);--muted:var(--kr-muted);--ok:var(--kr-ok);--err:var(--kr-err);--serif:var(--kr-serif);--sans:var(--kr-sans);--ease:var(--kr-ease);--pad:clamp(16px,4vw,48px);--sb:env(safe-area-inset-bottom,0px)}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);color:var(--ink)}
@@ -188,6 +188,21 @@ html.pe-on,html.pe-on body{overflow:hidden}
   .pe-h{grid-column:1/-1}.pe-ph{position:sticky;top:0;align-self:start}.pe-in img{max-height:calc(100vh - 190px)}.pe-list{margin-top:0}}
 /* комнаты */
 .kdel{padding:4px 0 14px;border-top:0}
+.ktit{flex:none;width:52px;height:52px;padding:0;border:1px solid var(--line);background:var(--bg2);overflow:hidden;cursor:pointer}
+.ktit img{width:100%;height:100%;object-fit:cover;display:block}
+.ktit[aria-expanded=true]{outline:2px solid var(--ink);outline-offset:2px}
+.otzs{padding:0}
+.otzh{display:block;width:100%;padding:clamp(14px,2.4vw,22px);border:0;background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.otzh b{display:block;font-weight:600;margin-bottom:4px}
+.otzh span{display:block;color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
+.otzh small{display:block;margin-top:8px;font-size:12px;letter-spacing:.04em;color:var(--muted)}
+.otzh:hover b{text-decoration:underline;text-underline-offset:3px}
+.kmv{display:flex;gap:4px}
+.kl .row{flex-wrap:wrap}
+.kl .row>.sp{flex:1 1 150px;min-width:0}
+@media (max-width:520px){.kl .row>.kmv{margin-left:64px}}
+.kmv .btn{min-width:36px;padding-left:0;padding-right:0}
+.kmv .btn:disabled{opacity:.3;cursor:default}
 .kdel p{font-size:14px;margin:0 0 8px}
 /* шрифты: пары на выбор */
 .shr{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-bottom:8px}
@@ -235,6 +250,7 @@ html.pe-on,html.pe-on body{overflow:hidden}
       <button type="button" role="tab" aria-selected="true" data-t="master">О мастере</button>
       <button type="button" role="tab" aria-selected="false" data-t="lenta">Работы<i id="cntL"></i></button>
       <button type="button" role="tab" aria-selected="false" data-t="komnaty">Комнаты</button>
+      <button type="button" role="tab" aria-selected="false" data-t="otzyvy">Отзывы</button>
       <button type="button" role="tab" aria-selected="false" data-t="znak">Знак</button>
       <button type="button" role="tab" aria-selected="false" data-t="fon">Фон</button>
       <button type="button" role="tab" aria-selected="false" data-t="shrift">Шрифты</button>
