@@ -156,10 +156,10 @@ def krasnodar():
         '<link rel="stylesheet" href="../../vitrina/dizajn2/d2.css">\n', '<link rel="stylesheet" href="../../vitrina/dizajn2/d2.css">\n<link rel="stylesheet" href="../../vitrina/dizajn2/foto-dom.css">\n', 1).replace(
         "window.VP_ZASTAVKA = true;", 'window.VP_ZASTAVKA = true; window.D2_FOTO = true; window.VP_VNUTRI = true; window.VP_PORYADOK = ["spalni", "garderobnye", "vannye", "ofisy", "detali", "gostinye", "kuhni", "prihozhie"];', 1)
     assert hn.count("kr-novaya") == 1 and "foto-dom.js" in hn and "foto-dom.css" in hn and "D2_FOTO" in hn
-    # 2026-11-28 заставка v2 (плавная: название - слабо, ярче, вспышка; "Войти в дом" и сразу завитушки; см. конец d2.css).
+    # 2026-11-28 заставка v2 (+ KR_ZAGRUZKA: кольца загрузки в zamok.js, хотя бы один круг; плавная: название - слабо, ярче, вспышка; "Войти в дом" и сразу завитушки; см. конец d2.css).
     # Пробно - на novaya/. ZASTAVKA2_KLIENT = True - она же на klient/. ОТКАТ: False (klient/ - прежняя заставка).
     ZASTAVKA2_KLIENT = False
-    hz = hn.replace("window.VP_ZASTAVKA = true;", "window.VP_ZASTAVKA = true; window.D2_ZS2 = true;", 1)
+    hz = hn.replace("window.VP_ZASTAVKA = true;", "window.VP_ZASTAVKA = true; window.D2_ZS2 = true; window.KR_ZAGRUZKA = true;", 1)
     assert hz.count("D2_ZS2") == 1
     wr(os.path.join(out, "novaya", "index.html"), hz)
     # 2026-11-28 (Александр: "да"): клиентская ссылка klient/ открывает "дом на фото" (то же, что novaya/).
