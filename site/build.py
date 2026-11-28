@@ -157,8 +157,8 @@ def krasnodar():
         "window.VP_ZASTAVKA = true;", 'window.VP_ZASTAVKA = true; window.D2_FOTO = true; window.VP_VNUTRI = true; window.VP_PORYADOK = ["spalni", "garderobnye", "vannye", "ofisy", "detali", "gostinye", "kuhni", "prihozhie"];', 1)
     assert hn.count("kr-novaya") == 1 and "foto-dom.js" in hn and "foto-dom.css" in hn and "D2_FOTO" in hn
     # 2026-11-28 заставка v2 (+ KR_ZAGRUZKA: кольца загрузки в zamok.js, хотя бы один круг; плавная: название - слабо, ярче, вспышка; "Войти в дом" и сразу завитушки; см. конец d2.css).
-    # Пробно - на novaya/. ZASTAVKA2_KLIENT = True - она же на klient/. ОТКАТ: False (klient/ - прежняя заставка).
-    ZASTAVKA2_KLIENT = False
+    # Сначала пробно на novaya/, 2026-11-28 Александр: "ставь на основную" - ZASTAVKA2_KLIENT = True. ОТКАТ: False (klient/ - прежняя заставка).
+    ZASTAVKA2_KLIENT = True
     hz = hn.replace("window.VP_ZASTAVKA = true;", "window.VP_ZASTAVKA = true; window.D2_ZS2 = true; window.KR_ZAGRUZKA = true;", 1)
     assert hz.count("D2_ZS2") == 1
     wr(os.path.join(out, "novaya", "index.html"), hz)
